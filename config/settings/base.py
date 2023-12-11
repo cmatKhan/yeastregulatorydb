@@ -338,3 +338,7 @@ SPECTACULAR_SETTINGS = {
 }
 # Your stuff...
 # ------------------------------------------------------------------------------
+CHR_FORMAT = env(
+    "CHR_FORMAT",
+    default="ucsc",
+)

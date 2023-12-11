@@ -22,7 +22,7 @@ class Binding(BaseModel, FileUploadMixin):
         help_text="A batch identifier for a set of data, " "eg the run number in the case of calling cards",
     )
     replicate = models.PositiveIntegerField(default=1, help_text="Replicate number")
-    source_id = models.ForeignKey("BindingSource", on_delete=models.CASCADE)
+    source = models.ForeignKey("BindingSource", on_delete=models.CASCADE)
     source_orig_id = models.CharField(
         max_length=20,
         default="none",
@@ -53,18 +53,18 @@ class Binding(BaseModel, FileUploadMixin):
     )
 
     def __str__(self):
-        return f"{self.source_id}_{self.regulator}__{self.batch}__{self.replicate}"
+        return f"{self.source}_{self.regulator_id}__{self.batch}__{self.replicate}"
 
     class Meta:
         db_table = "binding"
-        unique_together = ("regulator", "batch", "replicate", "source_id")
+        unique_together = ("regulator_id", "batch", "replicate", "source")
 
     # pylint: disable=R0801
     def save(self, *args, **kwargs):
         # Store the old file path
         old_file_name = self.file.name if self.file else None
         super().save(*args, **kwargs)
-        self.update_file_name("file", f"binding/{self.source_id}", "tsv.gz")
+        self.update_file_name("file", f"binding/{self.source}", "tsv.gz")
         new_file_name = self.file.name
         super().save(update_fields=["file"])
         # If the file name changed, delete the old file

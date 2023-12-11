@@ -8,8 +8,8 @@ class ExpressionFilter(django_filters.FilterSet):
     id = django_filters.NumberFilter()
     pk = django_filters.NumberFilter()
     regulator_id = django_filters.NumberFilter()
-    regulator_locus_tag = django_filters.CharFilter(field_name="regulator__locus_tag", lookup_expr="iexact")
-    regulator_symbol = django_filters.CharFilter(field_name="regulator__symbol", lookup_expr="iexact")
+    regulator_locus_tag = django_filters.CharFilter(field_name="regulator_id__locus_tag", lookup_expr="iexact")
+    regulator_symbol = django_filters.CharFilter(field_name="regulator_id__symbol", lookup_expr="iexact")
     batch = django_filters.CharFilter(field_name="batch", lookup_expr="iexact")
     # pylint: enable=R0801
     replicate = django_filters.NumberFilter()

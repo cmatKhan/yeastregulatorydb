@@ -1,7 +1,19 @@
+from enum import Enum
+
 from django.db import models
 
 from .BaseModel import BaseModel
-from .mixins.GenomicCoordinatesMixin import GenonomicCoordinatesMixin
+
+
+class Strand(Enum):
+    """
+    Enum representing the strand of a genomic feature. This is used to
+    provide some flexibility in how these values are stored in the database.
+    """
+
+    POSITIVE = "+"
+    NEGATIVE = "-"
+    UNSTRANDED = "*"
 
 
 class GenomicFeatureManager(models.Manager):  # pylint: disable=too-few-public-methods
@@ -21,7 +33,7 @@ class GenomicFeatureManager(models.Manager):  # pylint: disable=too-few-public-m
         return self.aggregate(models.Max("pk"))["pk__max"] or 0
 
 
-class GenomicFeature(GenonomicCoordinatesMixin, BaseModel):
+class GenomicFeature(BaseModel):
     """
     A model for storing genomic coordinates and annotations for genomic features.
 
@@ -61,11 +73,19 @@ class GenomicFeature(GenonomicCoordinatesMixin, BaseModel):
 
     objects = GenomicFeatureManager()
 
+    STRAND_CHOICES = ((Strand.POSITIVE.value, "+"), (Strand.NEGATIVE.value, "-"), (Strand.UNSTRANDED.value, "*"))
+
     chr = models.ForeignKey(
-        "ChrMap",
-        on_delete=models.CASCADE,
-        help_text="ForeignKey to the `ChrMap` model, representing the "
-        "chromosome that the genomic feature is located on",
+        "ChrMap", models.CASCADE, db_index=True, help_text="foreign key to the `id` field of ChrMap"
+    )
+    start = models.PositiveIntegerField(db_index=True, help_text="start position of the feature")
+    end = models.PositiveIntegerField(db_index=True, help_text="end position of the feature")
+    strand = models.CharField(
+        max_length=1,
+        choices=STRAND_CHOICES,
+        default=Strand.UNSTRANDED.value,
+        db_index=True,
+        help_text="strand of the feature, one of +, -, or *",
     )
     type = models.CharField(
         max_length=30,
@@ -139,3 +159,13 @@ class GenomicFeature(GenonomicCoordinatesMixin, BaseModel):
     class Meta:
         managed = True
         db_table = "genomicfeature"
+        constraints = [
+            models.CheckConstraint(
+                check=models.Q(start__gt=0),
+                name="start_cannot_be_less_than_one",
+            ),
+            models.CheckConstraint(
+                check=models.Q(end__lte=models.F("chr__seqlength")),
+                name="end_cannot_exceed_chromosome_length",
+            ),
+        ]

@@ -2,9 +2,10 @@ from rest_framework import serializers
 
 from ...models.Expression import Expression
 from .mixins.CustomValidateMixin import CustomValidateMixin
+from .mixins.FileValidationMixin import FileValidationMixin
 
 
-class ExpressionSerializer(CustomValidateMixin, serializers.ModelSerializer):
+class ExpressionSerializer(CustomValidateMixin, FileValidationMixin, serializers.ModelSerializer):
     uploader = serializers.ReadOnlyField(source="uploader.username")
     modifiedBy = serializers.CharField(source="uploader.username", required=False)
 
