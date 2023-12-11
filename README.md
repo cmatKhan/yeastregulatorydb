@@ -19,7 +19,9 @@ Moved to [settings](http://cookiecutter-django.readthedocs.io/en/latest/settings
 
 - To create a **superuser account**, use this command:
 
-      $ python manage.py createsuperuser
+```bash
+  python manage.py createsuperuser
+```
 
 For convenience, you can keep your normal user logged in on Chrome and your superuser logged in on Firefox (or similar), so that you can see how the site behaves for both kinds of users.
 
@@ -27,19 +29,35 @@ For convenience, you can keep your normal user logged in on Chrome and your supe
 
 Running type checks with mypy:
 
-    $ mypy yeastregulatorydb
+```bash
+  mypy yeastregulatorydb
+```
+  
+#### mypy caveats
+
+- there is an issue accessing `Models.objects` that is unresolved. See
+  [issue 1684](https://github.com/typeddjango/django-stubs/issues/1684). I
+  choose to resolve this by ignoring the attr-defined error when accessing
+  `Model.objects` (see any viewset for an example). Note that in cases where
+  a custom manager is defined, I use _default_manager
+  ([see django docs](https://docs.djangoproject.com/en/4.2/topics/db/managers/#django.db.models.Model._default_manager)). This raises a "accessing private method" warning in pylint,
+  which is also ignored.
 
 ### Test coverage
 
 To run the tests, check your test coverage, and generate an HTML coverage report:
 
-    $ coverage run -m pytest
-    $ coverage html
-    $ open htmlcov/index.html
+```bash
+  coverage run -m pytest
+  coverage html
+  open htmlcov/index.html
+```
 
 #### Running tests with pytest
 
-    $ pytest
+```bash
+  pytest
+```
 
 ### Live reloading and Sass CSS compilation
 

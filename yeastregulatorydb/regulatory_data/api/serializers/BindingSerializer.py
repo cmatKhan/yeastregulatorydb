@@ -1,9 +1,10 @@
 from rest_framework import serializers
 
 from ...models.Binding import Binding
+from .mixins.CustomValidateMixin import CustomValidateMixin
 
 
-class BindingSerializer(serializers.ModelSerializer):
+class BindingSerializer(CustomValidateMixin, serializers.ModelSerializer):
     uploader = serializers.ReadOnlyField(source="uploader.username")
     modifiedBy = serializers.CharField(source="uploader.username", required=False)
 

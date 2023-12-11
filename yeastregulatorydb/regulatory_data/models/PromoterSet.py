@@ -17,7 +17,7 @@ class PromoterSet(BaseModel, FileUploadMixin):
     join with the identifier columns of the expression and binding data
     """
 
-    name = models.CharField(max_length=10, unique=True)
+    name = models.CharField(max_length=10, unique=True, help_text="The name of the promoter set, eg `orf` or `yiming`")
     file = models.FileField(
         upload_to="temp",
         help_text="A bed format file where each row "
@@ -25,7 +25,9 @@ class PromoterSet(BaseModel, FileUploadMixin):
         "target feature, which is identified in the "
         "'name' column by the GenomicFeature id",
     )
-    notes = models.CharField(max_length=100, default="none")
+    notes = models.CharField(
+        max_length=100, default="none", help_text="free entry text field, no more than 100 char long"
+    )
 
     def __str__(self):
         return f"{self.name}"
@@ -33,6 +35,7 @@ class PromoterSet(BaseModel, FileUploadMixin):
     class Meta:
         db_table = "promoterset"
 
+    # pylint:disable=R0801
     def save(self, *args, **kwargs):
         # Store the old file path
         old_file_name = self.file.name if self.file else None
@@ -44,9 +47,11 @@ class PromoterSet(BaseModel, FileUploadMixin):
         if old_file_name and old_file_name != new_file_name:
             default_storage.delete(old_file_name)
 
+    # pylint:enable=R0801
+
 
 @receiver(models.signals.post_delete, sender=PromoterSet)
-def remove_file_from_s3(sender, instance, using, **kwargs):
+def remove_file_from_s3(sender, instance, using, **kwargs):  # pylint: disable=unused-argument
     """
     this is a post_delete signal. Hence, if the delete command is successful,
     the file will be deleted. If the delete command is successful, and for some

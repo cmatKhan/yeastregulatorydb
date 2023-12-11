@@ -1,16 +1,3 @@
-"""
-.. module:: base_model
-   :synopsis: Module for the BaseModel class.
-
-This module provides an abstract base class for models, defining common fields
-for tracking the user who uploaded the data, the date of uploading, and the
-last modification date and user who made the modification. It is intended to be
-used as a base class for other models to inherit from.
-
-.. author:: Chase Mateusiak
-.. date:: 2023-04-17
-.. modified:: 2023-12-07
-"""
 from django.conf import settings
 from django.db import models
 from django.db.models.signals import pre_save
@@ -61,5 +48,5 @@ class BaseModel(models.Model):
 
 
 @receiver(pre_save, sender=BaseModel)
-def update_modified_date(sender, instance, **kwargs):
+def update_modified_date(sender, instance, **kwargs):  # pylint: disable=unused-argument
     instance.modified_date = timezone.now()

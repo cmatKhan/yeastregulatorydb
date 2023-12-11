@@ -1,16 +1,23 @@
-"""Mixins which may be useful for storing genomic data"""
-from django.db import models
+"""Mixins which may be useful for storing genomic data
+
+.. author:: Chase Mateusiak
+.. date:: 2023-04-20
+.. modified:: 2023-12-07
+"""
 from enum import Enum
+
+from django.db import models
 
 
 class Strand(Enum):
     """
-    Enum representing the strand of a genomic feature. This is used to 
+    Enum representing the strand of a genomic feature. This is used to
     provide some flexibility in how these values are stored in the database.
     """
-    POSITIVE = '+'
-    NEGATIVE = '-'
-    UNSTRANDED = '*'
+
+    POSITIVE = "+"
+    NEGATIVE = "-"
+    UNSTRANDED = "*"
 
 
 class GenonomicCoordinatesMixin(models.Model):
@@ -32,38 +39,30 @@ class GenonomicCoordinatesMixin(models.Model):
         - start_cannot_be_less_than_one: start position must be greater than 0.
         - end_cannot_exceed_chromosome_length: end position must be less than
           or equal to the length of the chromosome.
-
-    .. author:: Chase Mateusiak
-    .. date:: 2023-04-20
     """
-    STRAND_CHOICES = ((Strand.POSITIVE.value, '+'),
-                      (Strand.NEGATIVE.value, '-'),
-                      (Strand.UNSTRANDED.value, '*'))
 
-    chr = models.ForeignKey(
-        'ChrMap', models.PROTECT,
-        db_index=True)
-    start = models.PositiveIntegerField(
-        db_index=True
-    )
-    end = models.PositiveIntegerField(
-        db_index=True
-    )
+    STRAND_CHOICES = ((Strand.POSITIVE.value, "+"), (Strand.NEGATIVE.value, "-"), (Strand.UNSTRANDED.value, "*"))
+
+    chr = models.ForeignKey("ChrMap", models.PROTECT, db_index=True, help_text="foreign key to the `id` field of ChrMap")  # type: ignore[misc]
+    start = models.PositiveIntegerField(db_index=True, help_text="start position of the feature")
+    end = models.PositiveIntegerField(db_index=True, help_text="end position of the feature")
     strand = models.CharField(
         max_length=1,
         choices=STRAND_CHOICES,
         default=Strand.UNSTRANDED.value,
-        db_index=True)
+        db_index=True,
+        help_text="strand of the feature, one of +, -, or *",
+    )
 
-    class Meta:  # pylint: disable=C0115
+    class Meta:
         abstract = True
         constraints = [
             models.CheckConstraint(
                 check=models.Q(start__gt=0),
-                name='start_cannot_be_less_than_one',
+                name="start_cannot_be_less_than_one",
             ),
             models.CheckConstraint(
-                check=models.Q(end__lte=models.F('chr__seqlength')),
-                name='end_cannot_exceed_chromosome_length',
-            )
+                check=models.Q(end__lte=models.F("chr__seqlength")),
+                name="end_cannot_exceed_chromosome_length",
+            ),
         ]

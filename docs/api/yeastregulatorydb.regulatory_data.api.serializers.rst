@@ -100,10 +100,10 @@ yeastregulatorydb.regulatory\_data.api.serializers.PromoterSetSigSerializer modu
    :undoc-members:
    :show-inheritance:
 
-yeastregulatorydb.regulatory\_data.api.serializers.RegulatorSerializerSerializer module
+yeastregulatorydb.regulatory\_data.api.serializers.RegulatorSerializer module
 ---------------------------------------------------------------------------------------
 
-.. automodule:: yeastregulatorydb.regulatory_data.api.serializers.RegulatorSerializerSerializer
+.. automodule:: yeastregulatorydb.regulatory_data.api.serializers.RegulatorSerializer
    :members:
    :undoc-members:
    :show-inheritance:

@@ -8,6 +8,6 @@ class UsersConfig(AppConfig):
 
     def ready(self):
         try:
-            import yeastregulatorydb.users.signals  # noqa: F401
+            import yeastregulatorydb.users.signals  # noqa: F401  #type: ignore
         except ImportError:
             pass

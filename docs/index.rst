@@ -12,7 +12,6 @@ Welcome to YeastRegulatoryDB's documentation!
 
    howto
    users
-   api
 
 
 

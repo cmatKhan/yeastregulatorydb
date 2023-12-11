@@ -22,6 +22,7 @@ class PromoterSetSigFilter(django_filters.FilterSet):
     assay = django_filters.CharFilter(field_name="binding_id__source_id__assay", lookup_expr="iexact")
     workflow = django_filters.CharFilter(field_name="binding_id__source_id__workflow", lookup_expr="iexact")
 
+    # pylint: disable=R0801
     class Meta:
         model = PromoterSetSig
         fields = [
@@ -39,3 +40,5 @@ class PromoterSetSigFilter(django_filters.FilterSet):
             "assay",
             "workflow",
         ]
+
+        # pylint: enable=R0801

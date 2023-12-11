@@ -1,15 +1,3 @@
-"""
-.. module:: Binding
-   :synopsis: A model for storing filepaths to files concerning regulator/DNA binding data.
-
-This model is used to keep an index of the files which store binding data,
-eg chip-seq, chip-exo, calling cards. More information on the data itself
-is stored in the BindingSource model.
-
-.. author:: Chase Mateusiak
-.. date:: 2023-04-17
-.. modified:: 2023-12-07
-"""
 import logging
 
 from django.core.files.storage import default_storage
@@ -60,21 +48,18 @@ class Binding(BaseModel, FileUploadMixin):
         default=0,
         help_text="The number of inserts which map to contigs labelled as plasmid in the ChrMap table",
     )
-    notes = models.CharField(max_length=100, default="none")
+    notes = models.CharField(
+        max_length=100, default="none", help_text="free entry text field, no more than 100 char long"
+    )
 
     def __str__(self):
         return f"{self.source_id}_{self.regulator}__{self.batch}__{self.replicate}"
 
     class Meta:
         db_table = "binding"
-        constraints = [
-            models.CheckConstraint(
-                check=models.Q(start__gt=0),
-                name="start_cannot_be_less_than_one",
-            ),
-        ]
         unique_together = ("regulator", "batch", "replicate", "source_id")
 
+    # pylint: disable=R0801
     def save(self, *args, **kwargs):
         # Store the old file path
         old_file_name = self.file.name if self.file else None
@@ -86,9 +71,11 @@ class Binding(BaseModel, FileUploadMixin):
         if old_file_name and old_file_name != new_file_name:
             default_storage.delete(old_file_name)
 
+    # pylint: enable=R0801
+
 
 @receiver(models.signals.post_delete, sender=Binding)
-def remove_file_from_s3(sender, instance, using, **kwargs):
+def remove_file_from_s3(sender, instance, using, **kwargs):  # pylint: disable=unused-argument
     """
     this is a post_delete signal. Hence, if the delete command is successful,
     the file will be deleted. If the delete command is successful, and for some

@@ -7,11 +7,7 @@ from django.db.models.base import ModelBase
 logger = logging.getLogger(__name__)
 
 
-class FileUploadMetaclass(ModelBase, type):
-    pass
-
-
-class HasPkProtocol(Protocol):
+class HasPkProtocol(Protocol):  # pylint: disable=too-few-public-methods
     """
     from copilot: In Python's typing system, a `Protocol` is a way to define an
     interface that a class must adhere to. It's a way to say "any class that
@@ -32,7 +28,7 @@ class HasPkProtocol(Protocol):
     pk: Optional[int]
 
 
-class FileUploadMixin(metaclass=FileUploadMetaclass):
+class FileUploadMixin():  # pylint: disable=too-few-public-methods
     """
     A mixin for models that have a file field that should be uploaded to a
     specific directory and renamed based on the instance's ID. This mixin
@@ -75,7 +71,7 @@ class FileUploadMixin(metaclass=FileUploadMetaclass):
         # raise AttributeError if self does not have a pk attribute
         if not self_with_pk.pk:
             raise AttributeError(f"{self} does not have a pk attribute")
-        logger.debug("Updating file name for %s to " "%s/%s.%s", self_with_pk, upload_dir, self_with_pk.pk, extension)
+        logger.debug("Updating file name for %s to %s/%s.%s", self_with_pk, upload_dir, self_with_pk.pk, extension)
         file_field = getattr(self, file_field_name, None)
         if file_field and self_with_pk.pk and file_field.name:
             # Define new filename with ID

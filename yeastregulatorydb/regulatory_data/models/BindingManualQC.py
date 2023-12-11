@@ -1,20 +1,6 @@
-"""
-.. module:: BindingManualQC
-   :synopsis: A model for storing QC labels from manual review of binding data
-
-This model is used primarily to track the Calling Cards data developement.
-However, the `rank_response_pass`, `best_response_pass` and `data_usable`
-fields are relevant to all data types
-
-.. author:: Chase Mateusiak
-.. date:: 2023-04-17
-.. modified:: 2023-12-07
-"""
 import logging
 
 from django.db import models
-from django.db.models.signals import pre_save
-from django.dispatch import receiver
 
 from .BaseModel import BaseModel
 
@@ -26,9 +12,8 @@ class BindingManualQC(BaseModel):
     Store labels from QC reviews of binding data
     """
 
-    binding_id = models.ForeignKey(
-        "Binding", on_delete=models.CASCADE, help_text="Foreign key to the Binding table", unique=True
-    )
+    binding_id = models.OneToOneField(
+        "Binding", on_delete=models.CASCADE, help_text="Foreign key to the Binding table")
     rank_response_pass = models.BooleanField(
         default=True,
         help_text="True if at least one bin in the top 100 genes with a binding "

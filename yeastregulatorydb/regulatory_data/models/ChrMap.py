@@ -1,18 +1,3 @@
-"""
-.. module:: chrmap
-   :synopsis: Module for the `ChrMap` model that stores chromosome mapping
-              information for different genome assemblies.
-
-This module defines the `ChrMap` model used to store the chromosome mapping
-information for different genome sources, eg between igenomes, ucsc and
-refseq. This table classifies chromosomes as genomic or mitochondrial,
-and adds and identifies as such some plasmid sequences which are added to
-callingcards strains. It additionally has the seqlength of each contig.
-
-.. moduleauthor:: Chase Mateusiak
-.. date:: 2023-04-21
-.. modified::2023-12-07
-"""
 from django.db import models
 
 from .BaseModel import BaseModel
@@ -67,7 +52,7 @@ class ChrMap(BaseModel):
     )
 
     def __str__(self):
-        return f"{self.ucsc}(chrID:{self.pk})"  # pylint: disable=no-member
+        return f"{self.ucsc}(chrID:{self.pk})"
 
     class Meta:
         managed = True

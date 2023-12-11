@@ -1,14 +1,3 @@
-"""
-.. module:: Regulator
-   :synopsis: Model for storing a list of transcription factors interrogated
-              with calling cards.
-
-.. moduleauthor:: Chase Mateusiak
-.. date:: 2023-11-20
-
-This module defines the `Regulator` model, which is used to store a list of the
-transcription factors interrogated with calling cards.
-"""
 from django.db import models
 
 from .BaseModel import BaseModel
@@ -20,13 +9,14 @@ class RegulatorManager(models.Manager):
     Example usage:
 
     .. code-block:: python
-            # in RegulatorManager
-            def custom_method(self):
-                # do some operations eg filter, exclude, annotation...
-                # and return
 
-            # get all Regulator records that are still under development
-            my_regulator_set = Regulator.objects.custom_method()
+        # in RegulatorManager
+        def custom_method(self):
+            # do some operations eg filter, exclude, annotation...
+            # and return
+
+        # get all Regulator records that are still under development
+        my_regulator_set = Regulator.objects.custom_method()
     """
 
     def under_development(self):
@@ -39,7 +29,7 @@ class RegulatorManager(models.Manager):
             )
             .annotate(
                 regulator_locus_tag=models.F("regulator__locus_tag"),
-                regulator_gene=models.F("regulator__gene"),
+                regulator_gene=models.F("regulator__symbol"),
             )
             .values("regulator_id", "regulator_locus_tag", "regulator_gene")
         )
@@ -72,9 +62,15 @@ class Regulator(BaseModel):
 
     objects = RegulatorManager()
 
-    regulator = models.ForeignKey("GenomicFeature", models.PROTECT, db_index=True)
-    under_development = models.BooleanField(default=False)
-    notes = models.CharField(max_length=50, default="none")
+    regulator = models.ForeignKey(
+        "GenomicFeature", models.PROTECT, db_index=True, help_text="foreign key to the `id` field of GenomicFeature"
+    )
+    under_development = models.BooleanField(
+        default=False, help_text="whether the regulator is being currently interrogated in any experiments"
+    )
+    notes = models.CharField(
+        max_length=50, default="none", help_text="free entry text field, no more than 50 char long"
+    )
 
     def __str__(self):
         return str(self.regulator) + "_" + str(self.pk)

@@ -1,17 +1,3 @@
-"""
-.. module:: expression
-   :synopsis: A model for storing filepaths to files concerning gene
-   expression after perturbing a presumed genetic regulator.
-
-This model is used to keep an index of the files which store expression data,
-eg mcisaac zev/gev overexpression, kemmeren transcription factor knockout
-(TFKO) and hu TFKO. More information on the data itself is stored in the
-ExpressionSource model.
-
-.. moduleauthor:: Chase Mateusiak
-.. date:: 2023-04-21
-.. modified::2023-12-07
-"""
 import logging
 
 from django.core.files.storage import default_storage
@@ -39,7 +25,8 @@ class Expression(BaseModel, FileUploadMixin):
     control = models.CharField(
         choices=[("undefined", "undefined"), ("wt", "wt"), ("wt_mata", "wt_mata")],
         default="undefined",
-        help_text="Intended for micro-array data, this field records the control strain used to generate the relative intensity data",
+        help_text="Intended for micro-array data, this field records the "
+        "control strain used to generate the relative intensity data",
     )
     mechanism = models.CharField(
         choices=[("gev", "gev"), ("zev", "zev"), ("tfko", "tfko")],
@@ -66,13 +53,8 @@ class Expression(BaseModel, FileUploadMixin):
 
     class Meta:
         db_table = "expression"
-        constraints = [
-            models.CheckConstraint(
-                check=models.Q(start__gt=0),
-                name="start_cannot_be_less_than_one",
-            ),
-        ]
 
+    # pylint: disable=R0801
     def save(self, *args, **kwargs):
         # Store the old file path
         old_file_name = self.file.name if self.file else None
@@ -84,9 +66,12 @@ class Expression(BaseModel, FileUploadMixin):
         if old_file_name and old_file_name != new_file_name:
             default_storage.delete(old_file_name)
 
+    # pylint: enable=R0801
 
+
+# pylint: disable=R0801
 @receiver(models.signals.post_delete, sender=Expression)
-def remove_file_from_s3(sender, instance, using, **kwargs):
+def remove_file_from_s3(sender, instance, using, **kwargs):  # pylint: disable=unused-argument
     """
     this is a post_delete signal. Hence, if the delete command is successful,
     the file will be deleted. If the delete command is successful, and for some

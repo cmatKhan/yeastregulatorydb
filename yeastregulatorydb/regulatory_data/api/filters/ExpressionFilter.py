@@ -4,12 +4,14 @@ from ...models.Expression import Expression
 
 
 class ExpressionFilter(django_filters.FilterSet):
+    # pylint: disable=R0801
     id = django_filters.NumberFilter()
     pk = django_filters.NumberFilter()
     regulator_id = django_filters.NumberFilter()
     regulator_locus_tag = django_filters.CharFilter(field_name="regulator__locus_tag", lookup_expr="iexact")
     regulator_symbol = django_filters.CharFilter(field_name="regulator__symbol", lookup_expr="iexact")
     batch = django_filters.CharFilter(field_name="batch", lookup_expr="iexact")
+    # pylint: enable=R0801
     replicate = django_filters.NumberFilter()
     control = django_filters.CharFilter(lookup_expr="iexact")
     mechanism = django_filters.CharFilter(lookup_expr="iexact")
@@ -39,3 +41,5 @@ class ExpressionFilter(django_filters.FilterSet):
             "assay",
             "workflow",
         ]
+
+    # pylint: enable=R0801

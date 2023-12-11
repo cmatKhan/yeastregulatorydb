@@ -1,9 +1,10 @@
 from rest_framework import serializers
 
 from ...models.PromoterSet import PromoterSet
+from .mixins.CustomValidateMixin import CustomValidateMixin
 
 
-class PromoterSetSerializer(serializers.ModelSerializer):
+class PromoterSetSerializer(CustomValidateMixin, serializers.ModelSerializer):
     uploader = serializers.ReadOnlyField(source="uploader.username")
     modifiedBy = serializers.CharField(source="uploader.username", required=False)
 
