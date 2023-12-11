@@ -1,6 +1,6 @@
-from django.contrib.auth.models import User
-from django.db import models
-from django.test import TestCase
+# from django.contrib.auth.models import User
+# from django.db import models
+# from django.test import TestCase
 
 # from yeastregulatorydb.regulatory_data.models.BaseModel import BaseModel
 # from yeastregulatorydb.users.tests.factories import UserFactory

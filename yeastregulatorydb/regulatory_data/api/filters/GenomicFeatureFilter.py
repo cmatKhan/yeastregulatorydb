@@ -7,7 +7,7 @@ class GenomicFeatureFilter(django_filters.FilterSet):
     chr = django_filters.CharFilter(field_name="chr__ucsc")
     start = django_filters.NumberFilter()
     end = django_filters.NumberFilter()
-    strand = django_filters.CharFilter(lookup_expr='exact')
+    strand = django_filters.CharFilter(lookup_expr="exact")
     type = django_filters.CharFilter(lookup_expr="iexact")
     gene_biotype = django_filters.CharFilter(lookup_expr="iexact")
     locus_tag = django_filters.CharFilter(lookup_expr="iexact")

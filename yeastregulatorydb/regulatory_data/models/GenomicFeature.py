@@ -64,7 +64,8 @@ class GenomicFeature(GenonomicCoordinatesMixin, BaseModel):
     chr = models.ForeignKey(
         "ChrMap",
         on_delete=models.CASCADE,
-        help_text="ForeignKey to the `ChrMap` model, representing the chromosome that the genomic feature is located on",
+        help_text="ForeignKey to the `ChrMap` model, representing the "
+        "chromosome that the genomic feature is located on",
     )
     type = models.CharField(
         max_length=30,
@@ -82,7 +83,8 @@ class GenomicFeature(GenonomicCoordinatesMixin, BaseModel):
         unique=True,
         max_length=20,
         default="unknown",
-        help_text="CharField with a max length of 20 and a unique constraint, representing the locus tag of the feature, eg YAL001C",
+        help_text="CharField with a max length of 20 and a unique constraint, "
+        "representing the locus tag of the feature, eg YAL001C",
     )
     # note: in the save method below, a unique integer is appended to the
     # default value if the this field is left blank on input

@@ -32,7 +32,7 @@ Running type checks with mypy:
 ```bash
   mypy yeastregulatorydb
 ```
-  
+
 #### mypy caveats
 
 - there is an issue accessing `Models.objects` that is unresolved. See
@@ -104,10 +104,10 @@ I am using version 2023.12.06 and set the following options:
 
 ```raw
 ➜  code cookiecutter https://github.com/cookiecutter/cookiecutter-django
-You've downloaded /home/oguzkhan/.cookiecutters/cookiecutter-django before. Is 
+You've downloaded /home/oguzkhan/.cookiecutters/cookiecutter-django before. Is
 it okay to delete and re-download it? [y/n] (y): y
   [1/27] project_name (My Awesome Project): YeastRegulatoryDB
-  [2/27] project_slug (yeastregulatorydb): 
+  [2/27] project_slug (yeastregulatorydb):
   [3/27] description (Behold My Awesome Project!): A Django app which defines a database and API to data related to yeast gene regulation
   [4/27] author_name (Daniel Roy Greenfeld): Chase Mateusiak
   [5/27] domain_name (example.com): example.com

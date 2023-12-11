@@ -1,8 +1,7 @@
 import logging
-from typing import Optional, Protocol, cast
+from typing import Protocol, cast
 
 from django.core.files.storage import default_storage
-from django.db.models.base import ModelBase
 
 logger = logging.getLogger(__name__)
 
@@ -25,10 +24,10 @@ class HasPkProtocol(Protocol):  # pylint: disable=too-few-public-methods
     seeing from mypy.
     """
 
-    pk: Optional[int]
+    pk: int | None
 
 
-class FileUploadMixin():  # pylint: disable=too-few-public-methods
+class FileUploadMixin:  # pylint: disable=too-few-public-methods
     """
     A mixin for models that have a file field that should be uploaded to a
     specific directory and renamed based on the instance's ID. This mixin

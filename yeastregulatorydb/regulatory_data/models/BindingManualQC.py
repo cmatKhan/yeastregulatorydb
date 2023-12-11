@@ -13,7 +13,8 @@ class BindingManualQC(BaseModel):
     """
 
     binding_id = models.OneToOneField(
-        "Binding", on_delete=models.CASCADE, help_text="Foreign key to the Binding table")
+        "Binding", on_delete=models.CASCADE, help_text="Foreign key to the Binding table"
+    )
     rank_response_pass = models.BooleanField(
         default=True,
         help_text="True if at least one bin in the top 100 genes with a binding "

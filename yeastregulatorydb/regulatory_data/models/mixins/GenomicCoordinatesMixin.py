@@ -43,7 +43,9 @@ class GenonomicCoordinatesMixin(models.Model):
 
     STRAND_CHOICES = ((Strand.POSITIVE.value, "+"), (Strand.NEGATIVE.value, "-"), (Strand.UNSTRANDED.value, "*"))
 
-    chr = models.ForeignKey("ChrMap", models.PROTECT, db_index=True, help_text="foreign key to the `id` field of ChrMap")  # type: ignore[misc]
+    chr = models.ForeignKey(
+        "ChrMap", models.PROTECT, db_index=True, help_text="foreign key to the `id` field of ChrMap"
+    )  # type: ignore[misc]
     start = models.PositiveIntegerField(db_index=True, help_text="start position of the feature")
     end = models.PositiveIntegerField(db_index=True, help_text="end position of the feature")
     strand = models.CharField(
