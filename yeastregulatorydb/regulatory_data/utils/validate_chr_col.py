@@ -36,7 +36,7 @@ def validate_chr_col(df: pd.DataFrame, chrmap_field: str) -> bool:
     # fields in ChrMap
     chr_values_set = df.chr.unique()
     chrmap_records = ChrMap.objects.all()
-    chrmap_values = set(getattr(record, chrmap_field) for record in chrmap_records)
+    chrmap_values = {getattr(record, chrmap_field) for record in chrmap_records}
     if not chr_values_set.issubset(chrmap_values):
         raise AttributeError(
             f"The following chromosomes in the uploaded file "
