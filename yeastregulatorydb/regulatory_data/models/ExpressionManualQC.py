@@ -12,7 +12,7 @@ class ExpressionManualQC(BaseModel):
     Record labels from QC reviews of expression data
     """
 
-    expression_id = models.OneToOneField(
+    expression = models.OneToOneField(
         "Expression",
         on_delete=models.CASCADE,
         help_text="foreign key to the expression table",
@@ -25,7 +25,7 @@ class ExpressionManualQC(BaseModel):
     )
 
     def __str__(self):
-        return f"expression_id:{self.expression_id}"
+        return f"expression:{self.expression}"
 
     class Meta:
         db_table = "expressionmanualqc"

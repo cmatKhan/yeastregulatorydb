@@ -31,7 +31,7 @@ class RegulatorManager(models.Manager):
                 regulator_locus_tag=models.F("regulator__locus_tag"),
                 regulator_gene=models.F("regulator__symbol"),
             )
-            .values("regulator_id", "regulator_locus_tag", "regulator_gene")
+            .values("regulator", "regulator_locus_tag", "regulator_gene")
         )
 
 

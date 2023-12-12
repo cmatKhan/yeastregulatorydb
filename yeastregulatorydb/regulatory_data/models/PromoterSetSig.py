@@ -15,7 +15,7 @@ class PromoterSetSig(BaseModel, FileUploadMixin):
     Store PromoterSetSig data
     """
 
-    binding_id = models.ForeignKey("Binding", on_delete=models.CASCADE, help_text="foreign key to the 'Binding' table")
+    binding = models.ForeignKey("Binding", on_delete=models.CASCADE, help_text="foreign key to the 'Binding' table")
     promoter_id = models.ForeignKey(
         "PromoterSet", on_delete=models.CASCADE, help_text="foreign key to the 'promoter' table"
     )
@@ -28,14 +28,14 @@ class PromoterSetSig(BaseModel, FileUploadMixin):
         null=True,
         help_text="foreign key to the 'CallingCardsBackground' table",
     )
-    filetype_id = models.ForeignKey(
+    filetype = models.ForeignKey(
         "FileFormat", on_delete=models.CASCADE, help_text="foreign key to the 'FileFormat' table"
     )
     file = models.FileField(upload_to="temp", help_text="A file which stores data on " "regulator/DNA interaction")
 
     def __str__(self):
         return (
-            f"pk:{self.pk};binding_id:{self.binding_id};"
+            f"pk:{self.pk};binding:{self.binding};"
             f"promoter_id:{self.promoter_id};background_id:{self.background_id}"
         )
 

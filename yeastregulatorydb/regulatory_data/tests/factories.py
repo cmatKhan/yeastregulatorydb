@@ -2,6 +2,8 @@ import faker
 from factory import Faker, SubFactory
 from factory.django import DjangoModelFactory, FileField
 
+from yeastregulatorydb.users.tests.factories import UserFactory
+
 from ..models import (
     Binding,
     BindingManualQC,
@@ -22,6 +24,8 @@ fake = faker.Faker()
 
 
 class ChrMapFactory(DjangoModelFactory):
+    uploader = SubFactory(UserFactory)
+    modifier = SubFactory(UserFactory)
     refseq = Faker("pystr", max_chars=12)
     igenomes = Faker("pystr", max_chars=12)
     ensembl = Faker("pystr", max_chars=12)
@@ -29,7 +33,7 @@ class ChrMapFactory(DjangoModelFactory):
     mitra = Faker("pystr", max_chars=15)
     numbered = Faker("pystr", max_chars=12)
     chr = Faker("pystr", max_chars=12)
-    seqlength = Faker("random_int", min=1, max=10000)
+    seqlength = Faker("random_int", min=2001, max=10000)
     type = fake.random_element(elements=["genomic", "mito", "plasmid"])
 
     class Meta:
@@ -38,10 +42,12 @@ class ChrMapFactory(DjangoModelFactory):
 
 
 class GenomicFeatureFactory(DjangoModelFactory):
+    uploader = SubFactory(UserFactory)
+    modifier = SubFactory(UserFactory)
     chr = SubFactory(ChrMapFactory)
     start = Faker("random_int", min=1, max=1000)
     end = Faker("random_int", min=1001, max=2000)
-    strand = fake.random_element(elements=GenomicFeature.STRAND_CHOICES)
+    strand = fake.random_element(elements=["+", "-", "*"])
     type = Faker("pystr", max_chars=30)
     biotype = Faker("pystr", max_chars=20)
     locus_tag = Faker("pystr", max_chars=20)
@@ -56,6 +62,8 @@ class GenomicFeatureFactory(DjangoModelFactory):
 
 
 class RegulatorFactory(DjangoModelFactory):
+    uploader = SubFactory(UserFactory)
+    modifier = SubFactory(UserFactory)
     regulator = SubFactory(GenomicFeatureFactory)
     under_development = Faker("pybool")
     notes = Faker("pystr", max_chars=50)
@@ -66,6 +74,8 @@ class RegulatorFactory(DjangoModelFactory):
 
 
 class FileFormatFactory(DjangoModelFactory):
+    uploader = SubFactory(UserFactory)
+    modifier = SubFactory(UserFactory)
     fileformat = Faker("word")
     fields = {
         "chr": fake.random_element(elements=("str", "int", "float")),
@@ -85,6 +95,8 @@ class FileFormatFactory(DjangoModelFactory):
 
 
 class ExpressionSourceFactory(DjangoModelFactory):
+    uploader = SubFactory(UserFactory)
+    modifier = SubFactory(UserFactory)
     fileformat_id = SubFactory(FileFormatFactory)
     lab = Faker("word")
     assay = Faker("word")
@@ -99,32 +111,38 @@ class ExpressionSourceFactory(DjangoModelFactory):
 
 
 class ExpressionFactory(DjangoModelFactory):
-    regulator_id = SubFactory(RegulatorFactory)
+    uploader = SubFactory(UserFactory)
+    modifier = SubFactory(UserFactory)
+    regulator = SubFactory(RegulatorFactory)
     batch = Faker("word")
     replicate = fake.random_digit()
     control = fake.random_element(elements=["undefined", "wt", "wt_mata"])
     mechanism = fake.random_element(elements=["gev", "zev", "tfko"])
     restriction = fake.random_element(elements=["undefined", "P", "M", "N"])
     time = fake.random_digit()
-    source_id = SubFactory(ExpressionSourceFactory)
+    source = SubFactory(ExpressionSourceFactory)
     file = Faker("file_name")
     notes = Faker("sentence")
 
     class Meta:
         model = Expression
-        django_get_or_create = ["regulator_id", "source_id"]
+        django_get_or_create = ["regulator", "source"]
 
 
 class ExpressionManualQCFactory(DjangoModelFactory):
-    expression_id = SubFactory(ExpressionFactory)
+    uploader = SubFactory(UserFactory)
+    modifier = SubFactory(UserFactory)
+    expression = SubFactory(ExpressionFactory)
     strain_verified = fake.random_element(elements=["yes", "no", "unverified"])
 
     class Meta:
         model = ExpressionManualQC
-        django_get_or_create = ["expression_id"]
+        django_get_or_create = ["expression"]
 
 
 class CallingCardsBackgroundFactory(DjangoModelFactory):
+    uploader = SubFactory(UserFactory)
+    modifier = SubFactory(UserFactory)
     name = Faker("pystr", max_chars=10)
     file = FileField(filename="testfile.tsv.gz")
     genomic_inserts = Faker("random_digit_not_null")
@@ -138,6 +156,8 @@ class CallingCardsBackgroundFactory(DjangoModelFactory):
 
 
 class BindingSourceFactory(DjangoModelFactory):
+    uploader = SubFactory(UserFactory)
+    modifier = SubFactory(UserFactory)
     fileformat_id = SubFactory(FileFormatFactory)
     lab = Faker("pystr", max_chars=20)
     assay = Faker("pystr", max_chars=20)
@@ -152,10 +172,12 @@ class BindingSourceFactory(DjangoModelFactory):
 
 
 class BindingFactory(DjangoModelFactory):
-    regulator_id = SubFactory(RegulatorFactory)
+    uploader = SubFactory(UserFactory)
+    modifier = SubFactory(UserFactory)
+    regulator = SubFactory(RegulatorFactory)
     batch = Faker("pystr", max_chars=20)
     replicate = Faker("pyint")
-    source_id = SubFactory(BindingSourceFactory)
+    source = SubFactory(BindingSourceFactory)
     source_orig_id = Faker("pystr", max_chars=20)
     strain = Faker("pystr", max_chars=20)
     file = Faker("file_name")
@@ -166,11 +188,13 @@ class BindingFactory(DjangoModelFactory):
 
     class Meta:
         model = Binding
-        django_get_or_create = ["regulator", "batch", "replicate", "source_id"]
+        django_get_or_create = ["regulator", "batch", "replicate", "source"]
 
 
 class BindingManualQCFactory(DjangoModelFactory):
-    binding_id = SubFactory(BindingFactory)
+    uploader = SubFactory(UserFactory)
+    modifier = SubFactory(UserFactory)
+    binding = SubFactory(BindingFactory)
     rank_response_pass = Faker("pybool")
     best_response_pass = Faker("pybool")
     data_usable = Faker("pybool")
@@ -179,10 +203,12 @@ class BindingManualQCFactory(DjangoModelFactory):
 
     class Meta:
         model = BindingManualQC
-        django_get_or_create = ["binding_id"]
+        django_get_or_create = ["binding"]
 
 
 class PromoterSetFactory(DjangoModelFactory):
+    uploader = SubFactory(UserFactory)
+    modifier = SubFactory(UserFactory)
     name = Faker("pystr", max_chars=10)
     file = FileField(filename="testfile.bed.gz")
     notes = Faker("sentence", nb_words=10)
@@ -193,7 +219,9 @@ class PromoterSetFactory(DjangoModelFactory):
 
 
 class PromoterSetSigFactory(DjangoModelFactory):
-    binding_id = SubFactory(BindingFactory)
+    uploader = SubFactory(UserFactory)
+    modifier = SubFactory(UserFactory)
+    binding = SubFactory(BindingFactory)
     promoter_id = SubFactory(PromoterSetFactory)
     background_id = SubFactory(CallingCardsBackgroundFactory)
     filetype = SubFactory(FileFormatFactory)
@@ -201,4 +229,4 @@ class PromoterSetSigFactory(DjangoModelFactory):
 
     class Meta:
         model = PromoterSetSig
-        django_get_or_create = ["binding_id", "promoter_id", "background_id"]
+        django_get_or_create = ["binding", "promoter_id", "background_id"]

@@ -15,7 +15,7 @@ class Expression(BaseModel, FileUploadMixin):
     Store minimal metadata and filepaths to expression data
     """
 
-    regulator_id = models.ForeignKey("Regulator", on_delete=models.CASCADE)
+    regulator = models.ForeignKey("Regulator", on_delete=models.CASCADE)
     batch = models.CharField(
         max_length=20,
         default="undefined",
@@ -41,7 +41,7 @@ class Expression(BaseModel, FileUploadMixin):
         help_text="This is a feature of the McIsaac ZEV data",
     )
     time = models.PositiveIntegerField(default=0, help_text="Timepoint of the experiment in minutes")
-    source_id = models.ForeignKey("ExpressionSource", on_delete=models.CASCADE)
+    source = models.ForeignKey("ExpressionSource", on_delete=models.CASCADE)
     file = models.FileField(
         upload_to="temp",
         help_text="A file which stores gene expression " "data that results from a given regulator " "perturbation",
@@ -49,7 +49,7 @@ class Expression(BaseModel, FileUploadMixin):
     notes = models.CharField(max_length=100, default="none", help_text="Free entry notes about the data")
 
     def __str__(self):
-        return f"{self.source_id}_{self.regulator_id}__{self.batch}__{self.replicate}"
+        return f"{self.source}_{self.regulator}__{self.batch}__{self.replicate}"
 
     class Meta:
         db_table = "expression"
@@ -59,7 +59,7 @@ class Expression(BaseModel, FileUploadMixin):
         # Store the old file path
         old_file_name = self.file.name if self.file else None
         super().save(*args, **kwargs)
-        self.update_file_name("file", f"expression/{self.source_id}", "tsv.gz")
+        self.update_file_name("file", f"expression/{self.source}", "tsv.gz")
         new_file_name = self.file.name
         super().save(update_fields=["file"])
         # If the file name changed, delete the old file

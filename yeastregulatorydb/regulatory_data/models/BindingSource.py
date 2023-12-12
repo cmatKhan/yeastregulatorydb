@@ -58,13 +58,13 @@ def sanitize_entries(sender, instance, **kwargs):  # pylint: disable=unused-argu
     Sanitize the lab, type and workflow fields before saving to the database
     """
     # sanitize lab
-    sanitized_lab = re.sub(r"[^a-zA-Z0-9_]", "_", instance.name.strip()).lower()
+    sanitized_lab = re.sub(r"[^a-zA-Z0-9_]", "_", instance.lab.strip()).lower()
     logger.debug("Original Binding Source lab: %s; Sanitized to: %s", instance.lab, sanitized_lab)
     instance.lab = sanitized_lab
     # sanitize type
-    sanitized_type = re.sub(r"[^a-zA-Z0-9_]", "_", instance.type.strip()).lower()
-    logger.debug("Original Binding Source type: %s; Sanitized to: %s", instance.type, sanitized_type)
-    instance.type = sanitized_type
+    sanitized_assay = re.sub(r"[^a-zA-Z0-9_]", "_", instance.assay.strip()).lower()
+    logger.debug("Original Binding Source type: %s; Sanitized to: %s", instance.assay, sanitized_assay)
+    instance.assay = sanitized_assay
     # sanitize workflow
     sanitized_workflow = re.sub(r"[^a-zA-Z0-9_]", "_", instance.workflow.strip()).lower()
     logger.debug("Original Binding Source workflow: %s; Sanitized to: %s", instance.workflow, sanitized_workflow)

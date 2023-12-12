@@ -164,8 +164,4 @@ class GenomicFeature(BaseModel):
                 check=models.Q(start__gt=0),
                 name="start_cannot_be_less_than_one",
             ),
-            models.CheckConstraint(
-                check=models.Q(end__lte=models.F("chr__seqlength")),
-                name="end_cannot_exceed_chromosome_length",
-            ),
         ]

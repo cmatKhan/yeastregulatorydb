@@ -2,6 +2,7 @@ from django.conf import settings
 from rest_framework.routers import DefaultRouter, SimpleRouter
 
 from yeastregulatorydb.regulatory_data.api.views import (
+    BindingManualQCViewSet,
     BindingSourceViewSet,
     BindingViewSet,
     CallingCardsBackgroundViewSet,
@@ -23,6 +24,7 @@ else:
     router = SimpleRouter()
 
 router.register("users", UserViewSet)
+router.register("bindingmanualqc", BindingManualQCViewSet)
 router.register("bindingsource", BindingSourceViewSet)
 router.register("binding", BindingViewSet)
 router.register("callingcardsbackground", CallingCardsBackgroundViewSet)

@@ -60,8 +60,3 @@ class FileFormat(BaseModel):
 
     class Meta:
         db_table = "fileformat"
-
-
-@receiver(pre_save, sender=FileFormat)
-def sanitize_entries(sender, instance, **kwargs):  # pylint: disable=unused-argument
-    instance.fields = instance.fields.replace(" ", "").strip()  # remove spaces

@@ -53,11 +53,11 @@ class Binding(BaseModel, FileUploadMixin):
     )
 
     def __str__(self):
-        return f"{self.source}_{self.regulator_id}__{self.batch}__{self.replicate}"
+        return f"{self.source}_{self.regulator}__{self.batch}__{self.replicate}"
 
     class Meta:
         db_table = "binding"
-        unique_together = ("regulator_id", "batch", "replicate", "source")
+        unique_together = ("regulator", "batch", "replicate", "source")
 
     # pylint: disable=R0801
     def save(self, *args, **kwargs):

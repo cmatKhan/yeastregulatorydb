@@ -49,13 +49,13 @@ class ExpressionSource(BaseModel):
 @receiver(pre_save, sender=ExpressionSource)
 def sanitize_entries(sender, instance, **kwargs):  # pylint: disable=unused-argument
     # sanitize lab
-    sanitized_lab = re.sub(r"[^a-zA-Z0-9_]", "_", instance.name.strip()).lower()
+    sanitized_lab = re.sub(r"[^a-zA-Z0-9_]", "_", instance.lab.strip()).lower()
     logger.debug("Original Expression Source lab: %s; Sanitized to: %s", instance.lab, sanitized_lab)
     instance.lab = sanitized_lab
     # sanitize type
-    sanitized_type = re.sub(r"[^a-zA-Z0-9_]", "_", instance.type.strip()).lower()
-    logger.debug("Original Expression Source type: %s; Sanitized to: %s", instance.type, sanitized_type)
-    instance.type = sanitized_type
+    sanitized_lab = re.sub(r"[^a-zA-Z0-9_]", "_", instance.lab.strip()).lower()
+    logger.debug("Original Expression Source type: %s; Sanitized to: %s", instance.lab, sanitized_lab)
+    instance.lab = sanitized_lab
     # sanitize workflow
     sanitized_workflow = re.sub(r"[^a-zA-Z0-9_]", "_", instance.workflow.strip()).lower()
     logger.debug("Original Expression Source workflow: %s; Sanitized to: %s", instance.workflow, sanitized_workflow)

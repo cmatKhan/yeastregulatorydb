@@ -1,3 +1,4 @@
+from .BindingManualQCViewSet import BindingManualQCViewSet
 from .BindingSourceViewSet import BindingSourceViewSet
 from .BindingViewSet import BindingViewSet
 from .CallingCardsBackgroundViewSet import CallingCardsBackgroundViewSet
@@ -12,6 +13,7 @@ from .PromoterSetViewSet import PromoterSetViewSet
 from .RegulatorViewSet import RegulatorViewSet
 
 __all__ = [
+    "BindingManualQCViewSet",
     "BindingSourceViewSet",
     "BindingViewSet",
     "CallingCardsBackgroundViewSet",
