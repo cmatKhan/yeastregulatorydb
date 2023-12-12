@@ -7,12 +7,16 @@ class PromoterSetSigFilter(django_filters.FilterSet):
     id = django_filters.NumberFilter()
     pk = django_filters.NumberFilter()
     binding = django_filters.NumberFilter()
-    promoter_id = django_filters.NumberFilter()
-    promoter_name = django_filters.CharFilter(field_name="promoter_id__name", lookup_expr="iexact")
-    background_id = django_filters.NumberFilter(field_name="background_id")
+    promoter = django_filters.NumberFilter()
+    promoter_name = django_filters.CharFilter(field_name="promoter__name", lookup_expr="iexact")
+    background = django_filters.NumberFilter()
     background_name = django_filters.CharFilter(field_name="background_id__name", lookup_expr="iexact")
-    regulator_locus_tag = django_filters.CharFilter(field_name="binding__regulator__locus_tag", lookup_expr="iexact")
-    regulator_symbol = django_filters.CharFilter(field_name="binding__regulator__symbol", lookup_expr="iexact")
+    regulator_locus_tag = django_filters.CharFilter(
+        field_name="binding__regulator__regulator__locus_tag", lookup_expr="iexact"
+    )
+    regulator_symbol = django_filters.CharFilter(
+        field_name="binding__regulator__regulator__symbol", lookup_expr="iexact"
+    )
     batch = django_filters.CharFilter(field_name="binding__batch", lookup_expr="iexact")
     replicate = django_filters.NumberFilter(field_name="binding__replicate")
     source = django_filters.NumberFilter(field_name="binding__source")

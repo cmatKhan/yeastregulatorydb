@@ -15,7 +15,7 @@ class BindingSource(BaseModel):
     Store binding data source information
     """
 
-    fileformat_id = models.ForeignKey(
+    fileformat = models.ForeignKey(
         "FileFormat",
         on_delete=models.CASCADE,
         help_text="Foreign key to the FileFormat table",

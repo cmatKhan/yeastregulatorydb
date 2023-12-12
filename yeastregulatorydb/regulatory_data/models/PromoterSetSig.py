@@ -16,12 +16,12 @@ class PromoterSetSig(BaseModel, FileUploadMixin):
     """
 
     binding = models.ForeignKey("Binding", on_delete=models.CASCADE, help_text="foreign key to the 'Binding' table")
-    promoter_id = models.ForeignKey(
+    promoter = models.ForeignKey(
         "PromoterSet", on_delete=models.CASCADE, help_text="foreign key to the 'promoter' table"
     )
     # note: in the serializer, when a user makes a GET request, a null value
     # is transformed to the string 'undefined' prior to returning to client
-    background_id = models.ForeignKey(
+    background = models.ForeignKey(
         "CallingCardsBackground",
         on_delete=models.CASCADE,
         blank=True,
@@ -34,10 +34,7 @@ class PromoterSetSig(BaseModel, FileUploadMixin):
     file = models.FileField(upload_to="temp", help_text="A file which stores data on " "regulator/DNA interaction")
 
     def __str__(self):
-        return (
-            f"pk:{self.pk};binding:{self.binding};"
-            f"promoter_id:{self.promoter_id};background_id:{self.background_id}"
-        )
+        return f"pk:{self.pk};binding:{self.binding};" f"promoter_id:{self.promoter};background:{self.background}"
 
     class Meta:
         db_table = "promotersetsig"

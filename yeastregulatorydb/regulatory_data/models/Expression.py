@@ -23,7 +23,7 @@ class Expression(BaseModel, FileUploadMixin):
     )
     replicate = models.PositiveIntegerField(default=1, help_text="Replicate number")
     control = models.CharField(
-        choices=[("undefined", "undefined"), ("wt", "wt"), ("wt_mata", "wt_mata")],
+        choices=[("undefined", "undefined"), ("wt", "wt"), ("wt_meta", "wt_meta")],
         default="undefined",
         help_text="Intended for micro-array data, this field records the "
         "control strain used to generate the relative intensity data",

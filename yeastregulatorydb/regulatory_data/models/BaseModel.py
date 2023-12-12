@@ -46,6 +46,12 @@ class BaseModel(models.Model):
     class Meta:
         abstract = True
 
+    def save(self, *args, **kwargs):
+        # If the record is being created, set the modifier to the uploader
+        if self._state.adding:
+            self.modifier = self.uploader
+        super().save(*args, **kwargs)
+
 
 @receiver(pre_save, sender=BaseModel)
 def update_modified_date(sender, instance, **kwargs):  # pylint: disable=unused-argument

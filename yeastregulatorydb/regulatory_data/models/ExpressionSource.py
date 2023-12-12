@@ -15,7 +15,7 @@ class ExpressionSource(BaseModel):
     Store expression data source information
     """
 
-    fileformat_id = models.ForeignKey(
+    fileformat = models.ForeignKey(
         "FileFormat", on_delete=models.CASCADE, help_text="foreign key to the fileformat table"
     )
     lab = models.CharField(

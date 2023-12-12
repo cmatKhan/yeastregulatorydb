@@ -1,5 +1,5 @@
 import faker
-from factory import Faker, SubFactory
+from factory import Faker, LazyFunction, SubFactory
 from factory.django import DjangoModelFactory, FileField
 
 from yeastregulatorydb.users.tests.factories import UserFactory
@@ -21,6 +21,13 @@ from ..models import (
 )
 
 fake = faker.Faker()
+
+
+def sentence_with_max_chars(max_chars=100):
+    sentence = fake.sentence(nb_words=10)
+    if len(sentence) > max_chars:
+        sentence = sentence[:max_chars].rsplit(" ", 1)[0] + "."
+    return sentence
 
 
 class ChrMapFactory(DjangoModelFactory):
@@ -97,7 +104,7 @@ class FileFormatFactory(DjangoModelFactory):
 class ExpressionSourceFactory(DjangoModelFactory):
     uploader = SubFactory(UserFactory)
     modifier = SubFactory(UserFactory)
-    fileformat_id = SubFactory(FileFormatFactory)
+    fileformat = SubFactory(FileFormatFactory)
     lab = Faker("word")
     assay = Faker("word")
     workflow = Faker("word")
@@ -107,7 +114,7 @@ class ExpressionSourceFactory(DjangoModelFactory):
 
     class Meta:
         model = ExpressionSource
-        django_get_or_create = ["fileformat_id"]
+        django_get_or_create = ["fileformat"]
 
 
 class ExpressionFactory(DjangoModelFactory):
@@ -158,7 +165,7 @@ class CallingCardsBackgroundFactory(DjangoModelFactory):
 class BindingSourceFactory(DjangoModelFactory):
     uploader = SubFactory(UserFactory)
     modifier = SubFactory(UserFactory)
-    fileformat_id = SubFactory(FileFormatFactory)
+    fileformat = SubFactory(FileFormatFactory)
     lab = Faker("pystr", max_chars=20)
     assay = Faker("pystr", max_chars=20)
     workflow = Faker("pystr", max_chars=50)
@@ -168,7 +175,7 @@ class BindingSourceFactory(DjangoModelFactory):
 
     class Meta:
         model = BindingSource
-        django_get_or_create = ["fileformat_id", "lab", "assay", "workflow"]
+        django_get_or_create = ["fileformat", "lab", "assay", "workflow"]
 
 
 class BindingFactory(DjangoModelFactory):
@@ -211,7 +218,7 @@ class PromoterSetFactory(DjangoModelFactory):
     modifier = SubFactory(UserFactory)
     name = Faker("pystr", max_chars=10)
     file = FileField(filename="testfile.bed.gz")
-    notes = Faker("sentence", nb_words=10)
+    notes = LazyFunction(sentence_with_max_chars)
 
     class Meta:
         model = PromoterSet
@@ -222,11 +229,11 @@ class PromoterSetSigFactory(DjangoModelFactory):
     uploader = SubFactory(UserFactory)
     modifier = SubFactory(UserFactory)
     binding = SubFactory(BindingFactory)
-    promoter_id = SubFactory(PromoterSetFactory)
-    background_id = SubFactory(CallingCardsBackgroundFactory)
+    promoter = SubFactory(PromoterSetFactory)
+    background = SubFactory(CallingCardsBackgroundFactory)
     filetype = SubFactory(FileFormatFactory)
     file = FileField(filename="testfile.tsv.gz")
 
     class Meta:
         model = PromoterSetSig
-        django_get_or_create = ["binding", "promoter_id", "background_id"]
+        django_get_or_create = ["binding", "promoter", "background"]

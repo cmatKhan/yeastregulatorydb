@@ -18,4 +18,4 @@ class PromoterSetSigSerializer(CustomValidateMixin, FileValidationMixin, seriali
         fields = "__all__"
 
     def get_background_id(self, obj):
-        return obj.background_id.id if obj.background_id else "undefined"
+        return obj.background.id if obj.background else "undefined"
