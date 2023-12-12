@@ -278,3 +278,4 @@ yeastregulatorydb/media/
 .ipython/
 .env
 .envs/*
+envs.tar.gz

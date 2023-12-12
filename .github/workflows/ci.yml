@@ -40,6 +40,11 @@ jobs:
     steps:
       - name: Checkout Code Repository
         uses: actions/checkout@v4
+  
+      - name: Decode and Extract Environment Files
+        run: |
+          echo "${{ secrets.ENVS_FILE }}" | base64 -d > envs.tar.gz
+          tar -xzvf envs.tar.gz
 
       - name: Build the Stack
         run: docker compose -f local.yml build
