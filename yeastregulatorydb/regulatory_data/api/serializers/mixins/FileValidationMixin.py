@@ -16,20 +16,20 @@ class FileValidationMixin:
             )
         # read in the file with pandas. raise a validationerror if it fails
         if self.instance:  # type: ignore[attr-defined]
-            separator = self.instance.filetype.separator  # type: ignore[attr-defined]
-            fields = self.instance.filetype.fields  # type: ignore[attr-defined]
+            separator = self.instance.fileformat.separator  # type: ignore[attr-defined]
+            fields = self.instance.fileformat.fields  # type: ignore[attr-defined]
         else:
             if self.initial_data:  # type: ignore[attr-defined]
-                filetype = self.initial_data.get("filetype")  # type: ignore[attr-defined]
-                if filetype is None:
-                    raise serializers.ValidationError("filetype must be provided")
+                fileformat = self.initial_data.get("fileformat")  # type: ignore[attr-defined]
+                if fileformat is None:
+                    raise serializers.ValidationError("fileformat must be provided")
                 else:
                     try:
-                        file_format = FileFormat.objects.get(id=filetype)
+                        file_format = FileFormat.objects.get(id=fileformat)
                         separator = file_format.separator
                         fields = file_format.fields
                     except FileFormat.DoesNotExist:
-                        raise serializers.ValidationError("filetype does not correspond to a valid FileFormat id")
+                        raise serializers.ValidationError("fileformat does not correspond to a valid FileFormat id")
             else:
                 raise serializers.ValidationError("initial_data must be provided")
         try:

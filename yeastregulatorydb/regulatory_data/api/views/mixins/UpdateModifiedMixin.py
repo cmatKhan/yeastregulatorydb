@@ -1,11 +1,11 @@
 """
 .. module:: UpdateModifiedMixin
     :synopsis: A custom mixin for Django Rest Framework views to
-    automatically update the `modifiedBy` and `modified` fields when an
+    automatically update the `modifier` and `modified` fields when an
     update operation is performed.
 
 This module contains the UpdateModifiedByMixin, a custom mixin for Django
-Rest Framework views to automatically update the `modifiedBy` and `modified`
+Rest Framework views to automatically update the `modifier` and `modified`
 fields when an update operation is performed.
 
 Example usage:
@@ -21,7 +21,7 @@ Example usage:
         queryset = YourModel.objects.all()
         serializer_class = YourModelSerializer
 
-This will ensure that the `modifiedBy` field is updated with the current user
+This will ensure that the `modifier` field is updated with the current user
 and the `modified` field is updated with the current date and time whenever
 an update operation is performed on a YourModel instance.
 """
@@ -31,10 +31,10 @@ from rest_framework import mixins
 
 class UpdateModifiedMixin(mixins.UpdateModelMixin):
     """
-    A custom mixin to update the `modifiedBy` and `modified` fields
+    A custom mixin to update the `modifier` and `modified` fields
     automatically when an update operation is performed.
 
-    The `modifiedBy` field will be set to the current user
+    The `modifier` field will be set to the current user
     (from `self.request.user`) and the `modified` field will be set to the
     current date and time.
 
@@ -52,7 +52,7 @@ class UpdateModifiedMixin(mixins.UpdateModelMixin):
 
     def update(self, request, *args, **kwargs):
         instance = self.get_object()  # type: ignore[attr-defined]
-        instance.modifiedBy = self.request.user  # type: ignore[attr-defined]
+        instance.modifier = self.request.user  # type: ignore[attr-defined]
         instance.modified = timezone.now()
         instance.save()
 

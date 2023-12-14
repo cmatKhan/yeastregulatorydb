@@ -47,9 +47,7 @@ class GenomicFeature(BaseModel):
         - `strand`: CharField with a max length of 1, representing the strand
           of the genomic feature.
         - `type`: CharField with a max length of 30, representing the type of
-          the genomic feature.
-        - `biotype`: CharField with a max length of 20, representing the
-          biotype of the feature.
+          the genomic feature, eg 'gene' or 'tRNA_gene'.
         - `locus_tag`: CharField with a max length of 20 and a unique
           constraint, representing the locus tag of the feature.
         - `symbol`: CharField with a max length of 20, representing the feature
@@ -90,12 +88,8 @@ class GenomicFeature(BaseModel):
     type = models.CharField(
         max_length=30,
         default="unknown",
-        help_text="CharField with a max length of 30, representing the type of the genomic feature",
-    )
-    biotype = models.CharField(
-        max_length=20,
-        default="unknown",
-        help_text="CharField with a max length of 20, representing the biotype of the feature",
+        help_text="CharField with a max length of 30, representing "
+        "the type of the genomic feature, eg 'gene' or 'tRNA_gene'",
     )
     # note: in the save method below, a unique integer is appended to the
     # default value if the this field is left blank on input

@@ -6,39 +6,35 @@ from .mixins.CustomValidateMixin import CustomValidateMixin
 
 class GenomicFeatureSerializer(CustomValidateMixin, serializers.ModelSerializer):
     uploader = serializers.ReadOnlyField(source="uploader.username")
-    modifiedBy = serializers.CharField(source="uploader.username", required=False)
+    modifier = serializers.CharField(source="uploader.username", required=False)
 
     class Meta:
         model = GenomicFeature
         fields = "__all__"
-
-    def validate(self, data):
-        """
-        Check that the chr field is present.
-        """
-        if "chr" not in data:
-            raise serializers.ValidationError("`chr` field is missing")
-        return data
 
     def validate_start(self, value):
         """
         Check that the start value is less than the end value and that it is
         greater than 0.
         """
+        if "chr" not in self.initial_data:
+            raise serializers.ValidationError("`chr` field is missing")
+        if "end" not in self.initial_data:
+            raise serializers.ValidationError("`end` field is missing")
         if isinstance(value, str) and value.isdigit():
             value = int(value)
         elif not isinstance(value, int):
             raise serializers.ValidationError("`start` value must be an integer")
 
         if value < 1:
-            raise serializers.ValidationError("Start value cannot be less than 1")
+            raise serializers.ValidationError("`start` value cannot be less than 1")
 
         chr = ChrMap.objects.get(pk=self.initial_data["chr"])
         if value > chr.seqlength:
             raise serializers.ValidationError("`start` of feature cannot exceed length of chromosome")
 
         if "end" in self.initial_data and value > self.initial_data["end"]:
-            raise serializers.ValidationError("Start value cannot be greater than end value")
+            raise serializers.ValidationError("`start` value cannot be greater than end value")
 
         return value
 
@@ -49,16 +45,20 @@ class GenomicFeatureSerializer(CustomValidateMixin, serializers.ModelSerializer)
         of an int. No need to check that end > start because that is done in the
         `validate_start` method.
         """
+        if "chr" not in self.initial_data:
+            raise serializers.ValidationError("`chr` field is missing")
+        if "end" not in self.initial_data:
+            raise serializers.ValidationError("`end` field is missing")
         if isinstance(value, str) and value.isdigit():
             value = int(value)
         elif not isinstance(value, int):
             raise serializers.ValidationError("`end` value must be an integer")
 
         if value < 1:
-            raise serializers.ValidationError("End value cannot be less than 1")
+            raise serializers.ValidationError("`end` value cannot be less than 1")
 
         chr = ChrMap.objects.get(pk=self.initial_data["chr"])
         if value >= chr.seqlength + 1:
-            raise serializers.ValidationError("End of feature cannot exceed length of chromosome")
+            raise serializers.ValidationError("`end` of feature cannot exceed length of chromosome")
 
         return value

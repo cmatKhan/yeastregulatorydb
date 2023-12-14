@@ -17,7 +17,7 @@ def validate_df(
     },
 ) -> pd.DataFrame:
     """
-    Confirm whether a dataframe representing a specific filetype is valid.
+    Confirm whether a dataframe representing a specific file format is valid.
 
     :param df: dataframe with the data to be validated
     :type df: pd.DataFrame
@@ -34,12 +34,12 @@ def validate_df(
         - if the dataframe does not have all the columns specified in `expected_col_dict`
         - if the columns violate the expected datatypes, given the `expected_col_dict`
     """
-    for colname, data in expected_col_dict.items():
-        if isinstance(data, list):
-            if not set(df[colname]).issubset(set(data)):
-                raise ValueError(f"Column {colname} must be one of {data}")
+    for colname, expected_type_or_levels in expected_col_dict.items():
+        if isinstance(expected_type_or_levels, list):
+            if not set(df[colname]).issubset(set(expected_type_or_levels)):
+                raise ValueError(f"Column {colname} must be one of {expected_type_or_levels}")
         else:
-            if not pd.api.types.is_dtype_equal(df[colname], data):
-                raise ValueError(f"Column {colname} must be of type {data}")
+            if not all(isinstance(x, expected_type_or_levels) for x in df[colname]):
+                raise ValueError(f"Column {colname} must be of type {expected_type_or_levels}")
 
     return df

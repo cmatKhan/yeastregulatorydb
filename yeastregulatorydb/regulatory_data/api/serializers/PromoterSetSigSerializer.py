@@ -11,7 +11,7 @@ from .mixins.FileValidationMixin import FileValidationMixin
 
 class PromoterSetSigSerializer(CustomValidateMixin, FileValidationMixin, serializers.ModelSerializer):
     uploader = serializers.ReadOnlyField(source="uploader.username")
-    modifiedBy = serializers.CharField(source="uploader.username", required=False)
+    modifier = serializers.CharField(source="uploader.username", required=False)
 
     class Meta:
         model = PromoterSetSig

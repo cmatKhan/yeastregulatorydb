@@ -1,5 +1,5 @@
 import faker
-from factory import Faker, LazyFunction, SubFactory
+from factory import Faker, LazyFunction, Sequence, SubFactory
 from factory.django import DjangoModelFactory, FileField
 
 from yeastregulatorydb.users.tests.factories import UserFactory
@@ -56,7 +56,6 @@ class GenomicFeatureFactory(DjangoModelFactory):
     end = Faker("random_int", min=1001, max=2000)
     strand = fake.random_element(elements=["+", "-", "*"])
     type = Faker("pystr", max_chars=30)
-    biotype = Faker("pystr", max_chars=20)
     locus_tag = Faker("pystr", max_chars=20)
     symbol = Faker("pystr", max_chars=20)
     source = Faker("pystr", max_chars=50)
@@ -231,7 +230,7 @@ class PromoterSetSigFactory(DjangoModelFactory):
     binding = SubFactory(BindingFactory)
     promoter = SubFactory(PromoterSetFactory)
     background = SubFactory(CallingCardsBackgroundFactory)
-    filetype = SubFactory(FileFormatFactory)
+    fileformat = SubFactory(FileFormatFactory)
     file = FileField(filename="testfile.tsv.gz")
 
     class Meta:

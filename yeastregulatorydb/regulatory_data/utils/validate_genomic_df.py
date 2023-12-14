@@ -51,15 +51,37 @@ def validate_genomic_df(
     """
     # immediately check if the dataframe has `chr`, `start` and `end` columns
     # all genomic data must have at least this
-    if ("chr", "start", "end") not in df.columns:
+    if not {"chr", "start", "end"}.issubset(df.columns):
         raise ValueError("A genomic dataframe must at least have the columns `chr` `start` and `end`")
+    try:
+        # cast the `chr` column to str
+        df["chr"] = df["chr"].astype(str)
+    except ValueError:
+        raise ValueError(
+            "Could not convert the 'chr' column to string. " "Please ensure the 'chr' column contains valid data."
+        )
 
-    # cast the `chr` column to str
-    df["chr"] = df["chr"].astype(str)
+    try:
+        # cast the name to str in the event that the names are numeric
+        df["name"] = df["name"].astype(str)
+    except ValueError:
+        raise ValueError(
+            "Could not convert the 'name' column to string. Please ensure the 'name' column contains valid data."
+        )
+
+    try:
+        # cast the score to float in the even that score is integer valued
+        df["score"] = df["score"].astype(float)
+    except ValueError:
+        raise ValueError(
+            "Could not convert the 'score' column to float. "
+            "Please ensure the 'score' column contains valid numeric data."
+        )
+
     # validate the `chr` column against the ChrMap table
     if not validate_chr_col(df, chr_format):
         raise ValueError(
-            "the levels of the `chr` column are not a subset of " "the levels of %s in the ChrMap table" % chr_format
+            "the levels of the `chr` column are not a subset of the levels of %s in the ChrMap table" % chr_format
         )
 
     # validate the dataframe given the expected_col_dict

@@ -6,11 +6,26 @@ from .mixins.CustomValidateMixin import CustomValidateMixin
 
 class FileFormatSerializer(CustomValidateMixin, serializers.ModelSerializer):
     uploader = serializers.ReadOnlyField(source="uploader.username")
-    modifiedBy = serializers.CharField(source="uploader.username", required=False)
+    modifier = serializers.CharField(source="uploader.username", required=False)
+    # allowed to be null because if it is `None` it will be set to "none" in
+    # the vlaidate methods below. If this key isn't passed at all, there is a
+    # default value of "none" in the model.
+    effect_col = serializers.CharField(allow_null=True)
+    pval_col = serializers.CharField(allow_null=True)
 
     class Meta:
         model = FileFormat
         fields = "__all__"
+
+    def validate_effect_col(self, value):
+        if value is None:
+            return "none"
+        return value
+
+    def validate_pval_col(self, value):
+        if value is None:
+            return "none"
+        return value
 
     def validate_fields(self, value):
         valid_types = ["str", "int", "float"]

@@ -9,7 +9,6 @@ class GenomicFeatureFilter(django_filters.FilterSet):
     end = django_filters.NumberFilter()
     strand = django_filters.CharFilter(lookup_expr="exact")
     type = django_filters.CharFilter(lookup_expr="iexact")
-    biotype = django_filters.CharFilter(lookup_expr="iexact")
     locus_tag = django_filters.CharFilter(lookup_expr="iexact")
     symbol = django_filters.CharFilter(lookup_expr="iexact")
     source = django_filters.CharFilter(lookup_expr="iexact")
@@ -24,7 +23,6 @@ class GenomicFeatureFilter(django_filters.FilterSet):
             "end",
             "strand",
             "type",
-            "biotype",
             "locus_tag",
             "symbol",
             "source",

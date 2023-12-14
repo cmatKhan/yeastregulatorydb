@@ -21,7 +21,7 @@ class BaseModel(models.Model):
         time when the object is updated. Note that this field is only
         updated when the object is saved using the save() method, not when
         using queryset.update().
-    :ivar modifiedBy: ForeignKey to the user model, representing the user who
+    :ivar modifier: ForeignKey to the user model, representing the user who
         last modified the data.
 
     Example usage::
@@ -45,14 +45,3 @@ class BaseModel(models.Model):
 
     class Meta:
         abstract = True
-
-    def save(self, *args, **kwargs):
-        # If the record is being created, set the modifier to the uploader
-        if self._state.adding:
-            self.modifier = self.uploader
-        super().save(*args, **kwargs)
-
-
-@receiver(pre_save, sender=BaseModel)
-def update_modified_date(sender, instance, **kwargs):  # pylint: disable=unused-argument
-    instance.modified_date = timezone.now()

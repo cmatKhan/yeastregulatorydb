@@ -34,7 +34,7 @@ def validate_chr_col(df: pd.DataFrame, chrmap_field: str) -> bool:
 
     # check that the chromosome names in the file match at least one of the
     # fields in ChrMap
-    chr_values_set = df.chr.unique()
+    chr_values_set = set(df.chr.unique())
     chrmap_records = ChrMap.objects.all()
     chrmap_values = {getattr(record, chrmap_field) for record in chrmap_records}
     if not chr_values_set.issubset(chrmap_values):

@@ -9,7 +9,7 @@ from .mixins.GenomicFileValidationMixin import GenomicFileValidationMixin
 
 class PromoterSetSerializer(CustomValidateMixin, GenomicFileValidationMixin, serializers.ModelSerializer):
     uploader = serializers.ReadOnlyField(source="uploader.username")
-    modifiedBy = serializers.CharField(source="uploader.username", required=False)
+    modifier = serializers.CharField(source="uploader.username", required=False)
 
     class Meta:
         model = PromoterSet

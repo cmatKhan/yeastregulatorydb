@@ -28,7 +28,7 @@ class PromoterSetSig(BaseModel, FileUploadMixin):
         null=True,
         help_text="foreign key to the 'CallingCardsBackground' table",
     )
-    filetype = models.ForeignKey(
+    fileformat = models.ForeignKey(
         "FileFormat", on_delete=models.CASCADE, help_text="foreign key to the 'FileFormat' table"
     )
     file = models.FileField(upload_to="temp", help_text="A file which stores data on " "regulator/DNA interaction")

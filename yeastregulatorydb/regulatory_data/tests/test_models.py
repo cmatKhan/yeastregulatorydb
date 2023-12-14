@@ -1,3 +1,4 @@
+from django.db.models.query import QuerySet
 from django.urls import reverse
 
 from yeastregulatorydb.regulatory_data.models import (
@@ -71,9 +72,10 @@ def test_expressionsource_get_absolute_url(expressionsource: ExpressionSource):
     )
 
 
-def test_fileformat_get_absolute_url(fileformat: FileFormat):
+def test_fileformat_get_absolute_url(fileformat: QuerySet):
     assert reverse("api:fileformat-list") == f"/api/fileformat/"
-    assert reverse("api:fileformat-detail", args=[str(fileformat.id)]) == f"/api/fileformat/{fileformat.id}/"
+    bed6_id = FileFormat.objects.filter(fileformat="bed6").first().id
+    assert reverse("api:fileformat-detail", args=[str(bed6_id)]) == f"/api/fileformat/{bed6_id}/"
 
 
 def test_genomicfeature_get_absolute_url(genomicfeature: GenomicFeature):

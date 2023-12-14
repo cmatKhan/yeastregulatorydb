@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 
 class FileFormat(BaseModel):
     """
-    Store the filetype name and a comma separated string of field names
+    Store the file format name and a comma separated string of field names
     """
 
     fileformat = models.CharField(
@@ -19,7 +19,7 @@ class FileFormat(BaseModel):
         blank=False,
         null=False,
         unique=True,
-        help_text="A filetype name. This should be short, eg 'bed' or 'qbed' or 'tsv'",
+        help_text="A file format name. This should be short, eg 'bed' or 'qbed' or 'tsv'",
     )
     fields = models.JSONField(
         blank=False,
@@ -43,13 +43,13 @@ class FileFormat(BaseModel):
         help_text="The separator used in the file. Defaults to tab.",
     )
     effect_col = models.CharField(
-        max_length=20,
+        max_length=40,
         default="none",
         help_text="The name of the column that should be used as the default "
         "effect column. Eg 'score'. Defaults to 'none' if there is no effect column.",
     )
     pval_col = models.CharField(
-        max_length=20,
+        max_length=40,
         default="none",
         help_text="The name of the column that should be used as the default "
         "p-value column. Eg 'pvalue'. Defaults to 'none' if there is no p-value column.",

@@ -7,7 +7,7 @@ from .mixins.FileValidationMixin import FileValidationMixin
 
 class ExpressionSerializer(CustomValidateMixin, FileValidationMixin, serializers.ModelSerializer):
     uploader = serializers.ReadOnlyField(source="uploader.username")
-    modifiedBy = serializers.CharField(source="uploader.username", required=False)
+    modifier = serializers.CharField(source="uploader.username", required=False)
 
     class Meta:
         model = Expression
