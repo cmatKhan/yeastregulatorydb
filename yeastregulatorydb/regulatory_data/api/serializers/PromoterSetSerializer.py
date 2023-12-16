@@ -4,10 +4,10 @@ from rest_framework import serializers
 
 from ...models.PromoterSet import PromoterSet
 from .mixins.CustomValidateMixin import CustomValidateMixin
-from .mixins.GenomicFileValidationMixin import GenomicFileValidationMixin
+from .mixins.FileValidationMixin import FileValidationMixin
 
 
-class PromoterSetSerializer(CustomValidateMixin, GenomicFileValidationMixin, serializers.ModelSerializer):
+class PromoterSetSerializer(CustomValidateMixin, FileValidationMixin, serializers.ModelSerializer):
     uploader = serializers.ReadOnlyField(source="uploader.username")
     modifier = serializers.CharField(source="uploader.username", required=False)
 

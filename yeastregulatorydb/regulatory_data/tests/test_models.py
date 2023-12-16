@@ -4,12 +4,11 @@ from django.urls import reverse
 from yeastregulatorydb.regulatory_data.models import (
     Binding,
     BindingManualQC,
-    BindingSource,
     CallingCardsBackground,
     ChrMap,
+    DataSource,
     Expression,
     ExpressionManualQC,
-    ExpressionSource,
     FileFormat,
     GenomicFeature,
     PromoterSet,
@@ -31,11 +30,9 @@ def test_bindingmanualqc_get_absolute_url(bindingmanualqc: BindingManualQC):
     )
 
 
-def test_bindingsource_get_absolute_url(bindingsource: BindingSource):
-    assert reverse("api:bindingsource-list") == f"/api/bindingsource/"
-    assert (
-        reverse("api:bindingsource-detail", args=[str(bindingsource.id)]) == f"/api/bindingsource/{bindingsource.id}/"
-    )
+def test_datasource_get_absolute_url(datasource: DataSource):
+    assert reverse("api:datasource-list") == f"/api/datasource/"
+    assert reverse("api:datasource-detail", args=[str(datasource.id)]) == f"/api/datasource/{datasource.id}/"
 
 
 def test_callingcardsbackground_get_absolute_url(callingcardsbackground: CallingCardsBackground):
@@ -46,9 +43,10 @@ def test_callingcardsbackground_get_absolute_url(callingcardsbackground: Calling
     )
 
 
-def test_chrmap_get_absolute_url(chrmap: ChrMap):
+def test_chrmap_get_absolute_url(chrmap: QuerySet):
     assert reverse("api:chrmap-list") == f"/api/chrmap/"
-    assert reverse("api:chrmap-detail", args=[str(chrmap.id)]) == f"/api/chrmap/{chrmap.id}/"
+    chrmap_instance = ChrMap.objects.first()
+    assert reverse("api:chrmap-detail", args=[str(chrmap_instance.id)]) == f"/api/chrmap/{chrmap_instance.id}/"
 
 
 def test_expression_get_absolute_url(expression: Expression):
@@ -61,14 +59,6 @@ def test_expressionmanualqc_get_absolute_url(expressionmanualqc: ExpressionManua
     assert (
         reverse("api:expressionmanualqc-detail", args=[str(expressionmanualqc.id)])
         == f"/api/expressionmanualqc/{expressionmanualqc.id}/"
-    )
-
-
-def test_expressionsource_get_absolute_url(expressionsource: ExpressionSource):
-    assert reverse("api:expressionsource-list") == f"/api/expressionsource/"
-    assert (
-        reverse("api:expressionsource-detail", args=[str(expressionsource.id)])
-        == f"/api/expressionsource/{expressionsource.id}/"
     )
 
 

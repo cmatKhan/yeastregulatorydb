@@ -61,22 +61,24 @@ def validate_genomic_df(
             "Could not convert the 'chr' column to string. " "Please ensure the 'chr' column contains valid data."
         )
 
-    try:
-        # cast the name to str in the event that the names are numeric
-        df["name"] = df["name"].astype(str)
-    except ValueError:
-        raise ValueError(
-            "Could not convert the 'name' column to string. Please ensure the 'name' column contains valid data."
-        )
+    if "name" in df.columns:
+        try:
+            # cast the name to str in the event that the names are numeric
+            df["name"] = df["name"].astype(str)
+        except ValueError:
+            raise ValueError(
+                "Could not convert the 'name' column to string. Please ensure the 'name' column contains valid data."
+            )
 
-    try:
-        # cast the score to float in the even that score is integer valued
-        df["score"] = df["score"].astype(float)
-    except ValueError:
-        raise ValueError(
-            "Could not convert the 'score' column to float. "
-            "Please ensure the 'score' column contains valid numeric data."
-        )
+    if "score" in df.columns:
+        try:
+            # cast the score to float in the even that score is integer valued
+            df["score"] = df["score"].astype(float)
+        except ValueError:
+            raise ValueError(
+                "Could not convert the 'score' column to float. "
+                "Please ensure the 'score' column contains valid numeric data."
+            )
 
     # validate the `chr` column against the ChrMap table
     if not validate_chr_col(df, chr_format):

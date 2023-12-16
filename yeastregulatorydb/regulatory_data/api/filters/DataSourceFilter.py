@@ -1,9 +1,9 @@
 import django_filters
 
-from ...models.ExpressionSource import ExpressionSource
+from ...models import DataSource
 
 
-class ExpressionSourceFilter(django_filters.FilterSet):
+class DataSourceFilter(django_filters.FilterSet):
     id = django_filters.NumberFilter()
     pk = django_filters.NumberFilter()
     fileformat_id = django_filters.NumberFilter()
@@ -13,5 +13,13 @@ class ExpressionSourceFilter(django_filters.FilterSet):
     workflow = django_filters.CharFilter(lookup_expr="iexact")
 
     class Meta:
-        model = ExpressionSource
-        fields = ["id", "pk", "fileformat_id", "fileformat", "lab", "assay", "workflow"]
+        model = DataSource
+        fields = [
+            "id",
+            "pk",
+            "fileformat_id",
+            "fileformat",
+            "lab",
+            "assay",
+            "workflow",
+        ]

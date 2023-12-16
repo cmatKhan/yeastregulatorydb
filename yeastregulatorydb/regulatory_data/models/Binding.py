@@ -5,24 +5,26 @@ from django.db import models
 from django.dispatch import receiver
 
 from .BaseModel import BaseModel
-from .mixins.FileUploadWithIdMixin import FileUploadMixin
+from .mixins.GzipFileUploadWithIdMixin import GzipFileUploadWithIdMixin
 
 logger = logging.getLogger(__name__)
 
 
-class Binding(BaseModel, FileUploadMixin):
+class Binding(BaseModel, GzipFileUploadWithIdMixin):
     """
     Store some metadata and filepaths to binding data
     """
 
-    regulator = models.ForeignKey("Regulator", on_delete=models.CASCADE)
+    regulator = models.ForeignKey(
+        "Regulator", on_delete=models.CASCADE, help_text="Foreign key to the Regulator table"
+    )
     batch = models.CharField(
         max_length=20,
         default="none",
         help_text="A batch identifier for a set of data, " "eg the run number in the case of calling cards",
     )
     replicate = models.PositiveIntegerField(default=1, help_text="Replicate number")
-    source = models.ForeignKey("BindingSource", on_delete=models.CASCADE)
+    source = models.ForeignKey("DataSource", on_delete=models.CASCADE)
     source_orig_id = models.CharField(
         max_length=20,
         default="none",
@@ -36,6 +38,8 @@ class Binding(BaseModel, FileUploadMixin):
         help_text="If the strain identifier is known, it is provided. " "Otherwise, the value is `unknown`",
     )
     file = models.FileField(upload_to="temp", help_text="A file which stores data on regulator/DNA interaction")
+    # NOTE: the _inserts fields are added during the serialization process from the file
+    # in BindingSerializer and its mixin ValidateFileMixin
     genomic_inserts = models.PositiveIntegerField(
         default=0,
         help_text="The number of inserts which map to chromosomes labelled as `genomic` in the ChrMap table",
@@ -64,7 +68,7 @@ class Binding(BaseModel, FileUploadMixin):
         # Store the old file path
         old_file_name = self.file.name if self.file else None
         super().save(*args, **kwargs)
-        self.update_file_name("file", f"binding/{self.source}", "tsv.gz")
+        self.update_file_name("file", f"binding/{self.source}")
         new_file_name = self.file.name
         super().save(update_fields=["file"])
         # If the file name changed, delete the old file

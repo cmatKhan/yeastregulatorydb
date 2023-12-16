@@ -5,12 +5,11 @@ from django.contrib import admin
 from .models import (
     Binding,
     BindingManualQC,
-    BindingSource,
     CallingCardsBackground,
     ChrMap,
+    DataSource,
     Expression,
     ExpressionManualQC,
-    ExpressionSource,
     FileFormat,
     GenomicFeature,
     PromoterSet,
@@ -20,12 +19,11 @@ from .models import (
 
 admin.register(Binding)
 admin.register(BindingManualQC)
-admin.register(BindingSource)
+admin.register(DataSource)
 admin.register(CallingCardsBackground)
 admin.register(ChrMap)
 admin.register(Expression)
 admin.register(ExpressionManualQC)
-admin.register(ExpressionSource)
 admin.register(FileFormat)
 admin.register(GenomicFeature)
 admin.register(PromoterSet)

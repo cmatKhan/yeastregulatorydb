@@ -14,11 +14,11 @@ class HasPkProtocol(Protocol):  # pylint: disable=too-few-public-methods
     `HasPkProtocol` is a protocol that requires a `pk` attribute. The line
     `pk: Optional[int]` is saying that any class that uses this protocol
     must have a `pk` attribute, and that attribute can be an integer or
-    `None`. When `FileUploadMixin` inherits from `HasPkProtocol`,
-    it's saying that `FileUploadMixin` expects to be used with classes that
+    `None`. When `GzipFileUploadWithIdMixin` inherits from `HasPkProtocol`,
+    it's saying that `GzipFileUploadWithIdMixin` expects to be used with classes that
     have a `pk` attribute. This doesn't enforce anything at runtime, but it
     gives hints to static type checkers like mypy. So, when you use
-    `FileUploadMixin` as a mixin for a Django model, mypy will understand
+    `GzipFileUploadWithIdMixin` as a mixin for a Django model, mypy will understand
     that the `pk` attribute is expected to be there, because Django models do
     have a `pk` attribute. This helps to eliminate the error messages you were
     seeing from mypy.
@@ -27,7 +27,7 @@ class HasPkProtocol(Protocol):  # pylint: disable=too-few-public-methods
     pk: int | None
 
 
-class FileUploadMixin:  # pylint: disable=too-few-public-methods
+class GzipFileUploadWithIdMixin:  # pylint: disable=too-few-public-methods
     """
     A mixin for models that have a file field that should be uploaded to a
     specific directory and renamed based on the instance's ID. This mixin
@@ -37,7 +37,7 @@ class FileUploadMixin:  # pylint: disable=too-few-public-methods
 
     .. code-block:: python
 
-        class Hu_s3(BaseModel, FileUploadMixin):
+        class Hu_s3(BaseModel, GzipFileUploadWithIdMixin):
         # Temporary upload path
         file = models.FileField(upload_to='temp', help_text="A gziped csv...")
 
@@ -50,7 +50,7 @@ class FileUploadMixin:  # pylint: disable=too-few-public-methods
 
     """
 
-    def update_file_name(self, file_field_name: str, upload_dir: str, extension: str) -> None:
+    def update_file_name(self, file_field_name: str, upload_dir: str, extension: str = "") -> None:
         """
         A utility method to update the file name based on the instance's ID.
         This method should be called in the `save` method of the model.
@@ -59,12 +59,23 @@ class FileUploadMixin:  # pylint: disable=too-few-public-methods
         :type file_field_name: str
         :param upload_dir: The directory to upload the file to.
         :type upload_dir: str
-        :param extension: The file extension to use.
+        :param extension: The file extension to use. By default set to "", which
+            will use the extension of the file name. If the file name does not
+            have an extension that can be easily parsed out, `extension` will be set to `.txt.gz`.
         :type extension: str
 
         :return: None
         :rtype: None
         """
+        # extract the extension, which will be eg .tsv.gz, from the file name
+        file_name_parts = getattr(self, file_field_name).name.split(".")
+        extension = ".".join(file_name_parts[-2:]) if len(file_name_parts) > 1 else file_name_parts[1:]
+        if not extension:
+            logger.warning(
+                'Could not extract extension from file name "%s". Setting to `.txt.gz`',
+                getattr(self, file_field_name).name,
+            )
+            extension = ".txt.gz"
         # Cast self to HasPkProtocol to assure mypy that self has a pk attribute
         self_with_pk = cast(HasPkProtocol, self)
         # raise AttributeError if self does not have a pk attribute

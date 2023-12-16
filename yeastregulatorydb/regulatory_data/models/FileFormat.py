@@ -19,6 +19,7 @@ class FileFormat(BaseModel):
         blank=False,
         null=False,
         unique=True,
+        db_index=True,
         help_text="A file format name. This should be short, eg 'bed' or 'qbed' or 'tsv'",
     )
     fields = models.JSONField(

@@ -5,12 +5,12 @@ from django.db import models
 from django.dispatch import receiver
 
 from .BaseModel import BaseModel
-from .mixins.FileUploadWithIdMixin import FileUploadMixin
+from .mixins.GzipFileUploadWithIdMixin import GzipFileUploadWithIdMixin
 
 logger = logging.getLogger(__name__)
 
 
-class CallingCardsBackground(BaseModel, FileUploadMixin):
+class CallingCardsBackground(BaseModel, GzipFileUploadWithIdMixin):
     """
     Store calling cards background hops data
     """

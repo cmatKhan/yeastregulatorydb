@@ -1,11 +1,15 @@
+import logging
+
 from rest_framework import serializers
 
-from ...models.Binding import Binding
+from ...models import Binding
 from .mixins.CustomValidateMixin import CustomValidateMixin
-from .mixins.GenomicFileValidationMixin import GenomicFileValidationMixin
+from .mixins.FileValidationMixin import FileValidationMixin
+
+logger = logging.getLogger(__name__)
 
 
-class BindingSerializer(CustomValidateMixin, GenomicFileValidationMixin, serializers.ModelSerializer):
+class BindingSerializer(CustomValidateMixin, FileValidationMixin, serializers.ModelSerializer):
     uploader = serializers.ReadOnlyField(source="uploader.username")
     modifier = serializers.CharField(source="uploader.username", required=False)
 

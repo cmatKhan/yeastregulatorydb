@@ -7,12 +7,11 @@ from yeastregulatorydb.users.tests.factories import UserFactory
 from ..models import (
     Binding,
     BindingManualQC,
-    BindingSource,
     CallingCardsBackground,
     ChrMap,
+    DataSource,
     Expression,
     ExpressionManualQC,
-    ExpressionSource,
     FileFormat,
     GenomicFeature,
     PromoterSet,
@@ -45,7 +44,7 @@ class ChrMapFactory(DjangoModelFactory):
 
     class Meta:
         model = ChrMap
-        django_get_or_create = ["refseq", "igenomes", "ensembl", "ucsc", "mitra", "numbered", "chr"]
+        django_get_or_create = ["chr"]
 
 
 class GenomicFeatureFactory(DjangoModelFactory):
@@ -100,10 +99,11 @@ class FileFormatFactory(DjangoModelFactory):
         django_get_or_create = ["fileformat"]
 
 
-class ExpressionSourceFactory(DjangoModelFactory):
+class DataSourceFactory(DjangoModelFactory):
     uploader = SubFactory(UserFactory)
     modifier = SubFactory(UserFactory)
     fileformat = SubFactory(FileFormatFactory)
+    name = Faker("pystr", max_chars=50)
     lab = Faker("word")
     assay = Faker("word")
     workflow = Faker("word")
@@ -112,8 +112,8 @@ class ExpressionSourceFactory(DjangoModelFactory):
     notes = Faker("sentence")
 
     class Meta:
-        model = ExpressionSource
-        django_get_or_create = ["fileformat"]
+        model = DataSource
+        django_get_or_create = ["lab", "assay", "workflow"]
 
 
 class ExpressionFactory(DjangoModelFactory):
@@ -126,7 +126,7 @@ class ExpressionFactory(DjangoModelFactory):
     mechanism = fake.random_element(elements=["gev", "zev", "tfko"])
     restriction = fake.random_element(elements=["undefined", "P", "M", "N"])
     time = fake.random_digit()
-    source = SubFactory(ExpressionSourceFactory)
+    source = SubFactory(DataSourceFactory)
     file = Faker("file_name")
     notes = Faker("sentence")
 
@@ -161,29 +161,13 @@ class CallingCardsBackgroundFactory(DjangoModelFactory):
         django_get_or_create = ["name"]
 
 
-class BindingSourceFactory(DjangoModelFactory):
-    uploader = SubFactory(UserFactory)
-    modifier = SubFactory(UserFactory)
-    fileformat = SubFactory(FileFormatFactory)
-    lab = Faker("pystr", max_chars=20)
-    assay = Faker("pystr", max_chars=20)
-    workflow = Faker("pystr", max_chars=50)
-    description = Faker("pystr", max_chars=100)
-    citation = Faker("pystr", max_chars=200)
-    notes = Faker("pystr", max_chars=100)
-
-    class Meta:
-        model = BindingSource
-        django_get_or_create = ["fileformat", "lab", "assay", "workflow"]
-
-
 class BindingFactory(DjangoModelFactory):
     uploader = SubFactory(UserFactory)
     modifier = SubFactory(UserFactory)
     regulator = SubFactory(RegulatorFactory)
     batch = Faker("pystr", max_chars=20)
     replicate = Faker("pyint")
-    source = SubFactory(BindingSourceFactory)
+    source = SubFactory(DataSourceFactory)
     source_orig_id = Faker("pystr", max_chars=20)
     strain = Faker("pystr", max_chars=20)
     file = Faker("file_name")

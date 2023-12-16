@@ -82,7 +82,6 @@ class GenomicFeature(BaseModel):
         max_length=1,
         choices=STRAND_CHOICES,
         default=Strand.UNSTRANDED.value,
-        db_index=True,
         help_text="strand of the feature, one of +, -, or *",
     )
     type = models.CharField(
@@ -97,6 +96,7 @@ class GenomicFeature(BaseModel):
         unique=True,
         max_length=20,
         default="unknown",
+        db_index=True,
         help_text="CharField with a max length of 20 and a unique constraint, "
         "representing the locus tag of the feature, eg YAL001C",
     )
@@ -105,6 +105,7 @@ class GenomicFeature(BaseModel):
     symbol = models.CharField(
         max_length=20,
         default="unknown",
+        db_index=True,
         help_text="CharField with a max length of 20, representing the feature symbol (eg GAL4)",
     )
     source = models.CharField(
@@ -158,4 +159,7 @@ class GenomicFeature(BaseModel):
                 check=models.Q(start__gt=0),
                 name="start_cannot_be_less_than_one",
             ),
+        ]
+        indexes = [
+            models.Index("chr", "start", "end", "strand", name="coord_index")
         ]

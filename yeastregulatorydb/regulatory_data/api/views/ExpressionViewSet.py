@@ -6,10 +6,11 @@ from rest_framework.permissions import IsAuthenticated
 from ...models.Expression import Expression
 from ..filters.ExpressionFilter import ExpressionFilter
 from ..serializers.ExpressionSerializer import ExpressionSerializer
+from .mixins.BulkUploadMixin import BulkUploadMixin
 from .mixins.UpdateModifiedMixin import UpdateModifiedMixin
 
 
-class ExpressionViewSet(UpdateModifiedMixin, viewsets.ModelViewSet):
+class ExpressionViewSet(UpdateModifiedMixin, viewsets.ModelViewSet, BulkUploadMixin):
     """
     A viewset for viewing and editing Expression instances.
     """

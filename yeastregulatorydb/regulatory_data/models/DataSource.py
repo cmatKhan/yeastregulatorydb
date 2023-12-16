@@ -10,11 +10,19 @@ from .BaseModel import BaseModel
 logger = logging.getLogger(__name__)
 
 
-class BindingSource(BaseModel):
+class DataSource(BaseModel):
     """
-    Store binding data source information
+    Store data source information
     """
 
+    name = models.CharField(
+        max_length=50,
+        blank=False,
+        null=False,
+        unique=True,
+        db_index=True,
+        help_text="A unique name for the data source, eg 'chipexo_pugh_allevents",
+    )
     fileformat = models.ForeignKey(
         "FileFormat",
         on_delete=models.CASCADE,
@@ -44,7 +52,7 @@ class BindingSource(BaseModel):
         return f"{self.lab}_{self.workflow}"
 
     class Meta:
-        db_table = "bindingsource"
+        db_table = "datasource"
         unique_together = (
             "lab",
             "assay",
@@ -52,7 +60,7 @@ class BindingSource(BaseModel):
         )
 
 
-@receiver(pre_save, sender=BindingSource)
+@receiver(pre_save, sender=DataSource)
 def sanitize_entries(sender, instance, **kwargs):  # pylint: disable=unused-argument
     """
     Sanitize the lab, type and workflow fields before saving to the database

@@ -3,11 +3,10 @@ import pytest
 from yeastregulatorydb.regulatory_data.api.filters import (
     BindingFilter,
     BindingManualQCFilter,
-    BindingSourceFilter,
     CallingCardsBackgroundFilter,
+    DataSourceFilter,
     ExpressionFilter,
     ExpressionManualQCFilter,
-    ExpressionSourceFilter,
     FileFormatFilter,
     GenomicFeatureFilter,
     PromoterSetFilter,
@@ -17,12 +16,11 @@ from yeastregulatorydb.regulatory_data.api.filters import (
 from yeastregulatorydb.regulatory_data.models import (
     Binding,
     BindingManualQC,
-    BindingSource,
     CallingCardsBackground,
     ChrMap,
+    DataSource,
     Expression,
     ExpressionManualQC,
-    ExpressionSource,
     FileFormat,
     GenomicFeature,
     PromoterSet,
@@ -33,12 +31,11 @@ from yeastregulatorydb.regulatory_data.models import (
 from .factories import (
     BindingFactory,
     BindingManualQCFactory,
-    BindingSourceFactory,
     CallingCardsBackgroundFactory,
     ChrMapFactory,
+    DataSourceFactory,
     ExpressionFactory,
     ExpressionManualQCFactory,
-    ExpressionSourceFactory,
     FileFormatFactory,
     GenomicFeatureFactory,
     PromoterSetFactory,
@@ -52,8 +49,8 @@ def test_binding_filter():
     # Create some bindings using the factory
     regulator1 = RegulatorFactory()
     regulator2 = RegulatorFactory()
-    source1 = BindingSourceFactory()
-    source2 = BindingSourceFactory()
+    source1 = DataSourceFactory()
+    source2 = DataSourceFactory()
     binding1 = BindingFactory(
         regulator=regulator1, id=1, batch="batch1", replicate=1, source=source1, source_orig_id="1", strain="strain1"
     )
@@ -89,10 +86,10 @@ def test_binding_manual_qc_filter():
     # Create some bindings using the factory
     regulator1 = RegulatorFactory()
     regulator2 = RegulatorFactory()
-    bindingsource1 = BindingSourceFactory()
-    binding1 = BindingFactory(regulator=regulator1, id=1, batch="batch1", source=bindingsource1)
-    bindingsource2 = BindingSourceFactory()
-    binding2 = BindingFactory(regulator=regulator2, id=2, batch="batch2", source=bindingsource2)
+    datasource1 = DataSourceFactory()
+    binding1 = BindingFactory(regulator=regulator1, id=1, batch="batch1", source=datasource1)
+    datasource2 = DataSourceFactory()
+    binding2 = BindingFactory(regulator=regulator2, id=2, batch="batch2", source=datasource2)
     binding_manual_qc1 = BindingManualQCFactory(
         binding=binding1,
         id=1,
@@ -129,19 +126,19 @@ def test_binding_manual_qc_filter():
 
 
 @pytest.mark.django_db
-def test_binding_source_filter():
+def test_datasource_filter():
     # Create some binding sources using the factory
 
     fileformat1 = FileFormatFactory(fileformat="fileformat1")
     fileformat2 = FileFormatFactory(fileformat="fileformat2")
-    binding_source1 = BindingSourceFactory(
+    datasource1 = DataSourceFactory(
         id=1,
         fileformat=fileformat1,
         lab="lab1",
         assay="assay1",
         workflow="workflow1",
     )
-    binding_source2 = BindingSourceFactory(
+    datasource2 = DataSourceFactory(
         id=2,
         fileformat=fileformat2,
         lab="lab2",
@@ -162,9 +159,9 @@ def test_binding_source_filter():
 
     # Apply each filter and check if it returns the expected binding sources
     for params in filter_params:
-        f = BindingSourceFilter(params, queryset=BindingSource.objects.all())
-        assert binding_source1 in f.qs
-        assert binding_source2 not in f.qs
+        f = DataSourceFilter(params, queryset=DataSource.objects.all())
+        assert datasource1 in f.qs
+        assert datasource2 not in f.qs
 
 
 @pytest.mark.django_db
@@ -204,8 +201,8 @@ def test_expression_filter():
     # Create some expressions using the factory
     regulator1 = RegulatorFactory()
     regulator2 = RegulatorFactory()
-    source1 = ExpressionSourceFactory()
-    source2 = ExpressionSourceFactory()
+    source1 = DataSourceFactory()
+    source2 = DataSourceFactory()
     expression1 = ExpressionFactory(
         regulator=regulator1,
         id=1,
@@ -260,8 +257,8 @@ def test_expression_manual_qc_filter():
     # Create some expressions using the factory
     regulator1 = RegulatorFactory()
     regulator2 = RegulatorFactory()
-    source1 = ExpressionSourceFactory()
-    source2 = ExpressionSourceFactory()
+    source1 = DataSourceFactory()
+    source2 = DataSourceFactory()
     expression1 = ExpressionFactory(
         regulator=regulator1,
         id=1,
@@ -312,44 +309,6 @@ def test_expression_manual_qc_filter():
         f = ExpressionManualQCFilter(params, queryset=ExpressionManualQC.objects.all())
         assert manual_qc1 in f.qs
         assert manual_qc2 not in f.qs
-
-
-@pytest.mark.django_db
-def test_expression_source_filter():
-    # Create some ExpressionSource instances using the factory
-    fileformat1 = FileFormatFactory(fileformat="fileformat1")
-    fileformat2 = FileFormatFactory(fileformat="fileformat2")
-    expression_source1 = ExpressionSourceFactory(
-        id=1,
-        fileformat=fileformat1,
-        lab="lab1",
-        assay="assay1",
-        workflow="workflow1",
-    )
-    expression_source2 = ExpressionSourceFactory(
-        id=2,
-        fileformat=fileformat2,
-        lab="lab2",
-        assay="assay2",
-        workflow="workflow2",
-    )
-
-    # Define the filter parameters and their expected values
-    filter_params = [
-        {"id": 1},
-        {"pk": 1},
-        {"fileformat_id": fileformat1.id},
-        {"fileformat": "fileformat1"},
-        {"lab": "lab1"},
-        {"assay": "assay1"},
-        {"workflow": "workflow1"},
-    ]
-
-    # Apply each filter and check if it returns the expected ExpressionSource instances
-    for params in filter_params:
-        f = ExpressionSourceFilter(params, queryset=ExpressionSource.objects.all())
-        assert expression_source1 in f.qs
-        assert expression_source2 not in f.qs
 
 
 @pytest.mark.django_db
@@ -448,10 +407,10 @@ def test_promoter_set_sig_filter():
     promoter2 = PromoterSetFactory(name="promoter2")
     background1 = CallingCardsBackgroundFactory(name="bg1")
     background2 = CallingCardsBackgroundFactory(name="bg2")
-    bindingsource1 = BindingSourceFactory(lab="lab1", assay="assay1", workflow="workflow1")
-    bindingsource2 = BindingSourceFactory(lab="lab2", assay="assay2", workflow="workflow2")
-    binding1 = BindingFactory(regulator=regulator1, batch="batch1", replicate=1, source=bindingsource1)
-    binding2 = BindingFactory(regulator=regulator2, batch="batch2", replicate=2, source=bindingsource2)
+    datasource1 = DataSourceFactory(lab="lab1", assay="assay1", workflow="workflow1")
+    datasource2 = DataSourceFactory(lab="lab2", assay="assay2", workflow="workflow2")
+    binding1 = BindingFactory(regulator=regulator1, batch="batch1", replicate=1, source=datasource1)
+    binding2 = BindingFactory(regulator=regulator2, batch="batch2", replicate=2, source=datasource2)
     promoter_set_sig1 = PromoterSetSigFactory(id=1, binding=binding1, promoter=promoter1, background=background1)
     promoter_set_sig2 = PromoterSetSigFactory(id=2, binding=binding2, promoter=promoter2, background=background2)
 
@@ -468,7 +427,7 @@ def test_promoter_set_sig_filter():
         {"regulator_symbol": regulator1.regulator.symbol},
         {"batch": "batch1"},
         {"replicate": 1},
-        {"source": bindingsource1.id},
+        {"source": datasource1.id},
         {"lab": "lab1"},
         {"assay": "assay1"},
         {"workflow": "workflow1"},

@@ -7,7 +7,7 @@ Submodules
 yeastregulatorydb.regulatory\_data.models.mixins.FileUploadWithIdMixin module
 -----------------------------------------------------------------------------
 
-.. automodule:: yeastregulatorydb.regulatory_data.models.mixins.FileUploadWithIdMixin
+.. automodule:: yeastregulatorydb.regulatory_data.models.mixins.GzipFileUploadWithIdMixin
    :members:
    :undoc-members:
    :show-inheritance:

@@ -59,6 +59,10 @@ To run the tests, check your test coverage, and generate an HTML coverage report
   pytest
 ```
 
+**NOTE**: if major changes are made to the database, it may be necesary to
+remove `--reuse-db` from the `addopts` key of the pytest section of
+`pyproject.toml`. It can be added back after a run without it.
+
 ### Live reloading and Sass CSS compilation
 
 Moved to [Live reloading and SASS compilation](https://cookiecutter-django.readthedocs.io/en/latest/developing-locally.html#sass-compilation-live-reloading).

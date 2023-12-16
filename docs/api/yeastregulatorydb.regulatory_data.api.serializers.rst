@@ -20,14 +20,6 @@ yeastregulatorydb.regulatory\_data.api.serializers.BindingSerializer module
    :undoc-members:
    :show-inheritance:
 
-yeastregulatorydb.regulatory\_data.api.serializers.BindingSourceSerializer module
----------------------------------------------------------------------------------
-
-.. automodule:: yeastregulatorydb.regulatory_data.api.serializers.BindingSourceSerializer
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
 yeastregulatorydb.regulatory\_data.api.serializers.CallingCardsBackgroundSerializer module
 ------------------------------------------------------------------------------------------
 
@@ -60,10 +52,10 @@ yeastregulatorydb.regulatory\_data.api.serializers.ExpressionSerializer module
    :undoc-members:
    :show-inheritance:
 
-yeastregulatorydb.regulatory\_data.api.serializers.ExpressionSourceSerializer module
+yeastregulatorydb.regulatory\_data.api.serializers.DataSourceSerializer module
 ------------------------------------------------------------------------------------
 
-.. automodule:: yeastregulatorydb.regulatory_data.api.serializers.ExpressionSourceSerializer
+.. automodule:: yeastregulatorydb.regulatory_data.api.serializers.DataSourceSerializer
    :members:
    :undoc-members:
    :show-inheritance:

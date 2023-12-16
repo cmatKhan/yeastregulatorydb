@@ -5,12 +5,12 @@ from django.db import models
 from django.dispatch import receiver
 
 from .BaseModel import BaseModel
-from .mixins.FileUploadWithIdMixin import FileUploadMixin
+from .mixins.GzipFileUploadWithIdMixin import GzipFileUploadWithIdMixin
 
 logger = logging.getLogger(__name__)
 
 
-class Expression(BaseModel, FileUploadMixin):
+class Expression(BaseModel, GzipFileUploadWithIdMixin):
     """
     Store minimal metadata and filepaths to expression data
     """
@@ -23,7 +23,7 @@ class Expression(BaseModel, FileUploadMixin):
     )
     replicate = models.PositiveIntegerField(default=1, help_text="Replicate number")
     control = models.CharField(
-        choices=[("undefined", "undefined"), ("wt", "wt"), ("wt_meta", "wt_meta")],
+        choices=[("undefined", "undefined"), ("wt", "wt"), ("wt_mata", "wt_mata")],
         default="undefined",
         help_text="Intended for micro-array data, this field records the "
         "control strain used to generate the relative intensity data",
@@ -41,7 +41,7 @@ class Expression(BaseModel, FileUploadMixin):
         help_text="This is a feature of the McIsaac ZEV data",
     )
     time = models.PositiveIntegerField(default=0, help_text="Timepoint of the experiment in minutes")
-    source = models.ForeignKey("ExpressionSource", on_delete=models.CASCADE)
+    source = models.ForeignKey("DataSource", on_delete=models.CASCADE)
     file = models.FileField(
         upload_to="temp",
         help_text="A file which stores gene expression " "data that results from a given regulator " "perturbation",

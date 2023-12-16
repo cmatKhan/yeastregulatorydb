@@ -5,19 +5,21 @@ from django.db import models
 from django.dispatch import receiver
 
 from .BaseModel import BaseModel
-from .mixins.FileUploadWithIdMixin import FileUploadMixin
+from .mixins.GzipFileUploadWithIdMixin import GzipFileUploadWithIdMixin
 
 logger = logging.getLogger(__name__)
 
 
-class PromoterSet(BaseModel, FileUploadMixin):
+class PromoterSet(BaseModel, GzipFileUploadWithIdMixin):
     """
     Store bed files which describe promoter regions. the `name` column
     corresponds to the `id` column in the GenomicFeature table and will
     join with the identifier columns of the expression and binding data
     """
 
-    name = models.CharField(max_length=10, unique=True, help_text="The name of the promoter set, eg `orf` or `yiming`")
+    name = models.CharField(
+        max_length=10, unique=True, db_index=True, help_text="The name of the promoter set, eg `orf` or `yiming`"
+    )
     file = models.FileField(
         upload_to="temp",
         help_text="A bed format file where each row "

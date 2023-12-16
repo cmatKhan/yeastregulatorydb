@@ -27,4 +27,4 @@ django-filter==23.5  # https://github.com/carltongibson/django-filter
 
 # Third Party Software
 # ------------------------------------------------------------------------------
-callingcardstools==1.3.0 # https://github.com/cmatkhan/callingcardstools
+callingcardstools==1.4.1 # https://github.com/cmatkhan/callingcardstools

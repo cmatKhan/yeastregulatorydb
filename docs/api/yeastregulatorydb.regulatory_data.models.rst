@@ -36,10 +36,10 @@ yeastregulatorydb.regulatory\_data.models.BindingManualQC module
    :undoc-members:
    :show-inheritance:
 
-yeastregulatorydb.regulatory\_data.models.BindingSource module
+yeastregulatorydb.regulatory\_data.models.DataSource module
 --------------------------------------------------------------
 
-.. automodule:: yeastregulatorydb.regulatory_data.models.BindingSource
+.. automodule:: yeastregulatorydb.regulatory_data.models.DataSource
    :members:
    :undoc-members:
    :show-inheritance:
@@ -72,14 +72,6 @@ yeastregulatorydb.regulatory\_data.models.ExpressionManualQC module
 -------------------------------------------------------------------
 
 .. automodule:: yeastregulatorydb.regulatory_data.models.ExpressionManualQC
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-yeastregulatorydb.regulatory\_data.models.ExpressionSource module
------------------------------------------------------------------
-
-.. automodule:: yeastregulatorydb.regulatory_data.models.ExpressionSource
    :members:
    :undoc-members:
    :show-inheritance:

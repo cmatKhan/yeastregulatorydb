@@ -1,10 +1,9 @@
 from .BindingManualQCViewSet import BindingManualQCViewSet
-from .BindingSourceViewSet import BindingSourceViewSet
 from .BindingViewSet import BindingViewSet
 from .CallingCardsBackgroundViewSet import CallingCardsBackgroundViewSet
 from .ChrMapViewSet import ChrMapViewSet
+from .DataSourceViewSet import DataSourceViewSet
 from .ExpressionManualQCViewSet import ExpressionManualQCViewSet
-from .ExpressionSourceViewSet import ExpressionSourceViewSet
 from .ExpressionViewSet import ExpressionViewSet
 from .FileFormatViewSet import FileFormatViewSet
 from .GenomicFeatureViewSet import GenomicFeatureViewSet
@@ -14,12 +13,11 @@ from .RegulatorViewSet import RegulatorViewSet
 
 __all__ = [
     "BindingManualQCViewSet",
-    "BindingSourceViewSet",
     "BindingViewSet",
     "CallingCardsBackgroundViewSet",
     "ChrMapViewSet",
+    "DataSourceViewSet",
     "ExpressionManualQCViewSet",
-    "ExpressionSourceViewSet",
     "ExpressionViewSet",
     "FileFormatViewSet",
     "GenomicFeatureViewSet",

@@ -1,27 +1,211 @@
 import os
-import shutil
 
 import pytest
 from django.core.files.uploadedfile import SimpleUploadedFile
+from django.db.models.query import QuerySet
 from rest_framework.exceptions import ValidationError
 from rest_framework.test import APIRequestFactory
 
-from yeastregulatorydb.regulatory_data.models import ChrMap, FileFormat
+from yeastregulatorydb.regulatory_data.models import ChrMap, DataSource, Regulator
 from yeastregulatorydb.users.models import User
 
-from ..api.serializers import FileFormatSerializer, GenomicFeatureSerializer, PromoterSetSerializer
-from .factories import ChrMapFactory, FileFormatFactory, GenomicFeatureFactory, PromoterSetFactory
+from ..api.serializers import (
+    BindingSerializer,
+    ExpressionSerializer,
+    FileFormatSerializer,
+    GenomicFeatureSerializer,
+    PromoterSetSerializer,
+)
+from .factories import (
+    BindingFactory,
+    ChrMapFactory,
+    ExpressionFactory,
+    FileFormatFactory,
+    GenomicFeatureFactory,
+    PromoterSetFactory,
+)
 from .utils.model_to_dict_select import model_to_dict_select
 
-# @pytest.mark.django_db
-# def test_binding_serializer(tmpdir, user: User):
-#     """
-#     Test the GenomicFileValidationMixin of the BindingSerializer by creating
-#     example binding files, using pandas, in a tmpdir and then validaitng them
-#     """
-#     # Create foreign key instances
-#     chrmap1 = ChrMapFactory(ucsc="chr1", seqlength=100)
-#     # init binding data
+
+@pytest.mark.django_db
+def test_BindingSerializerCC(user: User, chrmap: QuerySet, regulator: Regulator, cc_datasource: DataSource):
+    """
+    Test that the BindingSerializer is able to accurately check a qBed or
+    other binding data upload
+    """
+    # Create a request instance
+    factory = APIRequestFactory()
+    request = factory.get("/")
+    # Authenticate the request
+    request.user = user
+
+    # set path to test data and check that it exists
+    file_path = os.path.join(
+        os.path.dirname(__file__), "test_data", "binding/callingcards/hap5_expr17_chr1_ucsc.qbed.gz"
+    )
+    assert os.path.exists(file_path), f"path: {file_path}"
+
+    # Open the file and read its content
+    with open(file_path, "rb") as file_obj:
+        file_content = file_obj.read()
+        # Create a SimpleUploadedFile instance
+        uploaded_file = SimpleUploadedFile("hap5_expr17_chrI.qbed.gz", file_content, content_type="application/gzip")
+
+        fields_dict = {"file": uploaded_file, "regulator": regulator, "source": cc_datasource}
+        data = model_to_dict_select(BindingFactory.build(**fields_dict))
+
+        serializer1 = BindingSerializer(data=data, context={"request": request})
+
+        assert serializer1.is_valid() == True, serializer1.errors
+
+
+@pytest.mark.django_db
+def test_BindingSerializerChipExo(user: User, chrmap: QuerySet, regulator: Regulator, chipexo_datasource: DataSource):
+    """
+    test that the BindingSerializer is able to accurately check a chipexo data upload
+    """
+    # Create a request instance
+    factory = APIRequestFactory()
+    request = factory.get("/")
+    # Authenticate the request
+    request.user = user
+
+    # set path to test data and check that it exists
+    file_path = os.path.join(os.path.dirname(__file__), "test_data/binding/chipexo/28366_chrI.csv.gz")
+    assert os.path.exists(file_path), f"path: {file_path}"
+
+    # Open the file and read its content
+    with open(file_path, "rb") as file_obj:
+        file_content = file_obj.read()
+        # Create a SimpleUploadedFile instance
+        uploaded_file = SimpleUploadedFile("28366_chrI.csv.gz", file_content, content_type="application/gzip")
+
+        fields_dict = {"file": uploaded_file, "regulator": regulator, "source": chipexo_datasource}
+        data = model_to_dict_select(BindingFactory.build(**fields_dict))
+
+        serializer1 = BindingSerializer(data=data, context={"request": request})
+
+        assert serializer1.is_valid() == True, serializer1.errors
+
+
+@pytest.mark.django_db
+def test_BindingSerializerHarbison(
+    user: User, chrmap: QuerySet, regulator: Regulator, harbison_datasource: DataSource
+):
+    """
+    Test that the BindingSerializer can upload harbison data
+    """
+    # Create a request instance
+    factory = APIRequestFactory()
+    request = factory.get("/")
+    # Authenticate the request
+    request.user = user
+
+    # set path to test data and check that it exists
+    file_path = os.path.join(os.path.dirname(__file__), "test_data", "binding/harbison/hap5_harbison_chr1.csv.gz")
+    assert os.path.exists(file_path), f"path: {file_path}"
+
+    # Open the file and read its content
+    with open(file_path, "rb") as file_obj:
+        file_content = file_obj.read()
+        # Create a SimpleUploadedFile instance
+        uploaded_file = SimpleUploadedFile("hap5_harbison_chr1.csv.gz", file_content, content_type="application/gzip")
+
+        fields_dict = {"file": uploaded_file, "regulator": regulator, "source": harbison_datasource}
+        data = model_to_dict_select(BindingFactory.build(**fields_dict))
+
+        serializer1 = BindingSerializer(data=data, context={"request": request})
+
+        assert serializer1.is_valid() == True, serializer1.errors
+
+
+@pytest.mark.django_db
+def test_ExpressionSerializerKemmeren(
+    user: User, chrmap: QuerySet, regulator: Regulator, kemmeren_datasource: DataSource
+):
+    """
+    Test that the BindingSerializer can upload harbison data
+    """
+    # Create a request instance
+    factory = APIRequestFactory()
+    request = factory.get("/")
+    # Authenticate the request
+    request.user = user
+
+    # set path to test data and check that it exists
+    file_path = os.path.join(os.path.dirname(__file__), "test_data", "expression/kemmeren/hap5_kemmeren_chr1.csv.gz")
+    assert os.path.exists(file_path), f"path: {file_path}"
+
+    # Open the file and read its content
+    with open(file_path, "rb") as file_obj:
+        file_content = file_obj.read()
+        # Create a SimpleUploadedFile instance
+        uploaded_file = SimpleUploadedFile("hap5_kemmeren_chr1.csv.gz", file_content, content_type="application/gzip")
+
+        fields_dict = {"file": uploaded_file, "regulator": regulator, "source": kemmeren_datasource}
+        data = model_to_dict_select(ExpressionFactory.build(**fields_dict))
+
+        serializer1 = ExpressionSerializer(data=data, context={"request": request})
+
+        assert serializer1.is_valid() == True, serializer1.errors
+
+
+@pytest.mark.django_db
+def test_ExpressionSerializerHu(user: User, chrmap: QuerySet, regulator: Regulator, hu_datasource: DataSource):
+    """
+    Test that the BindingSerializer can upload harbison data
+    """
+    # Create a request instance
+    factory = APIRequestFactory()
+    request = factory.get("/")
+    # Authenticate the request
+    request.user = user
+
+    # set path to test data and check that it exists
+    file_path = os.path.join(os.path.dirname(__file__), "test_data", "expression/hu/hap5_hu_chr1.csv.gz")
+    assert os.path.exists(file_path), f"path: {file_path}"
+
+    # Open the file and read its content
+    with open(file_path, "rb") as file_obj:
+        file_content = file_obj.read()
+        # Create a SimpleUploadedFile instance
+        uploaded_file = SimpleUploadedFile("hap5_hu_chr1.csv.gz", file_content, content_type="application/gzip")
+
+        fields_dict = {"file": uploaded_file, "regulator": regulator, "source": hu_datasource}
+        data = model_to_dict_select(ExpressionFactory.build(**fields_dict))
+
+        serializer1 = ExpressionSerializer(data=data, context={"request": request})
+
+        assert serializer1.is_valid() == True, serializer1.errors
+
+
+@pytest.mark.django_db
+def test_ExpressionSerializerMcIsaac(user: User, chrmap: QuerySet, regulator: Regulator, hu_datasource: DataSource):
+    """
+    Test that the BindingSerializer can upload harbison data
+    """
+    # Create a request instance
+    factory = APIRequestFactory()
+    request = factory.get("/")
+    # Authenticate the request
+    request.user = user
+
+    # set path to test data and check that it exists
+    file_path = os.path.join(os.path.dirname(__file__), "test_data", "expression/hu/hap5_hu_chr1.csv.gz")
+    assert os.path.exists(file_path), f"path: {file_path}"
+
+    # Open the file and read its content
+    with open(file_path, "rb") as file_obj:
+        file_content = file_obj.read()
+        # Create a SimpleUploadedFile instance
+        uploaded_file = SimpleUploadedFile("hap5_hu_chr1.csv.gz", file_content, content_type="application/gzip")
+
+        fields_dict = {"file": uploaded_file, "regulator": regulator, "source": hu_datasource}
+        data = model_to_dict_select(ExpressionFactory.build(**fields_dict))
+
+        serializer1 = ExpressionSerializer(data=data, context={"request": request})
+
+        assert serializer1.is_valid() == True, serializer1.errors
 
 
 @pytest.mark.django_db
@@ -99,7 +283,7 @@ def test_genomic_feature_serializer(user: User):
 
 
 @pytest.mark.django_db
-def test_promoterset_serializer(tmpdir, user: User, chrmap: ChrMap):
+def test_promoterset_serializer(tmpdir, user: User, chrmap: QuerySet):
     # Create a request instance
     factory = APIRequestFactory()
     request = factory.get("/")
@@ -107,15 +291,11 @@ def test_promoterset_serializer(tmpdir, user: User, chrmap: ChrMap):
     request.user = user
 
     # set path to test data and check that it exists
-    file_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "test_data", "yiming_promoters_chrI.bed.gz")
+    file_path = os.path.join(os.path.dirname(__file__), "test_data", "yiming_promoters_chrI.bed.gz")
     assert os.path.exists(file_path), f"path: {file_path}"
 
-    shutil.copy(file_path, tmpdir)
-    tmpdir_path = os.path.join(tmpdir, "yiming_promoters_chrI.bed.gz")
-    assert os.path.exists(tmpdir_path)
-
     # Open the file and read its content
-    with open(tmpdir_path, "rb") as file_obj:
+    with open(file_path, "rb") as file_obj:
         file_content = file_obj.read()
         # Create a SimpleUploadedFile instance
         uploaded_file = SimpleUploadedFile(
