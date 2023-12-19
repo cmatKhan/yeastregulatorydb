@@ -342,3 +342,11 @@ CHR_FORMAT = env(
     "CHR_FORMAT",
     default="ucsc",
 )
+CHIPEXO_PROMOTER_SIG_FORMAT = env(
+    "CHIPEXO_PROMOTER_SIG_FORMAT",
+    default="chipexo_promoter_sig",
+)
+CALLINGCARDS_PROMOTER_SIG_FORMAT = env(
+    "CALLING_CARD_PROMOTER_SIG_FORMAT",
+    default="callingcards_promoter_sig",
+)

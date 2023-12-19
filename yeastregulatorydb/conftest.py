@@ -185,7 +185,9 @@ def fileformat(db) -> QuerySet:
             },
             ",",
             "max_fc",
+            0.0,
             "min_pval",
+            1.0,
         ),
         "cc_promoter_sig": (
             {
@@ -204,13 +206,17 @@ def fileformat(db) -> QuerySet:
             },
             ",",
             "callingcards_enrichment",
+            0.0,
             "poisson_pval",
+            1.0,
         ),
         "kemmeren": (
             {"gene_id": "int", "M": "float", "Madj": "float", "A": "float", "pval": "float"},
             ",",
             "Madj",
+            0.0,
             "pval",
+            1.0,
         ),
         "mcisaac": (
             {
@@ -224,18 +230,47 @@ def fileformat(db) -> QuerySet:
             },
             ",",
             "log2_shrunken_timecourses",
+            0.0,
             "none",
+            1.0,
         ),
         "bed6": (
             {"chr": "str", "start": "int", "end": "int", "name": "str", "score": "float", "strand": "str"},
             "\t",
             "none",
+            0.0,
             "none",
+            1.0,
+        ),
+        "rank_response_summary": (
+            {
+                "feature": "str",
+                "expression_effect": "int",
+                "expression_pvalue": "int",
+                "binding_effect": "str",
+                "binding_pvalue": "str",
+                "responsive": "int",
+                "ran_bin": "float",
+                "random": "float",
+            },
+            ",",
+            "none",
+            0.0,
+            "none",
+            1.0,
         ),
     }
     for key, value in format_dict.items():
-        fields, separator, effect, pval = value
-        FileFormatFactory.create(fileformat=key, fields=fields, separator=separator, effect_col=effect, pval_col=pval)
+        fields, separator, effect, effect_thres, pval, pval_thres = value
+        FileFormatFactory.create(
+            fileformat=key,
+            fields=fields,
+            separator=separator,
+            effect_col=effect,
+            default_effect_threshold=effect_thres,
+            pval_col=pval,
+            default_pvalue_threshold=pval_thres,
+        )
     return FileFormat.objects.all()
 
 

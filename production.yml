@@ -18,6 +18,7 @@ services:
     env_file:
       - ./.envs/.production/.django
       - ./.envs/.production/.postgres
+      - ./.envs/.production/.regulatory_data
     command: /start
 
   postgres:

@@ -43,17 +43,31 @@ class FileFormat(BaseModel):
         default="\t",
         help_text="The separator used in the file. Defaults to tab.",
     )
+    feature_identifier_col = models.CharField(
+        max_length=40,
+        default="none",
+        help_text="The name of the column that should be used as the default "
+        "feature identifier column. Eg 'name'. Defaults to 'none'.",
+    )
     effect_col = models.CharField(
         max_length=40,
         default="none",
         help_text="The name of the column that should be used as the default "
         "effect column. Eg 'score'. Defaults to 'none' if there is no effect column.",
     )
+    default_effect_threshold = models.FloatField(
+        default=0.0,
+        help_text="The default threshold for the effect column. Defaults to 0.0.",
+    )
     pval_col = models.CharField(
         max_length=40,
         default="none",
         help_text="The name of the column that should be used as the default "
         "p-value column. Eg 'pvalue'. Defaults to 'none' if there is no p-value column.",
+    )
+    default_pvalue_threshold = models.FloatField(
+        default=1.0,
+        help_text="The default threshold for the p-value column. Defaults to 1.0.",
     )
 
     def __str__(self):

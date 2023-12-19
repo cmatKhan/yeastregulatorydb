@@ -44,7 +44,7 @@ class PromoterSetSig(BaseModel, GzipFileUploadWithIdMixin):
         # Store the old file path
         old_file_name = self.file.name if self.file else None
         super().save(*args, **kwargs)
-        self.update_file_name("file", "promotersetsig", "tsv.gz")
+        self.update_file_name("file", "promotersetsig", "csv.gz")
         new_file_name = self.file.name
         super().save(update_fields=["file"])
         # If the file name changed, delete the old file
