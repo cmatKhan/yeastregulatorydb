@@ -41,10 +41,9 @@ jobs:
       - name: Checkout Code Repository
         uses: actions/checkout@v4
 
+      - name: Decode and Extract Environment Files
         run: |
-          ENCODED=$(echo "${{ secrets.ENVS_FILE }}")
-          echo "Encoded length: ${#ENCODED}"
-          echo "$ENCODED" | base64 -d > envs.tar.gz
+          echo "${{ secrets.ENVS_FILE }}" | base64 -d > envs.tar.gz
           tar -xzvf envs.tar.gz
 
       - name: Build the Stack
