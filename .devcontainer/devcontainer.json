@@ -57,17 +57,19 @@
             // https://code.visualstudio.com/docs/remote/devcontainerjson-reference#_vs-code-specific-properties
             // Add the IDs of extensions you want installed when the container is created.
             "extensions": [
-				"davidanson.vscode-markdownlint",
-				"mrmlnc.vscode-duplicate",
-				"visualstudioexptteam.vscodeintellicode",
-				"visualstudioexptteam.intellicode-api-usage-examples",
-				"ms-python.python",
-				"ms-python.vscode-pylance",
-				"ms-python.isort",
-				"ms-python.black-formatter",
-				"batisteo.vscode-django",
-				"GitHub.copilot"
-			]
+                "davidanson.vscode-markdownlint",
+                "mrmlnc.vscode-duplicate",
+                "visualstudioexptteam.vscodeintellicode",
+                "visualstudioexptteam.intellicode-api-usage-examples",
+                "ms-python.python",
+                "ms-python.vscode-pylance",
+                "ms-python.isort",
+                "ms-python.black-formatter",
+                "batisteo.vscode-django",
+                "GitHub.copilot",
+                "ms-azuretools.vscode-docker",
+                "github.vscode-github-actions"
+            ]
         }
     },
     // Uncomment the next line if you want start specific services in your Docker Compose config.
