@@ -1,21 +1,21 @@
 <!DOCTYPE html>
-<html>
-<head>
+<html lang="en">
+  <head>
     <title>Bulk Upload</title>
-</head>
-<body>
+  </head>
+  <body>
     <h2>Bulk Upload</h2>
     <form method="post" enctype="multipart/form-data">
-        {% csrf_token %}
-        <div>
-            <label for="id_csv_file">CSV File:</label>
-            {{ form.csv_file }}
-        </div>
-        <div>
-            <label for="id_files">Files:</label>
-            {{ form.files }}
-        </div>
-        <button type="submit">Upload</button>
+      {% csrf_token %}
+      <div>
+        <label for="id_csv_file">CSV File:</label>
+        {{ form.csv_file }}
+      </div>
+      <div>
+        <label for="id_files">Files:</label>
+        {{ form.files }}
+      </div>
+      <button type="submit">Upload</button>
     </form>
-</body>
+  </body>
 </html>

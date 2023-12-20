@@ -28,7 +28,7 @@ class PromoterSetViewSet(UpdateModifiedMixin, viewsets.ModelViewSet):
 def perform_create(self, serializer):
     instance = serializer.save()
 
-    lock_id = f"add_data_lock"
+    lock_id = "add_data_lock"
     acquire_lock = lambda: cache.add(lock_id, True, timeout=60 * 60)
     release_lock = lambda: cache.delete(lock_id)
 

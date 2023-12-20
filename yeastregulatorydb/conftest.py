@@ -23,7 +23,6 @@ from yeastregulatorydb.regulatory_data.tests.factories import (
     BindingFactory,
     BindingManualQCFactory,
     CallingCardsBackgroundFactory,
-    ChrMapFactory,
     DataSourceFactory,
     ExpressionFactory,
     ExpressionManualQCFactory,
@@ -31,6 +30,7 @@ from yeastregulatorydb.regulatory_data.tests.factories import (
     GenomicFeatureFactory,
     PromoterSetFactory,
     PromoterSetSigFactory,
+    RankResponseFactory,
     RegulatorFactory,
 )
 from yeastregulatorydb.users.models import User
@@ -156,8 +156,16 @@ def datasource(db) -> DataSource:
 def fileformat(db) -> QuerySet:
     # harb, hu both csvs
     format_dict = {
-        "array": ({"gene_id": "int", "effect": "float", "pval": "float"}, ",", "effect", "pval"),
-        "qbed": ({"chr": "str", "start": "int", "end": "int", "depth": "int", "strand": "str"}, "\t", "none", "none"),
+        "array": ({"gene_id": "int", "effect": "float", "pval": "float"}, ",", "effect", 0.0, "pval", 1.0, "none"),
+        "qbed": (
+            {"chr": "str", "start": "int", "end": "int", "depth": "int", "strand": "str"},
+            "\t",
+            "none",
+            0.0,
+            "none",
+            1.0,
+            "none",
+        ),
         "chipexo_allevents": (
             {
                 "chr": "str",
@@ -170,7 +178,10 @@ def fileformat(db) -> QuerySet:
             },
             ",",
             "YPD_log2Fold",
+            0.0,
             "YPD_log2P",
+            1.0,
+            "none",
         ),
         "chipexo_promoter_sig": (
             {
@@ -188,6 +199,7 @@ def fileformat(db) -> QuerySet:
             0.0,
             "min_pval",
             1.0,
+            "name",
         ),
         "cc_promoter_sig": (
             {
@@ -209,6 +221,7 @@ def fileformat(db) -> QuerySet:
             0.0,
             "poisson_pval",
             1.0,
+            "name",
         ),
         "kemmeren": (
             {"gene_id": "int", "M": "float", "Madj": "float", "A": "float", "pval": "float"},
@@ -217,6 +230,7 @@ def fileformat(db) -> QuerySet:
             0.0,
             "pval",
             1.0,
+            "gene_id",
         ),
         "mcisaac": (
             {
@@ -233,6 +247,7 @@ def fileformat(db) -> QuerySet:
             0.0,
             "none",
             1.0,
+            "gene_id",
         ),
         "bed6": (
             {"chr": "str", "start": "int", "end": "int", "name": "str", "score": "float", "strand": "str"},
@@ -241,16 +256,19 @@ def fileformat(db) -> QuerySet:
             0.0,
             "none",
             1.0,
+            "name",
         ),
-        "rank_response_summary": (
+        "rankresponse": (
             {
                 "feature": "str",
-                "expression_effect": "int",
-                "expression_pvalue": "int",
-                "binding_effect": "str",
-                "binding_pvalue": "str",
+                "expression_effect": "float",
+                "expression_pvalue": "float",
+                "expression_source": "str",
+                "binding_effect": "float",
+                "binding_pvalue": "float",
+                "binding_source": "str",
                 "responsive": "int",
-                "ran_bin": "float",
+                "rank_bin": "int",
                 "random": "float",
             },
             ",",
@@ -258,10 +276,11 @@ def fileformat(db) -> QuerySet:
             0.0,
             "none",
             1.0,
+            "feature",
         ),
     }
     for key, value in format_dict.items():
-        fields, separator, effect, effect_thres, pval, pval_thres = value
+        fields, separator, effect, effect_thres, pval, pval_thres, feature_identifier_col = value
         FileFormatFactory.create(
             fileformat=key,
             fields=fields,
@@ -270,6 +289,7 @@ def fileformat(db) -> QuerySet:
             default_effect_threshold=effect_thres,
             pval_col=pval,
             default_pvalue_threshold=pval_thres,
+            feature_identifier_col=feature_identifier_col,
         )
     return FileFormat.objects.all()
 
@@ -318,6 +338,7 @@ def harbison_datasource(db, fileformat: QuerySet) -> DataSource:
 def hu_datasource(db, fileformat: QuerySet) -> DataSource:
     array = fileformat.filter(fileformat="array").first()
     content = {
+        "id": 101,
         "name": "hu_reimann_tfko",
         "fileformat": array,
         "lab": "hu",
@@ -344,12 +365,14 @@ def kemmeren_datasource(db, fileformat: QuerySet) -> DataSource:
 def mcisaac_datasource(db, fileformat: QuerySet) -> DataSource:
     mcisaac = fileformat.filter(fileformat="mcisaac").first()
     content = {
+        "id": 102,
         "name": "mcisaac_oe",
         "fileformat": mcisaac,
         "lab": "mcisaac",
         "assay": "overexpression",
         "workflow": "none",
     }
+    return DataSourceFactory(**content)
 
 
 @pytest.fixture
@@ -384,3 +407,11 @@ def promotersetsig(db) -> PromoterSetSig:
 def regulator(db) -> Regulator:
     hap5_genomic_feature = GenomicFeatureFactory(locus_tag="YOR358W", symbol="HAP5")
     return RegulatorFactory(id=1, regulator=hap5_genomic_feature)
+
+
+@pytest.fixture
+def rankresponse(db, regulator: Regulator) -> QuerySet:
+    binding = BindingFactory(regulator=regulator)
+    expression = ExpressionFactory(regulator=regulator)
+    promotersetsig = PromoterSetSigFactory(binding=binding)
+    return RankResponseFactory(promotersetsig=promotersetsig, expression=expression)

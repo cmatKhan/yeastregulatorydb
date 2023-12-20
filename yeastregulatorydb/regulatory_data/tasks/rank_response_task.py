@@ -3,13 +3,15 @@ import io
 import logging
 import tempfile
 import uuid
+from types import SimpleNamespace
 
 from callingcardstools.Analysis.yeast import rank_response
 from django.contrib.auth import get_user_model
 from django.core.files import File
 
 from config import celery_app
-from yeastregulatorydb.regulatory_data.models import Expression, FileFormat, PromoterSetSig, RankResponse
+from yeastregulatorydb.regulatory_data.api.serializers import RankResponseSerializer
+from yeastregulatorydb.regulatory_data.models import Expression, FileFormat, PromoterSetSig
 from yeastregulatorydb.regulatory_data.utils.extract_file_from_storage import extract_file_from_storage
 
 logger = logging.getLogger(__name__)
@@ -39,16 +41,9 @@ def rank_response_task(
         raise ValueError(f"Binding record with id {promotersetsig_id} does not exist")
 
     try:
-        rankresponse_summary_fileformat_record = FileFormat.objects.get(fileformat="rank_repsonse_summary")
+        rankresponse_format = FileFormat.objects.get(fileformat="rankresponse")
     except FileFormat.DoesNotExist:
-        raise ValueError(f"FileFormat 'rank_response_summary' does not exist")
-
-    try:
-        binding_expression_annotated_fileformat_record = FileFormat.objects.get(
-            fileformat="binding_expression_annotated"
-        )
-    except FileFormat.DoesNotExist:
-        raise ValueError(f"FileFormat 'binding_expression_annotated' does not exist")
+        raise ValueError("FileFormat 'rank_response_summary' does not exist")
 
     with tempfile.TemporaryDirectory() as tmpdir:
         promotersetsig_filepath = extract_file_from_storage(promotersetsig_record.file, tmpdir)
@@ -63,11 +58,16 @@ def rank_response_task(
         for record in expression_objects_iterator:
             expression_filepath = extract_file_from_storage(record.file, tmpdir)
 
+            expr_pval_thres = kwargs.get(
+                "expression_pvalue_threshold", record.source.fileformat.default_pvalue_threshold
+            )
+            expr_pval_thres = None if expr_pval_thres == 1.0 else expr_pval_thres
+
             config_dict = {
                 "binding_data_path": promotersetsig_filepath,
-                "binding_identifier_col": promotersetsig_record.binding.source.fileformat.feature_identifier_col,
-                "binding_effect_col": promotersetsig_record.binding.source.fileformat,
-                "binding_pvalue_col": promotersetsig_record.binding.source.fileformat,
+                "binding_identifier_col": promotersetsig_record.fileformat.feature_identifier_col,
+                "binding_effect_col": promotersetsig_record.fileformat.effect_col,
+                "binding_pvalue_col": promotersetsig_record.fileformat.pval_col,
                 "binding_source": promotersetsig_record.binding.source.name,
                 "expression_data_path": expression_filepath,
                 "expression_identifier_col": record.source.fileformat.feature_identifier_col,
@@ -77,9 +77,7 @@ def rank_response_task(
                 "expression_effect_thres": kwargs.get(
                     "expression_effect_threshold", record.source.fileformat.default_effect_threshold
                 ),
-                "expression_effect_thres": kwargs.get(
-                    "expression_pvalue_threshold", record.source.fileformat.default_pvalue_threshold
-                ),
+                "expression_pvalue_thres": expr_pval_thres,
                 "normalize": kwargs.get("normalize", False),
                 "rank_bin_size": kwargs.get("rank_bin_size", 5),
             }
@@ -126,7 +124,7 @@ def rank_response_task(
                 raise ValueError(error_message)
 
             try:
-                binding_expr_annotated_df, random_df, rank_response_df = rank_response.rank_response_ratio_summarize(
+                binding_expr_annotated_df, _, rank_response_summary_df = rank_response.rank_response_ratio_summarize(
                     df,
                     effect_expression_thres=args["expression_effect_thres"],
                     p_expression_thres=args["expression_pvalue_thres"],
@@ -137,44 +135,47 @@ def rank_response_task(
                 logger.error("Error summarizing data: %s", exc)
                 raise
 
-            results_list.append((record, binding_expr_annotated_df))
+            results_list.append((record, binding_expr_annotated_df, rank_response_summary_df))
 
     output_list = []
     for result_tuple in results_list:
         # extract the dataframes from the output tuple
-        expression_record, binding_expr_annotated_df = result_tuple
+        expression_record, binding_expr_annotated_df, rank_response_summary_df = result_tuple
         # create a buffer to store the dataframe
         binding_expr_annotated_buffer = io.BytesIO()
         with gzip.GzipFile(fileobj=binding_expr_annotated_buffer, mode="wb") as gzipped_file:
-            binding_expr_annotated_df.df.to_csv(gzipped_file, index=False)
+            binding_expr_annotated_df.to_csv(gzipped_file, index=False)
         # Reset buffer position
         binding_expr_annotated_buffer.seek(0)
         # Create a Django File object with a uuid filename
         binding_expr_annotated_file = File(binding_expr_annotated_buffer, name=f"{uuid.uuid4()}.csv.gz")
 
-        rank_response_buffer = io.BytesIO()
-        with gzip.GzipFile(fileobj=rank_response_buffer, mode="wb") as gzipped_file:
-            rank_response_df.df.to_csv(gzipped_file, index=False)
-        # Reset buffer position
-        rank_response_buffer.seek(0)
-        # Create a Django File object with a uuid filename
-        rank_response_file = File(rank_response_buffer, name=f"{uuid.uuid4()}.csv.gz")
+        # if there is any value in ci_lower greater than 0 in the first
+        # 100 rows, then the rank response test passes
+        rank_response_pass = rank_response_summary_df["ci_lower"].head(50).gt(0).any()
 
-        rankresponse_record = RankResponse.objects.create(
-            user=user,
-            promotersetsig=promotersetsig_record,
-            expression=expression_record,
-            fileformat=rank_response_file,
-            file=binding_expr_annotated_file,
+        upload_data = {
+            "promotersetsig": promotersetsig_record.pk,
+            "expression": expression_record.pk,
+            "fileformat": rankresponse_format.pk,
+            "file": binding_expr_annotated_file,
+            "significant_response": rank_response_pass,
+        }
+
+        # Create a mock request with only a user attribute
+        # Assuming you have the user_id available
+        mock_request = SimpleNamespace(user=user)
+        # serialize the PromoterSetSig object
+        serializer = RankResponseSerializer(
+            data=upload_data,
+            context={"request": mock_request},
         )
 
-        # serialize the PromoterSetSig object
-        serializer = RankResponse(rankresponse_record)
         # validate the serializer
         serializer.is_valid(raise_exception=True)
         # save the serializer
-        serializer.save()
+        instance = serializer.save()
         # add the id to the output list
-        output_list.append(rankresponse_record.id)
+        output_list.append(instance.id)
 
     return output_list

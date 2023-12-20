@@ -24,5 +24,6 @@ __all__ = [
     "GenomicFeatureSerializer",
     "PromoterSetSerializer",
     "PromoterSetSigSerializer",
-    "RankResponseSerializer" "RegulatorSerializer",
+    "RankResponseSerializer",
+    "RegulatorSerializer",
 ]

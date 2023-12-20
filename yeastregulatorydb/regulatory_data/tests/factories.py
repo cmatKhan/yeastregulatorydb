@@ -1,5 +1,5 @@
 import faker
-from factory import Faker, LazyFunction, Sequence, SubFactory
+from factory import Faker, LazyFunction, SubFactory
 from factory.django import DjangoModelFactory, FileField
 
 from yeastregulatorydb.users.tests.factories import UserFactory
@@ -16,6 +16,7 @@ from ..models import (
     GenomicFeature,
     PromoterSet,
     PromoterSetSig,
+    RankResponse,
     Regulator,
 )
 
@@ -220,3 +221,20 @@ class PromoterSetSigFactory(DjangoModelFactory):
     class Meta:
         model = PromoterSetSig
         django_get_or_create = ["binding", "promoter", "background"]
+
+
+class RankResponseFactory(DjangoModelFactory):
+    uploader = SubFactory(UserFactory)
+    modifier = SubFactory(UserFactory)
+    promotersetsig = SubFactory(PromoterSetSigFactory)
+    expression = SubFactory(ExpressionFactory)
+    expression_effect_threshold = 0.0
+    expression_pvalue_threshold = 1.0
+    fileformat = SubFactory(FileFormatFactory)
+    normalized = False
+    file = FileField(filename="rankresponse.csv.gz")
+    significant_response = Faker("pybool")
+
+    class Meta:
+        model = RankResponse
+        django_get_or_create = ["promotersetsig", "expression"]

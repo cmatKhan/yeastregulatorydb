@@ -39,6 +39,14 @@ def validate_df(
             if not set(df[colname]).issubset(set(expected_type_or_levels)):
                 raise ValueError(f"Column {colname} must be one of {expected_type_or_levels}")
         else:
+            # if the expected coltype is a string, try to cast all values to string
+            if expected_type_or_levels == str:
+                try:
+                    df[colname] = df[colname].astype(str)
+                except ValueError:
+                    raise ValueError(
+                        f"Column {colname} is expected to be a str. It is not, and could not be cast to str. Fix it!"
+                    )
             if not all(isinstance(x, expected_type_or_levels) for x in df[colname]):
                 raise ValueError(f"Column {colname} must be of type {expected_type_or_levels}")
 

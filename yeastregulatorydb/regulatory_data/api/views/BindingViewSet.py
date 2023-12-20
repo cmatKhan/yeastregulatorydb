@@ -34,9 +34,9 @@ class BindingViewSet(UpdateModifiedMixin, viewsets.ModelViewSet, BulkUploadMixin
             task_type = "callingcards_promoter_sig"
 
         if task_type:
-            lock_id = f"add_data_lock"
-            acquire_lock = lambda: cache.add(lock_id, True, timeout=60 * 60)
-            release_lock = lambda: cache.delete(lock_id)
+            lock_id = "add_data_lock"
+            acquire_lock = lambda: cache.add(lock_id, True, timeout=60 * 60)  # flake8: noqa: E731
+            release_lock = lambda: cache.delete(lock_id)  # flake8: noqa: E731
 
             if acquire_lock():
                 try:

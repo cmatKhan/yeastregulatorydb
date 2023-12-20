@@ -59,7 +59,7 @@ class Expression(BaseModel, GzipFileUploadWithIdMixin):
         # Store the old file path
         old_file_name = self.file.name if self.file else None
         super().save(*args, **kwargs)
-        self.update_file_name("file", f"expression/{self.source}", "tsv.gz")
+        self.update_file_name("file", f"expression/{self.source.name}", "tsv.gz")
         new_file_name = self.file.name
         super().save(update_fields=["file"])
         # If the file name changed, delete the old file

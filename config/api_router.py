@@ -13,6 +13,7 @@ from yeastregulatorydb.regulatory_data.api.views import (
     GenomicFeatureViewSet,
     PromoterSetSigViewSet,
     PromoterSetViewSet,
+    RankResponseViewSet,
     RegulatorViewSet,
 )
 from yeastregulatorydb.users.api.views import UserViewSet
@@ -34,6 +35,7 @@ router.register("fileformat", FileFormatViewSet)
 router.register("genomicfeature", GenomicFeatureViewSet)
 router.register("promotersetsig", PromoterSetSigViewSet)
 router.register("promoterset", PromoterSetViewSet)
+router.register("rankresponse", RankResponseViewSet)
 router.register("regulator", RegulatorViewSet)
 
 

@@ -49,6 +49,11 @@ class RankResponse(BaseModel, GzipFileUploadWithIdMixin):
         "binding and expression set for a given regulator at specific "
         "expression effect and pvalue thresholds",
     )
+    significant_response = models.BooleanField(
+        help_text="This field is used to indicate whether there are any bins "
+        "in the top 250 genes with a confidence interval that does not include 0",
+        default=False,
+    )
 
     def __str__(self):
         return f"pk:{self.pk};promotersetsig:{self.binding};expression:{self.expression}"

@@ -17,7 +17,7 @@ class BulkUploadMixin:
             file_mapping = {file.name: file for file in files}
 
             df = pd.read_csv(csv_file)
-            if not "file" in df.columns:
+            if "file" not in df.columns:
                 return Response("Column 'file' not found in CSV", status=status.HTTP_400_BAD_REQUEST)
 
             serializer_list = []

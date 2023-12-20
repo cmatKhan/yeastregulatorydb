@@ -6,7 +6,7 @@ from django.db.models.query import QuerySet
 from rest_framework.exceptions import ValidationError
 from rest_framework.test import APIRequestFactory
 
-from yeastregulatorydb.regulatory_data.models import ChrMap, DataSource, Regulator
+from yeastregulatorydb.regulatory_data.models import DataSource, Expression, PromoterSetSig, Regulator
 from yeastregulatorydb.users.models import User
 
 from ..api.serializers import (
@@ -15,6 +15,7 @@ from ..api.serializers import (
     FileFormatSerializer,
     GenomicFeatureSerializer,
     PromoterSetSerializer,
+    RankResponseSerializer,
 )
 from .factories import (
     BindingFactory,
@@ -23,6 +24,7 @@ from .factories import (
     FileFormatFactory,
     GenomicFeatureFactory,
     PromoterSetFactory,
+    RankResponseFactory,
 )
 from .utils.model_to_dict_select import model_to_dict_select
 
@@ -56,7 +58,7 @@ def test_BindingSerializerCC(user: User, chrmap: QuerySet, regulator: Regulator,
 
         serializer1 = BindingSerializer(data=data, context={"request": request})
 
-        assert serializer1.is_valid() == True, serializer1.errors
+        assert serializer1.is_valid() is True, serializer1.errors
 
 
 @pytest.mark.django_db
@@ -85,7 +87,7 @@ def test_BindingSerializerChipExo(user: User, chrmap: QuerySet, regulator: Regul
 
         serializer1 = BindingSerializer(data=data, context={"request": request})
 
-        assert serializer1.is_valid() == True, serializer1.errors
+        assert serializer1.is_valid() is True, serializer1.errors
 
 
 @pytest.mark.django_db
@@ -116,7 +118,7 @@ def test_BindingSerializerHarbison(
 
         serializer1 = BindingSerializer(data=data, context={"request": request})
 
-        assert serializer1.is_valid() == True, serializer1.errors
+        assert serializer1.is_valid() is True, serializer1.errors
 
 
 @pytest.mark.django_db
@@ -147,7 +149,7 @@ def test_ExpressionSerializerKemmeren(
 
         serializer1 = ExpressionSerializer(data=data, context={"request": request})
 
-        assert serializer1.is_valid() == True, serializer1.errors
+        assert serializer1.is_valid() is True, serializer1.errors
 
 
 @pytest.mark.django_db
@@ -176,7 +178,7 @@ def test_ExpressionSerializerHu(user: User, chrmap: QuerySet, regulator: Regulat
 
         serializer1 = ExpressionSerializer(data=data, context={"request": request})
 
-        assert serializer1.is_valid() == True, serializer1.errors
+        assert serializer1.is_valid() is True, serializer1.errors
 
 
 @pytest.mark.django_db
@@ -205,7 +207,7 @@ def test_ExpressionSerializerMcIsaac(user: User, chrmap: QuerySet, regulator: Re
 
         serializer1 = ExpressionSerializer(data=data, context={"request": request})
 
-        assert serializer1.is_valid() == True, serializer1.errors
+        assert serializer1.is_valid() is True, serializer1.errors
 
 
 @pytest.mark.django_db
@@ -235,7 +237,7 @@ def test_fileformat_serializer(user: User):
     # Serialize the FileFormat instance with the request in the context
     serializer1 = FileFormatSerializer(data=fileformat1, context={"request": request})
     # Check that the serializer is valid
-    assert serializer1.is_valid() == True, serializer1.errors
+    assert serializer1.is_valid() is True, serializer1.errors
 
 
 @pytest.mark.django_db
@@ -253,7 +255,7 @@ def test_genomic_feature_serializer(user: User):
     # Serialize the GenomicFeature instance with the request in the context
     serializer1 = GenomicFeatureSerializer(data=genomic_feature1, context={"request": request})
     # Check that the serializer is valid
-    assert serializer1.is_valid() == True, serializer1.errors
+    assert serializer1.is_valid() is True, serializer1.errors
 
     # test that the serializer is invalid if start > end
     data.update({"start": 4, "end": 3})
@@ -307,4 +309,39 @@ def test_promoterset_serializer(tmpdir, user: User, chrmap: QuerySet):
 
         serializer1 = PromoterSetSerializer(data=data, context={"request": request})
 
-        assert serializer1.is_valid() == True, serializer1.errors
+        assert serializer1.is_valid() is True, serializer1.errors
+
+
+@pytest.mark.django_db
+def test_rankresponse_serializer(
+    tmpdir, user: User, promotersetsig: PromoterSetSig, expression: Expression, fileformat: QuerySet
+):
+    # Create a request instance
+    factory = APIRequestFactory()
+    request = factory.get("/")
+    # Authenticate the request
+    request.user = user
+
+    # set path to test data and check that it exists
+    file_path = os.path.join(os.path.dirname(__file__), "test_data", "rankresponse/rank_response.csv.gz")
+    assert os.path.exists(file_path), f"path: {file_path}"
+
+    rankresponse_fileformat = fileformat.get(fileformat="rankresponse")
+
+    # Open the file and read its content
+    with open(file_path, "rb") as file_obj:
+        file_content = file_obj.read()
+        # Create a SimpleUploadedFile instance
+        uploaded_file = SimpleUploadedFile("rank_response.csv.gz", file_content, content_type="application/gzip")
+
+        fields_dict = {
+            "file": uploaded_file,
+            "promotersetsig": promotersetsig,
+            "expression": expression,
+            "fileformat": rankresponse_fileformat,
+        }
+        data = model_to_dict_select(RankResponseFactory.build(**fields_dict))
+
+        serializer1 = RankResponseSerializer(data=data, context={"request": request})
+
+        assert serializer1.is_valid() is True, serializer1.errors

@@ -1,4 +1,3 @@
-from celery import chain
 from django.core.cache import cache
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import viewsets
@@ -32,9 +31,9 @@ class ExpressionViewSet(UpdateModifiedMixin, viewsets.ModelViewSet, BulkUploadMi
         ).values_list("id", flat=True)
 
         # Create a chain of tasks for each promotersetsig_id
-        lock_id = f"add_data_lock"
-        acquire_lock = lambda: cache.add(lock_id, True, timeout=60 * 60)
-        release_lock = lambda: cache.delete(lock_id)
+        lock_id = "add_data_lock"
+        acquire_lock = lambda: cache.add(lock_id, True, timeout=60 * 60)  # flake8: noqa: E731
+        release_lock = lambda: cache.delete(lock_id)  # flake8: noqa: E731
 
         if acquire_lock():
             try:

@@ -1,7 +1,5 @@
 import os
-import shutil
 
-import requests
 from django.conf import settings
 from django.core.files import File
 from django.core.files.storage import default_storage

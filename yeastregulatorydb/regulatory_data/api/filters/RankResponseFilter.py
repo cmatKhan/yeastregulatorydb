@@ -13,12 +13,15 @@ class RankResponseFilter(django_filters.FilterSet):
     expression_id = django_filters.NumberFilter(field_name="expression__id")
     expression_source = django_filters.CharFilter(field_name="expression__source__name", lookup_expr="iexact")
     regulator_locus_tag = django_filters.CharFilter(
-        field_name="expression__regulator__locus_tag", lookup_expr="iexact"
+        field_name="expression__regulator__regulator__locus_tag", lookup_expr="iexact"
     )
-    regulator_symbol = django_filters.CharFilter(field_name="expression__regulator__symbol", lookup_expr="iexact")
+    regulator_symbol = django_filters.CharFilter(
+        field_name="expression__regulator__regulator__symbol", lookup_expr="iexact"
+    )
     expression_effect_threshold = django_filters.NumberFilter()
     expression_pvalue_threshold = django_filters.NumberFilter()
     normalized = django_filters.BooleanFilter()
+    significant_response = django_filters.BooleanFilter()
 
     class Meta:
         model = RankResponse
@@ -34,4 +37,5 @@ class RankResponseFilter(django_filters.FilterSet):
             "expression_effect_threshold",
             "expression_pvalue_threshold",
             "normalized",
+            "significant_response",
         ]

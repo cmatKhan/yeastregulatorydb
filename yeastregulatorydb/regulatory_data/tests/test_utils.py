@@ -4,7 +4,6 @@ import pandas as pd
 import pytest
 from django.db.models.query import QuerySet
 
-from yeastregulatorydb.regulatory_data.models import ChrMap
 from yeastregulatorydb.regulatory_data.utils.count_hops import count_hops
 
 

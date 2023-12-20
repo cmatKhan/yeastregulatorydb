@@ -160,6 +160,4 @@ class GenomicFeature(BaseModel):
                 name="start_cannot_be_less_than_one",
             ),
         ]
-        indexes = [
-            models.Index("chr", "start", "end", "strand", name="coord_index")
-        ]
+        indexes = [models.Index("chr", "start", "end", "strand", name="coord_index")]
