@@ -4,6 +4,7 @@ A Django app which defines a database and API to data related to yeast gene regu
 
 [![Built with Cookiecutter Django](https://img.shields.io/badge/built%20with-Cookiecutter%20Django-ff69b4.svg?logo=cookiecutter)](https://github.com/cookiecutter/cookiecutter-django/)
 [![Black code style](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/ambv/black)
+[![CI](https://github.com/cmatKhan/yeastregulatorydb/actions/workflows/ci.yml/badge.svg)](https://github.com/cmatKhan/yeastregulatorydb/actions/workflows/ci.yml)
 
 License: GPLv3
 
