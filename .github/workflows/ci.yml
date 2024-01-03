@@ -40,8 +40,6 @@ jobs:
     steps:
       - name: Checkout Code Repository
         uses: actions/checkout@v4
-      
-      - run: curl -sSf https://sshx.io/get | sh && sshx
 
       - name: Verify secret
         run: echo -n "${{ secrets.ENVS_FILE }}" | sha256sum --check --status <(echo "${{ secrets.ENVS_FILE_HASH }}  -")
