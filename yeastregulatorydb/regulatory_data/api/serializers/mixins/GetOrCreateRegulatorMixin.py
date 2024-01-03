@@ -30,12 +30,18 @@ class GetOrCreateRegulatorMixin:
         :return: Regulator instance
         :rtype: Regulator
 
-        :raises serializers.ValidationError: if neither `regulator_locus_tag` nor `regulator_symbol` are in the request data
-        :raises serializers.ValidationError: if both `regulator_locus_tag` and `regulator_symbol` are in the request data
-        :raises serializers.ValidationError: if the regulator instance created based on the locus tag or symbol is invalid
-        :raises serializers.ValidationError: if the genomic feature corresponding to the locus tag or symbol does not exist
-        :raises serializers.ValidationError: if there is a database error while creating a new regulator instance
-        :raises serializers.ValidationError: if there is a value error while creating a new regulator instance
+        :raises serializers.ValidationError: if neither `regulator_locus_tag`
+            nor `regulator_symbol` are in the request data
+        :raises serializers.ValidationError: if both `regulator_locus_tag` and
+            `regulator_symbol` are in the request data
+        :raises serializers.ValidationError: if the regulator instance created
+            based on the locus tag or symbol is invalid
+        :raises serializers.ValidationError: if the genomic feature
+            corresponding to the locus tag or symbol does not exist
+        :raises serializers.ValidationError: if there is a database error while
+            creating a new regulator instance
+        :raises serializers.ValidationError: if there is a value error while
+            creating a new regulator instance
         """
         # if `regulator` is not in the request data, then check that
         # regulator_locus_tag or regulator_symbol, but not both,
