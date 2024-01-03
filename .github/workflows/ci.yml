@@ -40,6 +40,9 @@ jobs:
     steps:
       - name: Checkout Code Repository
         uses: actions/checkout@v4
+      
+      - name: echo hash
+        run: echo "${{ secrets.ENVS_FILE_HASH }}"
 
       - name: Verify secret
         run: echo -n "${{ secrets.ENVS_FILE }}" | sha256sum --check --status <(echo "${{ secrets.ENVS_FILE_HASH }}  -")
