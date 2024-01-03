@@ -45,7 +45,7 @@ jobs:
         run: |
           echo "${{ secrets.ENVS_FILE }}" | base64 -d > envs.tar.gz
           file envs.tar.gz
-          tar -tzvf envs.tar.gz
+          tar -xzvf envs.tar.gz
 
       - name: Build the Stack
         run: docker compose -f local.yml build
