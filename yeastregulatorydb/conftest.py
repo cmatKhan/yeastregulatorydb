@@ -66,9 +66,8 @@ def callingcardsbackground(db) -> CallingCardsBackground:
     return CallingCardsBackgroundFactory()
 
 
-@pytest.fixture
-def chrmap(db, user: User) -> QuerySet:
-    data = [
+def chrmap_data() -> dict:
+    return [
         {
             "id": 1,
             "refseq": "NC_001133.9",
@@ -130,6 +129,11 @@ def chrmap(db, user: User) -> QuerySet:
             "type": "plasmid",
         },
     ]
+
+
+@pytest.fixture
+def chrmap(db, user: User) -> QuerySet:
+    data = chrmap_data()
     for record in data:
         record["uploader"] = user
         record["modifier"] = user
@@ -152,10 +156,9 @@ def datasource(db) -> DataSource:
     return DataSourceFactory()
 
 
-@pytest.fixture
-def fileformat(db) -> QuerySet:
+def fileformat_data() -> dict:
     # harb, hu both csvs
-    format_dict = {
+    return {
         "array": ({"gene_id": "int", "effect": "float", "pval": "float"}, ",", "effect", 0.0, "pval", 1.0, "none"),
         "qbed": (
             {"chr": "str", "start": "int", "end": "int", "depth": "int", "strand": "str"},
@@ -279,6 +282,11 @@ def fileformat(db) -> QuerySet:
             "feature",
         ),
     }
+
+
+@pytest.fixture
+def fileformat(db) -> QuerySet:
+    format_dict = fileformat_data()
     for key, value in format_dict.items():
         fields, separator, effect, effect_thres, pval, pval_thres, feature_identifier_col = value
         FileFormatFactory.create(
@@ -382,7 +390,7 @@ def genomicfeature(db) -> GenomicFeature:
 
 @pytest.fixture
 def genomicfeature_chr1_genes(db, chrmap: QuerySet, user: User) -> QuerySet:
-    chr1_genes_df = pd.read_csv(os.path.join(TEST_DATA_ROOT, "chr1_genes.csv.gz"), compression="gzip")
+    chr1_genes_df = pd.read_csv(os.path.join(TEST_DATA_ROOT, "genome/chr1_genes.csv.gz"), compression="gzip")
     chr1_genes_dict = chr1_genes_df.to_dict(orient="records")
     for record in chr1_genes_dict:
         record["chr"] = chrmap.first()
@@ -406,7 +414,7 @@ def promotersetsig(db) -> PromoterSetSig:
 @pytest.fixture
 def regulator(db) -> Regulator:
     hap5_genomic_feature = GenomicFeatureFactory(locus_tag="YOR358W", symbol="HAP5")
-    return RegulatorFactory(id=1, regulator=hap5_genomic_feature)
+    return RegulatorFactory(id=1, genomicfeature=hap5_genomic_feature)
 
 
 @pytest.fixture
@@ -415,3 +423,25 @@ def rankresponse(db, regulator: Regulator) -> QuerySet:
     expression = ExpressionFactory(regulator=regulator)
     promotersetsig = PromoterSetSigFactory(binding=binding)
     return RankResponseFactory(promotersetsig=promotersetsig, expression=expression)
+
+
+@pytest.fixture
+def test_data_dict() -> dict:
+    root = os.path.join(os.path.dirname(__file__), "regulatory_data/tests/test_data")
+    file_dict = {}
+    for dirpath, dirnames, filenames in os.walk(root):
+        for filename in filenames:
+            path = os.path.join(dirpath, filename)
+            relative_dir = os.path.relpath(dirpath, root)
+            dir_components = relative_dir.split(os.sep)
+
+            # Create nested dictionaries for each directory component
+            current_dict = file_dict
+            for component in dir_components:
+                if component not in current_dict:
+                    current_dict[component] = {}
+                current_dict = current_dict[component]
+
+            # Add the file to the innermost dictionary
+            current_dict.setdefault("files", []).append(path)
+    return file_dict

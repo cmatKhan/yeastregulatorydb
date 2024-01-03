@@ -12,8 +12,9 @@ from yeastregulatorydb.regulatory_data.api.serializers import (
     PromoterSetSerializer,
     PromoterSetSigSerializer,
 )
-from yeastregulatorydb.regulatory_data.models import DataSource, PromoterSet, Regulator
+from yeastregulatorydb.regulatory_data.models import DataSource, PromoterSet, PromoterSetSig, RankResponse, Regulator
 from yeastregulatorydb.regulatory_data.tasks import promoter_significance_task, rank_response_task
+from yeastregulatorydb.regulatory_data.tasks.chained_tasks import promotersetsig_rankedresponse_chained
 from yeastregulatorydb.regulatory_data.tests.factories import (
     BindingFactory,
     BindingManualQCFactory,
@@ -29,7 +30,13 @@ pytestmark = pytest.mark.django_db
 
 @pytest.mark.djanbo_db
 def test_promoter_significance_task(
-    settings, chrmap: QuerySet, fileformat: QuerySet, chipexo_datasource: DataSource, regulator: Regulator, user: User
+    settings,
+    chrmap: QuerySet,
+    fileformat: QuerySet,
+    chipexo_datasource: DataSource,
+    regulator: Regulator,
+    user: User,
+    test_data_dict: dict,
 ):
     """test promoter_significance_task task"""
     # Create a request object and set the user
@@ -37,8 +44,9 @@ def test_promoter_significance_task(
     request = factory.get("/")
     request.user = user
 
-    # create the promoter set record
-    promoterset_path = os.path.join(os.path.dirname(__file__), "test_data", "yiming_promoters_chrI.bed.gz")
+    # set path to test data and check that it exists
+    promoterset_path = test_data_dict["promoters"]["files"][1]
+    assert os.path.basename(promoterset_path) == "yiming_promoters_chrI.bed.gz"
     assert os.path.exists(promoterset_path), f"path: {promoterset_path}"
 
     # Open the file and read its content
@@ -84,6 +92,7 @@ def test_rank_response_task(
     regulator: Regulator,
     chipexo_datasource: DataSource,
     mcisaac_datasource: DataSource,
+    test_data_dict: dict,
 ):
     """test promoter_significance_task task"""
     # Create a request object and set the user
@@ -92,14 +101,12 @@ def test_rank_response_task(
     request.user = user
 
     # create the promoter set record
-    promotersetsig_path = os.path.join(
-        os.path.dirname(__file__), "test_data", "binding/chipexo/28366_yiming_promoter_sig.csv.gz"
-    )
+    promotersetsig_path = test_data_dict["binding"]["chipexo"]["files"][1]
+    assert os.path.basename(promotersetsig_path) == "28366_yiming_promoter_sig.csv.gz"
     assert os.path.exists(promotersetsig_path), f"path: {promotersetsig_path}"
 
-    expression_path = os.path.join(
-        os.path.dirname(__file__), "test_data", "expression/mcisaac/hap5_15min_mcisaac_chr1.csv.gz"
-    )
+    expression_path = test_data_dict["expression"]["mcisaac"]["files"][0]
+    assert os.path.basename(expression_path) == "hap5_15min_mcisaac_chr1.csv.gz"
     assert os.path.exists(expression_path), f"path: {expression_path}"
 
     binding_record = BindingFactory.create(source=chipexo_datasource, regulator=regulator)
@@ -141,3 +148,75 @@ def test_rank_response_task(
     task_result = rank_response_task.delay(promotersetsig_instance.id, request.user.id)
     assert isinstance(task_result, EagerResult)
     assert isinstance(task_result.result, list)
+
+
+def test_promotersetsig_rankedresponse_chained(
+    settings,
+    chrmap: QuerySet,
+    fileformat: QuerySet,
+    chipexo_datasource: DataSource,
+    regulator: Regulator,
+    user: User,
+    test_data_dict: dict,
+    mcisaac_datasource: DataSource,
+):
+    """test promotersetsig_rankedresponse_chained task"""
+    # Create a request object and set the user
+    factory = APIRequestFactory()
+    request = factory.get("/")
+    request.user = user
+
+    # set path to test data and check that it exists
+    promoterset_path = test_data_dict["promoters"]["files"][1]
+    assert os.path.basename(promoterset_path) == "yiming_promoters_chrI.bed.gz"
+    assert os.path.exists(promoterset_path), f"path: {promoterset_path}"
+
+    expression_path = test_data_dict["expression"]["mcisaac"]["files"][0]
+    assert os.path.basename(expression_path) == "hap5_15min_mcisaac_chr1.csv.gz"
+    assert os.path.exists(expression_path), f"path: {expression_path}"
+
+    # Open the file and read its content
+    with open(promoterset_path, "rb") as file_obj:
+        file_content = file_obj.read()
+        # Create a SimpleUploadedFile instance
+        upload_file = SimpleUploadedFile("yiming_promoters_chrI.bed.gz", file_content, content_type="application/gzip")
+        data = model_to_dict_select(PromoterSetFactory.build(name="yiming", file=upload_file))
+        serializer = PromoterSetSerializer(data=data, context={"request": request})
+        assert serializer.is_valid() is True, serializer.errors
+        serializer.save()
+
+    # create the chipexo Binding record
+    file_path = os.path.join(os.path.dirname(__file__), "test_data", "binding/chipexo/28366_chrI.csv.gz")
+    assert os.path.exists(file_path), f"path: {file_path}"
+
+    # Open the file and read its content
+    with open(file_path, "rb") as file_obj:
+        file_content = file_obj.read()
+        # Create a SimpleUploadedFile instance
+        upload_file = SimpleUploadedFile("28366_chrI.csv.gz", file_content, content_type="application/gzip")
+        data = model_to_dict_select(
+            BindingFactory.build(source=chipexo_datasource, regulator=regulator, file=upload_file)
+        )
+        serializer = BindingSerializer(data=data, context={"request": request})
+        assert serializer.is_valid() is True, serializer.errors
+        instance = serializer.save()
+
+    # Open the file and read its content
+    with open(expression_path, "rb") as file_obj:
+        file_content = file_obj.read()
+        # Create a SimpleUploadedFile instance
+        upload_file = SimpleUploadedFile("28366_chrI.csv.gz", file_content, content_type="application/gzip")
+        data = model_to_dict_select(
+            ExpressionFactory.build(source=mcisaac_datasource, regulator=instance.regulator, file=upload_file)
+        )
+        expression_serializer = ExpressionSerializer(data=data, context={"request": request})
+        assert expression_serializer.is_valid() is True, serializer.errors
+        expression_serializer.save()
+
+    settings.CELERY_TASK_ALWAYS_EAGER = True
+    task_result = promotersetsig_rankedresponse_chained(
+        instance.id, request.user.id, settings.CHIPEXO_PROMOTER_SIG_FORMAT
+    )
+    task_result.get()
+    assert PromoterSetSig.objects.count() == 1
+    assert RankResponse.objects.count() == 1

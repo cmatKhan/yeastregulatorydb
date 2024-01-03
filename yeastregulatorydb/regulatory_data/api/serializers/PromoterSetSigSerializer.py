@@ -15,3 +15,9 @@ class PromoterSetSigSerializer(CustomValidateMixin, FileValidationMixin, seriali
 
     def get_background_id(self, obj):
         return obj.background.id if obj.background else "undefined"
+
+    def to_representation(self, instance):
+        ret = super().to_representation(instance)
+        # Add the custom attribute to the serialized data
+        ret["rankresponse_processing"] = getattr(instance, "rankresponse_processing", False)
+        return ret

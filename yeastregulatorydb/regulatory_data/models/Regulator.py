@@ -28,10 +28,10 @@ class RegulatorManager(models.Manager):
                 "regulator",
             )
             .annotate(
-                regulator_locus_tag=models.F("regulator__locus_tag"),
-                regulator_gene=models.F("regulator__symbol"),
+                regulator_locus_tag=models.F("genomicfeature__locus_tag"),
+                regulator_gene=models.F("genomicfeature__symbol"),
             )
-            .values("regulator", "regulator_locus_tag", "regulator_gene")
+            .values("id", "regulator_locus_tag", "regulator_gene")
         )
 
 
@@ -62,7 +62,7 @@ class Regulator(BaseModel):
 
     objects = RegulatorManager()
 
-    regulator = models.ForeignKey(
+    genomicfeature = models.ForeignKey(
         "GenomicFeature", models.PROTECT, db_index=True, help_text="foreign key to the `id` field of GenomicFeature"
     )
     under_development = models.BooleanField(
@@ -73,7 +73,7 @@ class Regulator(BaseModel):
     )
 
     def __str__(self):
-        return str(self.regulator) + "_" + str(self.pk)
+        return str(self.genomicfeature) + "_" + str(self.pk)
 
     class Meta:
         managed = True

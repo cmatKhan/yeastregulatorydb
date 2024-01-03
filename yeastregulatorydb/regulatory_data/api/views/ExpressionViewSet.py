@@ -5,14 +5,13 @@ from rest_framework.authentication import SessionAuthentication, TokenAuthentica
 from rest_framework.permissions import IsAuthenticated
 
 from ...models import Expression, PromoterSetSig
-from ...tasks import rank_response_task
+from ...tasks import rank_response_tasks
 from ..filters import ExpressionFilter
 from ..serializers import ExpressionSerializer
-from .mixins.BulkUploadMixin import BulkUploadMixin
-from .mixins.UpdateModifiedMixin import UpdateModifiedMixin
+from .mixins import BulkUploadMixin, UpdateModifiedMixin
 
 
-class ExpressionViewSet(UpdateModifiedMixin, viewsets.ModelViewSet, BulkUploadMixin):
+class ExpressionViewSet(BulkUploadMixin, UpdateModifiedMixin, viewsets.ModelViewSet):
     """
     A viewset for viewing and editing Expression instances.
     """
@@ -26,9 +25,6 @@ class ExpressionViewSet(UpdateModifiedMixin, viewsets.ModelViewSet, BulkUploadMi
 
     def perform_create(self, serializer):
         instance = serializer.save()
-        promotersetsig_id_list = PromoterSetSig.objects.filter(
-            binding__regulator__id=instance.regulator.id
-        ).values_list("id", flat=True)
 
         # Create a chain of tasks for each promotersetsig_id
         lock_id = "add_data_lock"
@@ -36,9 +32,17 @@ class ExpressionViewSet(UpdateModifiedMixin, viewsets.ModelViewSet, BulkUploadMi
         release_lock = lambda: cache.delete(lock_id)  # flake8: noqa: E731
 
         if acquire_lock():
+            # set this attribute to be returend by the to_ret() method of the
+            # serializer
+            instance.promotersetsig_processing = True
+
+            promotersetsig_id_list = list(
+                PromoterSetSig.objects.filter(binding__regulator__id=instance.regulator.id).values_list(
+                    "id", flat=True
+                )
+            )
+
             try:
-                # Create a chain of tasks
-                for promotersetsig_id in promotersetsig_id_list:
-                    rank_response_task.apply_async(args=[promotersetsig_id, self.request.user.id])
+                rank_response_tasks.delay(promotersetsig_id_list, self.request.user.id, expression_id=instance.id)
             finally:
                 release_lock()

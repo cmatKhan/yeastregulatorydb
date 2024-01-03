@@ -19,6 +19,16 @@ logger = logging.getLogger(__name__)
 
 @celery_app.task()
 def rank_response_tasks(promotersetsig_ids: list, user_id: int, **kwargs) -> None:
+    """
+    Iterate over a list of PromoterSetSig object ids and call the
+    rank_response_task. The kwargs are passed to the rank_response_task
+
+    :param promotersetsig_ids: A list of promotersetsig object ids
+    :type promotersetsig_ids: list
+    :param user_id: the id of the user that initiated the task
+    :type user_id: int
+    :param kwargs: keyword arguments to be passed to the rank_response_task
+    """
     for promotersetsig_id in promotersetsig_ids:
         rank_response_task.delay(promotersetsig_id, user_id, **kwargs)
 

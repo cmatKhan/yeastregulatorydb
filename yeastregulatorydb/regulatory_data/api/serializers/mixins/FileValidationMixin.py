@@ -54,7 +54,7 @@ class FileValidationMixin:
         # read in the file with pandas. raise a validationerror if it fails
         if self.instance:  # type: ignore[attr-defined]
             separator = self.instance.fileformat.separator  # type: ignore[attr-defined]
-            fields = self.instance.fileformat.fields  # type: ignore[attr-defined]
+            fields = FileFormatSerializer(attrs.get("fileformat")).fields_as_types  # type: ignore[attr-defined]
         else:
             if "fileformat" in attrs.keys():
                 try:
@@ -62,7 +62,7 @@ class FileValidationMixin:
                     # extract with the serializer in order to translate the json string
                     # to a python dict with the correct types in the values
                     fileformat_serializer = FileFormatSerializer(attrs.get("fileformat"))
-                    fields = fileformat_serializer.data.get("fields", AttributeError)
+                    fields = fileformat_serializer.fields_as_types
                 except AttributeError:
                     separator, fields = handle_missing_fileformat()
             elif "source" in attrs.keys():
@@ -71,7 +71,7 @@ class FileValidationMixin:
                     # extract with the serializer in order to translate the json string
                     # to a python dict with the correct types in the values
                     fileformat_serializer = FileFormatSerializer(attrs.get("source").fileformat)
-                    fields = fileformat_serializer.data.get("fields", AttributeError)
+                    fields = fileformat_serializer.fields_as_types
                 except AttributeError:
                     separator, fields = handle_missing_fileformat()
             else:

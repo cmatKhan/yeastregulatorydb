@@ -12,10 +12,10 @@ class PromoterSetSigFilter(django_filters.FilterSet):
     background = django_filters.NumberFilter()
     background_name = django_filters.CharFilter(field_name="background_id__name", lookup_expr="iexact")
     regulator_locus_tag = django_filters.CharFilter(
-        field_name="binding__regulator__regulator__locus_tag", lookup_expr="iexact"
+        field_name="binding__regulator__genomicfeature__locus_tag", lookup_expr="iexact"
     )
     regulator_symbol = django_filters.CharFilter(
-        field_name="binding__regulator__regulator__symbol", lookup_expr="iexact"
+        field_name="binding__regulator__genomicfeature__symbol", lookup_expr="iexact"
     )
     batch = django_filters.CharFilter(field_name="binding__batch", lookup_expr="iexact")
     replicate = django_filters.NumberFilter(field_name="binding__replicate")

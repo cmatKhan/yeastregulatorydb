@@ -1,4 +1,3 @@
-# pylint: disable=unused-import
 from django.contrib import admin
 
 # Register your models here.
@@ -14,18 +13,20 @@ from .models import (
     GenomicFeature,
     PromoterSet,
     PromoterSetSig,
+    RankResponse,
     Regulator,
 )
 
-admin.register(Binding)
-admin.register(BindingManualQC)
-admin.register(DataSource)
-admin.register(CallingCardsBackground)
-admin.register(ChrMap)
-admin.register(Expression)
-admin.register(ExpressionManualQC)
-admin.register(FileFormat)
-admin.register(GenomicFeature)
-admin.register(PromoterSet)
-admin.register(PromoterSetSig)
-admin.register(Regulator)
+admin.site.register(Binding)
+admin.site.register(BindingManualQC)
+admin.site.register(DataSource)
+admin.site.register(CallingCardsBackground)
+admin.site.register(ChrMap)
+admin.site.register(Expression)
+admin.site.register(ExpressionManualQC)
+admin.site.register(FileFormat)
+admin.site.register(GenomicFeature)
+admin.site.register(PromoterSet)
+admin.site.register(PromoterSetSig)
+admin.site.register(RankResponse)
+admin.site.register(Regulator)

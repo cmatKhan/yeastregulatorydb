@@ -84,6 +84,10 @@ def test_BindingSerializerChipExo(user: User, chrmap: QuerySet, regulator: Regul
 
         fields_dict = {"file": uploaded_file, "regulator": regulator, "source": chipexo_datasource}
         data = model_to_dict_select(BindingFactory.build(**fields_dict))
+        del data["regulator"]
+        data["regulator_locus_tag"] = regulator.genomicfeature.locus_tag
+        del data["source"]
+        data["source_name"] = chipexo_datasource.name
 
         serializer1 = BindingSerializer(data=data, context={"request": request})
 
@@ -285,7 +289,7 @@ def test_genomic_feature_serializer(user: User):
 
 
 @pytest.mark.django_db
-def test_promoterset_serializer(tmpdir, user: User, chrmap: QuerySet):
+def test_promoterset_serializer(tmpdir, user: User, chrmap: QuerySet, test_data_dict: dict):
     # Create a request instance
     factory = APIRequestFactory()
     request = factory.get("/")
@@ -293,7 +297,8 @@ def test_promoterset_serializer(tmpdir, user: User, chrmap: QuerySet):
     request.user = user
 
     # set path to test data and check that it exists
-    file_path = os.path.join(os.path.dirname(__file__), "test_data", "yiming_promoters_chrI.bed.gz")
+    file_path = test_data_dict["promoters"]["files"][1]
+    assert os.path.basename(file_path) == "yiming_promoters_chrI.bed.gz"
     assert os.path.exists(file_path), f"path: {file_path}"
 
     # Open the file and read its content

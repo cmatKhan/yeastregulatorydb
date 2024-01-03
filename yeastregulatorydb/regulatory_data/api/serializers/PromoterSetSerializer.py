@@ -12,3 +12,9 @@ class PromoterSetSerializer(CustomValidateMixin, FileValidationMixin, serializer
     class Meta:
         model = PromoterSet
         fields = "__all__"
+
+    def to_representation(self, instance):
+        ret = super().to_representation(instance)
+        # Add the custom attribute to the serialized data
+        ret["promotersetsig_processing"] = getattr(instance, "promotersetsig_processing", False)
+        return ret

@@ -64,8 +64,8 @@ def test_binding_filter():
     filter_params = [
         {"id": 1},
         {"regulator": regulator1.id},
-        {"regulator_locus_tag": regulator1.regulator.locus_tag},
-        {"regulator_symbol": regulator1.regulator.symbol},
+        {"regulator_locus_tag": regulator1.genomicfeature.locus_tag},
+        {"regulator_symbol": regulator1.genomicfeature.symbol},
         {"batch": "batch1"},
         {"replicate": 1},
         {"source": source1.id},
@@ -79,8 +79,8 @@ def test_binding_filter():
     # Apply each filter and check if it returns the expected bindings
     for params in filter_params:
         f = BindingFilter(params, queryset=Binding.objects.all())
-        assert binding1 in f.qs
-        assert binding2 not in f.qs
+        assert binding1 in f.qs, params
+        assert binding2 not in f.qs, params
 
 
 @pytest.mark.django_db
@@ -95,16 +95,14 @@ def test_binding_manual_qc_filter():
     binding_manual_qc1 = BindingManualQCFactory(
         binding=binding1,
         id=1,
-        rank_response_pass=True,
-        best_response_pass=True,
+        best_datatype=True,
         data_usable=True,
         passing_replicate=True,
     )
     binding_manual_qc2 = BindingManualQCFactory(
         binding=binding2,
         id=2,
-        rank_response_pass=False,
-        best_response_pass=False,
+        best_datatype=False,
         data_usable=False,
         passing_replicate=False,
     )
@@ -114,8 +112,7 @@ def test_binding_manual_qc_filter():
         {"id": 1},
         {"pk": 1},
         {"binding": binding1.id},
-        {"rank_response_pass": True},
-        {"best_response_pass": True},
+        {"best_datatype": True},
         {"data_usable": True},
         {"passing_replicate": True},
     ]
@@ -233,8 +230,8 @@ def test_expression_filter():
         {"id": 1},
         {"pk": 1},
         {"regulator": regulator1.id},
-        {"regulator_locus_tag": regulator1.regulator.locus_tag},
-        {"regulator_symbol": regulator1.regulator.symbol},
+        {"regulator_locus_tag": regulator1.genomicfeature.locus_tag},
+        {"regulator_symbol": regulator1.genomicfeature.symbol},
         {"batch": "batch1"},
         {"replicate": 1},
         {"control": "undefined"},
@@ -292,8 +289,8 @@ def test_expression_manual_qc_filter():
         {"pk": 1},
         {"expression": expression1.id},
         {"strain_verified": manual_qc1.strain_verified},
-        {"regulator_locus_tag": regulator1.regulator.locus_tag},
-        {"regulator_symbol": regulator1.regulator.symbol},
+        {"regulator_locus_tag": regulator1.genomicfeature.locus_tag},
+        {"regulator_symbol": regulator1.genomicfeature.symbol},
         {"batch": expression1.batch},
         {"replicate": expression1.replicate},
         {"control": expression1.control},
@@ -425,8 +422,8 @@ def test_promoter_set_sig_filter():
         {"promoter_name": "promoter1"},
         {"background": background1.id},
         {"background_name": background1.name},
-        {"regulator_locus_tag": regulator1.regulator.locus_tag},
-        {"regulator_symbol": regulator1.regulator.symbol},
+        {"regulator_locus_tag": regulator1.genomicfeature.locus_tag},
+        {"regulator_symbol": regulator1.genomicfeature.symbol},
         {"batch": "batch1"},
         {"replicate": 1},
         {"source": datasource1.id},
@@ -447,8 +444,8 @@ def test_rankresponse_filter():
     # Create some RankResponse instances using the factory
     genomicfeature1 = GenomicFeatureFactory(locus_tag="tag1", symbol="symbol1")
     genomicfeature2 = GenomicFeatureFactory(locus_tag="tag2", symbol="symbol2")
-    regulator1 = RegulatorFactory(regulator=genomicfeature1)
-    regulator2 = RegulatorFactory(regulator=genomicfeature2)
+    regulator1 = RegulatorFactory(genomicfeature=genomicfeature1)
+    regulator2 = RegulatorFactory(genomicfeature=genomicfeature2)
     binding1 = BindingFactory(regulator=regulator1)
     binding2 = BindingFactory(regulator=regulator2)
     promotersetsig1 = PromoterSetSigFactory(binding=binding1)
@@ -470,8 +467,8 @@ def test_rankresponse_filter():
     # Define the filter parameters and their expected values
     filter_params = [
         {"id": 1},
-        {"regulator_locus_tag": promotersetsig1.binding.regulator.regulator.locus_tag},
-        {"regulator_symbol": promotersetsig1.binding.regulator.regulator.symbol},
+        {"regulator_locus_tag": promotersetsig1.binding.regulator.genomicfeature.locus_tag},
+        {"regulator_symbol": promotersetsig1.binding.regulator.genomicfeature.symbol},
         {"binding_source": promotersetsig1.binding.source.name},
         {"expression_source": expression1.source.name},
     ]
@@ -487,10 +484,10 @@ def test_rankresponse_filter():
 def test_regulator_filter():
     # Create some Regulator instances using the factory
     regulator1 = RegulatorFactory(
-        id=1, regulator__locus_tag="tag1", regulator__symbol="symbol1", under_development=True
+        id=1, genomicfeature__locus_tag="tag1", genomicfeature__symbol="symbol1", under_development=True
     )
     regulator2 = RegulatorFactory(
-        id=2, regulator__locus_tag="tag2", regulator__symbol="symbol2", under_development=False
+        id=2, genomicfeature__locus_tag="tag2", genomicfeature__symbol="symbol2", under_development=False
     )
 
     # Define the filter parameters and their expected values

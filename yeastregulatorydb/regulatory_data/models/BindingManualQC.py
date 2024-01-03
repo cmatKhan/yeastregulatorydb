@@ -13,12 +13,7 @@ class BindingManualQC(BaseModel):
     """
 
     binding = models.OneToOneField("Binding", on_delete=models.CASCADE, help_text="Foreign key to the Binding table")
-    rank_response_pass = models.BooleanField(
-        default=True,
-        help_text="True if at least one bin in the top 100 genes with a binding "
-        "signal is statistically significantly greater than random",
-    )
-    best_response_pass = models.BooleanField(
+    best_datatype = models.BooleanField(
         default=True,
         help_text="True if the only binding data that performs better is from "
         "the same binding source. Otherwise, False",

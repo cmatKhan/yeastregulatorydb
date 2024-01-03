@@ -348,5 +348,5 @@ CHIPEXO_PROMOTER_SIG_FORMAT = env(
 )
 CALLINGCARDS_PROMOTER_SIG_FORMAT = env(
     "CALLING_CARD_PROMOTER_SIG_FORMAT",
-    default="callingcards_promoter_sig",
+    default="cc_promoter_sig",
 )

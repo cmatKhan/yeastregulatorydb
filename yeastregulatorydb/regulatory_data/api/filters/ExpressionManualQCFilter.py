@@ -9,10 +9,10 @@ class ExpressionManualQCFilter(django_filters.FilterSet):
     expression = django_filters.NumberFilter()
     strain_verified = django_filters.ChoiceFilter(choices=[("yes", "yes"), ("no", "no"), ("unverified", "unverified")])
     regulator_locus_tag = django_filters.CharFilter(
-        field_name="expression__regulator__regulator__locus_tag", lookup_expr="iexact"
+        field_name="expression__regulator__genomicfeature__locus_tag", lookup_expr="iexact"
     )
     regulator_symbol = django_filters.CharFilter(
-        field_name="expression__regulator__regulator__symbol", lookup_expr="iexact"
+        field_name="expression__regulator__genomicfeature__symbol", lookup_expr="iexact"
     )
     batch = django_filters.CharFilter(field_name="expression__batch", lookup_expr="iexact")
     replicate = django_filters.NumberFilter(field_name="expression__replicate")

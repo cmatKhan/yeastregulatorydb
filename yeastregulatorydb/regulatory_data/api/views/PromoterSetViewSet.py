@@ -1,4 +1,4 @@
-from celery import chain
+from django.conf import settings
 from django.core.cache import cache
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import viewsets
@@ -6,7 +6,7 @@ from rest_framework.authentication import SessionAuthentication, TokenAuthentica
 from rest_framework.permissions import IsAuthenticated
 
 from ...models import Binding, PromoterSet
-from ...tasks import promoter_significance_task, rank_response_tasks
+from ...tasks import promotersetsig_rankedresponse_chained
 from ..filters.PromoterSetFilter import PromoterSetFilter
 from ..serializers.PromoterSetSerializer import PromoterSetSerializer
 from .mixins.UpdateModifiedMixin import UpdateModifiedMixin
@@ -28,6 +28,7 @@ class PromoterSetViewSet(UpdateModifiedMixin, viewsets.ModelViewSet):
 def perform_create(self, serializer):
     instance = serializer.save()
 
+    instance.promotersetsig_processing = False
     lock_id = "add_data_lock"
     acquire_lock = lambda: cache.add(lock_id, True, timeout=60 * 60)
     release_lock = lambda: cache.delete(lock_id)
@@ -35,11 +36,18 @@ def perform_create(self, serializer):
     if acquire_lock():
         try:
             for binding_obj in Binding.objects.all():
-                # Call promoter_significance_task and then rank_response_tasks
-                task = chain(
-                    promoter_significance_task.s(binding_obj.id, self.request.user.id, instance.id),
-                    rank_response_tasks.s(user_id=self.request.user.id),
-                )
-                task.apply_async()
+                # TODO there is repeated code here and in BindingViewSet
+                task_type = None
+                if binding_obj.source.assay == "chipexo":
+                    if binding_obj.source.name == "chipexo_pugh_allevents":
+                        task_type = settings.CHIPEXO_PROMOTER_SIG_FORMAT
+                elif binding_obj.source.assay == "callingcards":
+                    task_type = settings.CALLINGCARDS_PROMOTER_SIG_FORMAT
+
+                if task_type:
+                    instance.promotersetsig_processing = True
+                    promotersetsig_rankedresponse_chained(
+                        binding_obj.id, self.request.user.id, task_type, promoterset_id=instance.id
+                    )
         finally:
             release_lock()

@@ -26,7 +26,12 @@ logger = logging.getLogger(__name__)
 def promoter_significance_task(binding_id: int, user_id: int, output_fileformat: str, **kwargs) -> list:
     """For each promoter set in PromoterSet, create the chipexo promoter significance file.
     Return a list of PromoterSetSig objects that may be passed on to the rank response
-    endpoint.
+    endpoint. NOTE that this task expects the following global variables to
+    be set in the django settings:
+    - CHR_FORMAT: The chromosome format to use for the input and output files
+    - CHIPEXO_PROMOTER_SIG_FORMAT: The name of the chipexo promoter
+      significance (this is expected to be for the yeastepigenome.org data currently)
+    - CALLINGCARDS_PROMOTER_SIG_FORMAT: The name of the callingcards promoter significance
 
     :param binding_id: The Binding record for the chipexo_pugh_allevents data
     :type binding_id: Binding
@@ -37,7 +42,7 @@ def promoter_significance_task(binding_id: int, user_id: int, output_fileformat:
     :param kwargs: Additional keyword arguments. If `promoterset_id` is passed,
     then the significance will be calculated only that specific promoterset.
     Else, it is calculated over all promoter sets in the PromoterSet table.
-    If the output_fileformat is callingcards_promoter_sig and `background_id`
+    If the output_fileformat is cc_promoter_sig and `background_id`
     is passed in kwargs, then the promoter significance will be calculated
     that specific background set only. Else, significance will be calculated
     for all background sets

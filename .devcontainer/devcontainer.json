@@ -68,7 +68,8 @@
                 "batisteo.vscode-django",
                 "GitHub.copilot",
                 "ms-azuretools.vscode-docker",
-                "github.vscode-github-actions"
+                "github.vscode-github-actions",
+                "mechatroner.rainbow-csv"
             ]
         }
     },

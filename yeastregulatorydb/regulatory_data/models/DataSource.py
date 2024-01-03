@@ -38,14 +38,14 @@ class DataSource(BaseModel):
         max_length=50, default="undefined", help_text="The workflow used to generate the data, including version"
     )
     description = models.CharField(
-        max_length=100,
+        max_length=400,
         default="none",
         help_text="A description of the data. include a URL to github "
         "repo with scripts describing how the data was parsed",
     )
-    citation = models.CharField(max_length=200, default="ask_admin", help_text="citation for the data")
+    citation = models.CharField(max_length=400, default="ask_admin", help_text="citation for the data")
     notes = models.CharField(
-        max_length=100, default="none", help_text="Any additional notes about the source of the binding data"
+        max_length=200, default="none", help_text="Any additional notes about the source of the binding data"
     )
 
     def __str__(self):

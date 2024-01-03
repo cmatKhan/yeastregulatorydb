@@ -70,13 +70,13 @@ class GenomicFeatureFactory(DjangoModelFactory):
 class RegulatorFactory(DjangoModelFactory):
     uploader = SubFactory(UserFactory)
     modifier = SubFactory(UserFactory)
-    regulator = SubFactory(GenomicFeatureFactory)
+    genomicfeature = SubFactory(GenomicFeatureFactory)
     under_development = Faker("pybool")
     notes = Faker("pystr", max_chars=50)
 
     class Meta:
         model = Regulator
-        django_get_or_create = ["regulator"]
+        django_get_or_create = ["genomicfeature"]
 
 
 class FileFormatFactory(DjangoModelFactory):
@@ -186,8 +186,7 @@ class BindingManualQCFactory(DjangoModelFactory):
     uploader = SubFactory(UserFactory)
     modifier = SubFactory(UserFactory)
     binding = SubFactory(BindingFactory)
-    rank_response_pass = Faker("pybool")
-    best_response_pass = Faker("pybool")
+    best_datatype = Faker("pybool")
     data_usable = Faker("pybool")
     passing_replicate = Faker("pybool")
     notes = Faker("pystr", max_chars=100)

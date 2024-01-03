@@ -12,6 +12,7 @@ Welcome to YeastRegulatoryDB's documentation!
 
    howto
    users
+   api/yeastregulatorydb.regulatory_data.models
 
 
 

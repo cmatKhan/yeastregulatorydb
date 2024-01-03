@@ -44,9 +44,9 @@ class FileFormatSerializer(CustomValidateMixin, serializers.ModelSerializer):
                 )
         return value
 
-    def to_representation(self, instance):
-        out = super().to_representation(instance)
-        fields_dict = out["fields"]
+    @property
+    def fields_as_types(self):
+        fields_dict = self.to_representation(self.instance)["fields"]
         for key, value in fields_dict.items():
             if value == "str":
                 fields_dict[key] = str
@@ -54,5 +54,17 @@ class FileFormatSerializer(CustomValidateMixin, serializers.ModelSerializer):
                 fields_dict[key] = int
             elif value == "float":
                 fields_dict[key] = float
-        out["fields"] = fields_dict
-        return out
+        return fields_dict
+
+    # def to_representation(self, instance):
+    #     out = super().to_representation(instance)
+    #     fields_dict = out["fields"]
+    #     for key, value in fields_dict.items():
+    #         if value == "str":
+    #             fields_dict[key] = str
+    #         elif value == "int":
+    #             fields_dict[key] = int
+    #         elif value == "float":
+    #             fields_dict[key] = float
+    #     out["fields"] = fields_dict
+    #     return out
