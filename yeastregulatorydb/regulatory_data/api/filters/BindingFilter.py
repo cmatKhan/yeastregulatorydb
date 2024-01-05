@@ -18,6 +18,7 @@ class BindingFilter(django_filters.FilterSet):
     source = django_filters.NumberFilter()
     source_orig_id = django_filters.CharFilter(lookup_expr="iexact")
     strain = django_filters.CharFilter(lookup_expr="iexact")
+    condition = django_filters.ChoiceFilter(choices=Binding.CONDITION_CHOICES)
     lab = django_filters.CharFilter(field_name="source__lab", lookup_expr="iexact")
     assay = django_filters.CharFilter(field_name="source__assay", lookup_expr="iexact")
     workflow = django_filters.CharFilter(field_name="source__workflow", lookup_expr="iexact")
@@ -34,6 +35,7 @@ class BindingFilter(django_filters.FilterSet):
             "batch",
             "replicate",
             "source",
+            "condition",
             "source_orig_id",
             "strain",
             "lab",

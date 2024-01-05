@@ -54,10 +54,24 @@ def test_binding_filter():
     source1 = DataSourceFactory()
     source2 = DataSourceFactory()
     binding1 = BindingFactory(
-        regulator=regulator1, id=1, batch="batch1", replicate=1, source=source1, source_orig_id="1", strain="strain1"
+        regulator=regulator1,
+        id=1,
+        batch="batch1",
+        replicate=1,
+        source=source1,
+        source_orig_id="1",
+        strain="strain1",
+        condition="unknown",
     )
     binding2 = BindingFactory(
-        regulator=regulator2, id=2, batch="batch2", replicate=2, source=source2, source_orig_id="2", strain="strain2"
+        regulator=regulator2,
+        id=2,
+        batch="batch2",
+        replicate=2,
+        source=source2,
+        source_orig_id="2",
+        strain="strain2",
+        condition="YPD",
     )
 
     # Define the filter parameters and their expected values
@@ -69,6 +83,7 @@ def test_binding_filter():
         {"batch": "batch1"},
         {"replicate": 1},
         {"source": source1.id},
+        {"condition": binding1.condition},
         {"source_orig_id": "1"},
         {"strain": "strain1"},
         {"lab": source1.lab},

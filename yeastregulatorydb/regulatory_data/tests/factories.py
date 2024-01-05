@@ -1,3 +1,5 @@
+import random
+
 import faker
 from factory import Faker, LazyFunction, SubFactory
 from factory.django import DjangoModelFactory, FileField
@@ -170,6 +172,7 @@ class BindingFactory(DjangoModelFactory):
     batch = Faker("pystr", max_chars=20)
     replicate = Faker("pyint")
     source = SubFactory(DataSourceFactory)
+    condition = LazyFunction(lambda: random.choice(Binding.CONDITION_CHOICES)[0])
     source_orig_id = Faker("pystr", max_chars=20)
     strain = Faker("pystr", max_chars=20)
     file = Faker("file_name")
