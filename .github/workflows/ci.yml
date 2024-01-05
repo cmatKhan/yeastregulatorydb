@@ -58,18 +58,14 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-buildx-
 
+      # Build the Stack using Docker Compose with Buildx
       - name: Build the Stack
-        uses: docker/build-push-action@v2
-        with:
-          context: .
-          file: ./local.yml
-          push: false
-          load: true
-          cache-from: type=local,src=/tmp/.buildx-cache
-          cache-to: type=local,dest=/tmp/.buildx-cache
+        run: |
+          docker buildx create --use
+          docker compose -f local.yml build --builder mybuilder --build-arg BUILDKIT_INLINE_CACHE=1 --cache-from type=local,src=/tmp/.buildx-cache --cache-to type=local,dest=/tmp/.buildx-cache,mode=max
 
-      - name: Build the Stack
-        run: docker compose -f local.yml build
+      #- name: Build the Stack
+      #  run: docker compose -f local.yml build
 
       - name: Run DB Migrations
         run: docker compose -f local.yml run --rm django python manage.py migrate
