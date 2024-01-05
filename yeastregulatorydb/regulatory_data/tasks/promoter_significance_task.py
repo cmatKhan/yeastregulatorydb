@@ -42,7 +42,7 @@ def promoter_significance_task(binding_id: int, user_id: int, output_fileformat:
     :param kwargs: Additional keyword arguments. If `promoterset_id` is passed,
     then the significance will be calculated only that specific promoterset.
     Else, it is calculated over all promoter sets in the PromoterSet table.
-    If the output_fileformat is cc_promoter_sig and `background_id`
+    If the output_fileformat is callingcards_promoter_sig and `background_id`
     is passed in kwargs, then the promoter significance will be calculated
     that specific background set only. Else, significance will be calculated
     for all background sets
@@ -126,7 +126,7 @@ def promoter_significance_task(binding_id: int, user_id: int, output_fileformat:
                         False,
                         settings.CHR_FORMAT,
                     )
-                    result_list.append(ResultObject(result, binding_record.id))
+                    result_list.append(ResultObject(result, background_record.id))
             else:
                 raise ValueError(f"FileFormat '{output_fileformat}' not supported")
 

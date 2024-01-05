@@ -1,14 +1,15 @@
 from django.conf import settings
 from django.core.cache import cache
+from django.db import transaction
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import viewsets
 from rest_framework.authentication import SessionAuthentication, TokenAuthentication
 from rest_framework.permissions import IsAuthenticated
 
 from ...models.Binding import Binding
-from ...tasks import promotersetsig_rankedresponse_chained
+from ...tasks import promotersetsig_rankedresponse_chained, rank_response_task
 from ..filters import BindingFilter
-from ..serializers.BindingSerializer import BindingSerializer
+from ..serializers import BindingSerializer, PromoterSetSigSerializer
 from .mixins import BulkUploadMixin, UpdateModifiedMixin
 
 
@@ -24,16 +25,47 @@ class BindingViewSet(BulkUploadMixin, UpdateModifiedMixin, viewsets.ModelViewSet
     filter_backends = [DjangoFilterBackend]
     filterset_class = BindingFilter
 
+    @transaction.atomic
     def perform_create(self, serializer):
         instance = serializer.save()
-        task_type = None
+
+        # if the source.name is in the settings NULL_BINDING_FILE_DATASOURCES,
+        # then the `file` needs to be added to the promotersetsig table
+        # with the FK to the binding instance
+        if instance.source.name in settings.NULL_BINDING_FILE_DATASOURCES:
+            promotersetsig_serializer = PromoterSetSigSerializer(
+                data={
+                    "binding": instance.id,
+                    "fileformat": instance.source.fileformat.id,
+                    "file": self.request.data.get("file"),
+                },
+                context={"request": self.request},
+            )
+            promotersetsig_serializer.is_valid(raise_exception=True)
+            promotersetsiginstance = promotersetsig_serializer.save()
+            # if the promotersetsiginstance was successfully saved, then try
+            # to launch a rankresponse task
+            lock_id = "add_data_lock"
+            acquire_lock = lambda: cache.add(lock_id, True, timeout=60 * 60)  # flake8: noqa: E731
+            release_lock = lambda: cache.delete(lock_id)  # flake8: noqa: E731
+
+            if acquire_lock():
+                instance.promotersetsig_processing = True
+                try:
+                    rank_response_task(promotersetsiginstance.id, self.request.user.id)
+                finally:
+                    release_lock()
+
+        # if the source.assay is recognized as one associated with a task,
+        # set the promotersetsig_processing attribute
+        promotersetsig_format = None
         if instance.source.assay == "chipexo":
             if instance.source.name == "chipexo_pugh_allevents":
-                task_type = settings.CHIPEXO_PROMOTER_SIG_FORMAT
+                promotersetsig_format = settings.CHIPEXO_PROMOTER_SIG_FORMAT
         elif instance.source.assay == "callingcards":
-            task_type = settings.CALLINGCARDS_PROMOTER_SIG_FORMAT
+            promotersetsig_format = settings.CALLINGCARDS_PROMOTER_SIG_FORMAT
 
-        if task_type:
+        if promotersetsig_format:
             # this attribute is added to the returned serialized data
             instance.promotersetsig_processing = True
             lock_id = "add_data_lock"
@@ -42,6 +74,6 @@ class BindingViewSet(BulkUploadMixin, UpdateModifiedMixin, viewsets.ModelViewSet
 
             if acquire_lock():
                 try:
-                    promotersetsig_rankedresponse_chained(instance.id, self.request.user.id, task_type)
+                    promotersetsig_rankedresponse_chained(instance.id, self.request.user.id, promotersetsig_format)
                 finally:
                     release_lock()

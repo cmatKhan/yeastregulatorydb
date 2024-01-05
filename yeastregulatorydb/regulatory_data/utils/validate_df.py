@@ -48,6 +48,6 @@ def validate_df(
                         f"Column {colname} is expected to be a str. It is not, and could not be cast to str. Fix it!"
                     )
             if not all(isinstance(x, expected_type_or_levels) for x in df[colname]):
-                raise ValueError(f"Column {colname} must be of type {expected_type_or_levels}")
+                raise ValueError(f"Column {colname} must be of type {str(expected_type_or_levels)}")
 
     return df

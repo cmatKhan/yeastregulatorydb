@@ -152,6 +152,7 @@ class CallingCardsBackgroundFactory(DjangoModelFactory):
     modifier = SubFactory(UserFactory)
     name = Faker("pystr", max_chars=10)
     file = FileField(filename="testfile.tsv.gz")
+    fileformat = SubFactory(FileFormatFactory)
     genomic_inserts = Faker("random_digit_not_null")
     mito_inserts = Faker("random_digit_not_null")
     plasmid_inserts = Faker("random_digit_not_null")

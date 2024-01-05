@@ -297,8 +297,11 @@ def test_promoterset_serializer(tmpdir, user: User, chrmap: QuerySet, test_data_
     request.user = user
 
     # set path to test data and check that it exists
-    file_path = test_data_dict["promoters"]["files"][1]
-    assert os.path.basename(file_path) == "yiming_promoters_chrI.bed.gz"
+    file_path = next(
+        file
+        for file in test_data_dict["promoters"]["files"]
+        if os.path.basename(file) == "yiming_promoters_chrI.bed.gz"
+    )
     assert os.path.exists(file_path), f"path: {file_path}"
 
     # Open the file and read its content

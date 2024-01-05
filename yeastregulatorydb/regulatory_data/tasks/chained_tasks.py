@@ -1,9 +1,12 @@
 from celery import chain
 
+from config import celery_app
+
 from .promoter_significance_task import promoter_significance_task
 from .rank_response_task import rank_response_tasks
 
 
+@celery_app.task()
 def promotersetsig_rankedresponse_chained(binding_id, user_id, promotersetsig_filetype, **kwargs):
     """Chain the promoter significance and rank response tasks together
 

@@ -17,7 +17,7 @@ class PromoterSetSig(BaseModel, GzipFileUploadWithIdMixin):
 
     binding = models.ForeignKey("Binding", on_delete=models.CASCADE, help_text="foreign key to the 'Binding' table")
     promoter = models.ForeignKey(
-        "PromoterSet", on_delete=models.CASCADE, help_text="foreign key to the 'promoter' table"
+        "PromoterSet", on_delete=models.CASCADE, help_text="foreign key to the 'promoter' table", blank=True, null=True
     )
     # note: in the serializer, when a user makes a GET request, a null value
     # is transformed to the string 'undefined' prior to returning to client

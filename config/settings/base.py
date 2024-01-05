@@ -350,3 +350,7 @@ CALLINGCARDS_PROMOTER_SIG_FORMAT = env(
     "CALLING_CARD_PROMOTER_SIG_FORMAT",
     default="cc_promoter_sig",
 )
+NULL_BINDING_FILE_DATASOURCES = env.list(
+    "NULL_BINDING_FILE_DATASOURCES",
+    default=["harbison_chip"],
+)

@@ -37,6 +37,21 @@ class FileValidationMixin:
     """
 
     def validate(self, attrs):
+        # in the django settings, there is a variable NULL_BINDING_FILE_DATASOURCES
+        # that has a list of datasource names that are allowed to have null
+        # binding.file fields. If the datasource.name in attrs is in that list,
+        # then skip the `file` validation logic below
+        # note that there are serializers which use this mixin which do not
+        # have `source` fields -- those serializers should skip checking
+        # the datasource name
+        if attrs.get("source"):
+            if attrs.get("source").name in settings.NULL_BINDING_FILE_DATASOURCES:
+                attrs.pop("file")
+                return attrs
+
+        # below is all logic which verifies the uploaded file. It is in the
+        # `validate` method because it relies on a number of other validated
+        # fields in the serializer
         if "file" not in attrs.keys():
             raise serializers.ValidationError(
                 "file is a required fields in any model serializer using the GenomicFileValidaitionMixin"

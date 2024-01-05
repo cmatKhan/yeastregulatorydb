@@ -58,10 +58,13 @@ def rank_response_task(
     with tempfile.TemporaryDirectory() as tmpdir:
         promotersetsig_filepath = extract_file_from_storage(promotersetsig_record.file, tmpdir)
 
+        # either get the expression object using the expression_id, or get
+        # an iterator over all expression objects with the same regulator
+        # as the promotersetsig.binding.regulator
         expression_objects_iterator = (
             Expression.objects.filter(id=kwargs.get("expression_id")).iterator()
             if "expression_id" in kwargs
-            else Expression.objects.iterator()
+            else Expression.objects.filter(regulator=promotersetsig_record.binding.regulator).iterator()
         )
 
         results_list = []

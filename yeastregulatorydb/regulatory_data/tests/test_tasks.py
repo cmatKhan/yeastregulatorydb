@@ -28,7 +28,7 @@ from yeastregulatorydb.users.models import User
 pytestmark = pytest.mark.django_db
 
 
-@pytest.mark.djanbo_db
+@pytest.mark.django_db
 def test_promoter_significance_task(
     settings,
     chrmap: QuerySet,
@@ -45,8 +45,11 @@ def test_promoter_significance_task(
     request.user = user
 
     # set path to test data and check that it exists
-    promoterset_path = test_data_dict["promoters"]["files"][1]
-    assert os.path.basename(promoterset_path) == "yiming_promoters_chrI.bed.gz"
+    promoterset_path = next(
+        file
+        for file in test_data_dict["promoters"]["files"]
+        if os.path.basename(file) == "yiming_promoters_chrI.bed.gz"
+    )
     assert os.path.exists(promoterset_path), f"path: {promoterset_path}"
 
     # Open the file and read its content
@@ -60,7 +63,9 @@ def test_promoter_significance_task(
         serializer.save()
 
     # create the chipexo Binding record
-    file_path = os.path.join(os.path.dirname(__file__), "test_data", "binding/chipexo/28366_chrI.csv.gz")
+    file_path = next(
+        file for file in test_data_dict["binding"]["chipexo"]["files"] if os.path.basename(file) == "28366_chrI.csv.gz"
+    )
     assert os.path.exists(file_path), f"path: {file_path}"
 
     # Open the file and read its content
@@ -82,7 +87,7 @@ def test_promoter_significance_task(
         assert isinstance(task_result.result, list)
 
 
-@pytest.mark.djanbo_db
+@pytest.mark.django_db
 def test_rank_response_task(
     settings,
     chrmap: QuerySet,
@@ -167,12 +172,18 @@ def test_promotersetsig_rankedresponse_chained(
     request.user = user
 
     # set path to test data and check that it exists
-    promoterset_path = test_data_dict["promoters"]["files"][1]
-    assert os.path.basename(promoterset_path) == "yiming_promoters_chrI.bed.gz"
+    promoterset_path = next(
+        file
+        for file in test_data_dict["promoters"]["files"]
+        if os.path.basename(file) == "yiming_promoters_chrI.bed.gz"
+    )
     assert os.path.exists(promoterset_path), f"path: {promoterset_path}"
 
-    expression_path = test_data_dict["expression"]["mcisaac"]["files"][0]
-    assert os.path.basename(expression_path) == "hap5_15min_mcisaac_chr1.csv.gz"
+    expression_path = next(
+        file
+        for file in test_data_dict["expression"]["mcisaac"]["files"]
+        if os.path.basename(file) == "hap5_15min_mcisaac_chr1.csv.gz"
+    )
     assert os.path.exists(expression_path), f"path: {expression_path}"
 
     # Open the file and read its content
@@ -186,7 +197,9 @@ def test_promotersetsig_rankedresponse_chained(
         serializer.save()
 
     # create the chipexo Binding record
-    file_path = os.path.join(os.path.dirname(__file__), "test_data", "binding/chipexo/28366_chrI.csv.gz")
+    file_path = next(
+        file for file in test_data_dict["binding"]["chipexo"]["files"] if os.path.basename(file) == "28366_chrI.csv.gz"
+    )
     assert os.path.exists(file_path), f"path: {file_path}"
 
     # Open the file and read its content

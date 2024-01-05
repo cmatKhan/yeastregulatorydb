@@ -13,6 +13,8 @@ class ExpressionSerializer(
 ):
     uploader = serializers.ReadOnlyField(source="uploader.username")
     modifier = serializers.CharField(source="uploader.username", required=False)
+    regulator_locus_tag = serializers.CharField(source="regulator.genomicfeature.locus_tag", read_only=True)
+    regulator_symbol = serializers.CharField(source="regulator.genomicfeature.symbol", read_only=True)
 
     class Meta:
         model = Expression

@@ -19,6 +19,11 @@ class CallingCardsBackground(BaseModel, GzipFileUploadWithIdMixin):
         max_length=10, blank=False, null=False, help_text="The name of the background data", unique=True
     )
     file = models.FileField(upload_to="temp", help_text="A file which stores data on " "regulator/DNA interaction")
+    fileformat = models.ForeignKey(
+        "FileFormat",
+        on_delete=models.CASCADE,
+        help_text="The file format of the file",
+    )
     genomic_inserts = models.PositiveIntegerField(
         default=0, help_text="The number of inserts which map to chromosomes with type `genomic` in ChrMap"
     )

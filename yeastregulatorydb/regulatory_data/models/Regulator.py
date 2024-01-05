@@ -23,15 +23,11 @@ class RegulatorManager(models.Manager):
         return self.filter(under_development=True)
 
     def annotated(self):
-        return (
-            self.select_related(
-                "regulator",
-            )
-            .annotate(
-                regulator_locus_tag=models.F("genomicfeature__locus_tag"),
-                regulator_gene=models.F("genomicfeature__symbol"),
-            )
-            .values("id", "regulator_locus_tag", "regulator_gene")
+        return self.select_related(
+            "genomicfeature",
+        ).annotate(
+            regulator_locus_tag=models.F("genomicfeature__locus_tag"),
+            regulator_symbol=models.F("genomicfeature__symbol"),
         )
 
 

@@ -37,7 +37,9 @@ class Binding(BaseModel, GzipFileUploadWithIdMixin):
         default="unknown",
         help_text="If the strain identifier is known, it is provided. " "Otherwise, the value is `unknown`",
     )
-    file = models.FileField(upload_to="temp", help_text="A file which stores data on regulator/DNA interaction")
+    file = models.FileField(
+        upload_to="temp", help_text="A file which stores data on regulator/DNA interaction", blank=True, null=True
+    )
     # NOTE: the _inserts fields are added during the serialization process from the file
     # in BindingSerializer and its mixin ValidateFileMixin
     genomic_inserts = models.PositiveIntegerField(

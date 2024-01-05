@@ -61,11 +61,6 @@ def bindingmanualqc(db) -> BindingManualQC:
     return BindingManualQCFactory()
 
 
-@pytest.fixture
-def callingcardsbackground(db) -> CallingCardsBackground:
-    return CallingCardsBackgroundFactory()
-
-
 def chrmap_data() -> dict:
     return [
         {
@@ -159,7 +154,7 @@ def datasource(db) -> DataSource:
 def fileformat_data() -> dict:
     # harb, hu both csvs
     return {
-        "array": ({"gene_id": "int", "effect": "float", "pval": "float"}, ",", "effect", 0.0, "pval", 1.0, "none"),
+        "array": ({"gene_id": "int", "effect": "float", "pval": "float"}, ",", "effect", 0.0, "pval", 1.0, "gene_id"),
         "qbed": (
             {"chr": "str", "start": "int", "end": "int", "depth": "int", "strand": "str"},
             "\t",
@@ -215,9 +210,9 @@ def fileformat_data() -> dict:
                 "background_hops": "int",
                 "background_total_hops": "int",
                 "experiment_total_hops": "int",
-                "callingcards_enrichment": "int",
-                "poisson_pval": "int",
-                "hypergeometric_pval": "int",
+                "callingcards_enrichment": "float",
+                "poisson_pval": "float",
+                "hypergeometric_pval": "float",
             },
             ",",
             "callingcards_enrichment",
@@ -300,6 +295,11 @@ def fileformat(db) -> QuerySet:
             feature_identifier_col=feature_identifier_col,
         )
     return FileFormat.objects.all()
+
+
+@pytest.fixture
+def callingcardsbackground(db, fileformat: dict) -> CallingCardsBackground:
+    return CallingCardsBackgroundFactory(fileformat=fileformat.get(fileformat="qbed"))
 
 
 @pytest.fixture

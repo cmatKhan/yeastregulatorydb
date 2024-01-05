@@ -67,31 +67,35 @@ class GzipFileUploadWithIdMixin:  # pylint: disable=too-few-public-methods
         :return: None
         :rtype: None
         """
-        # extract the extension, which will be eg .tsv.gz, from the file name
-        file_name_parts = getattr(self, file_field_name).name.split(".")
-        extension = ".".join(file_name_parts[-2:]) if len(file_name_parts) > 1 else file_name_parts[1:]
-        if not extension:
-            logger.warning(
-                'Could not extract extension from file name "%s". Setting to `.txt.gz`',
-                getattr(self, file_field_name).name,
-            )
-            extension = ".txt.gz"
-        # Cast self to HasPkProtocol to assure mypy that self has a pk attribute
-        self_with_pk = cast(HasPkProtocol, self)
-        # raise AttributeError if self does not have a pk attribute
-        if not self_with_pk.pk:
-            raise AttributeError(f"{self} does not have a pk attribute")
-        logger.debug("Updating file name for %s to %s/%s.%s", self_with_pk, upload_dir, self_with_pk.pk, extension)
-        file_field = getattr(self, file_field_name, None)
-        if file_field and self_with_pk.pk and file_field.name:
-            # Define new filename with ID
-            new_filename = f"{upload_dir}/{self_with_pk.pk}.{extension}"
+        try:
+            # extract the extension, which will be eg .tsv.gz, from the file name
+            file_name_parts = getattr(self, file_field_name).name.split(".")
+        except AttributeError:
+            logger.info('No file field name provided. Skipping update_file_name for "%s"', self)
+        else:
+            extension = ".".join(file_name_parts[-2:]) if len(file_name_parts) > 1 else file_name_parts[1:]
+            if not extension:
+                logger.warning(
+                    'Could not extract extension from file name "%s". Setting to `.txt.gz`',
+                    getattr(self, file_field_name).name,
+                )
+                extension = ".txt.gz"
+            # Cast self to HasPkProtocol to assure mypy that self has a pk attribute
+            self_with_pk = cast(HasPkProtocol, self)
+            # raise AttributeError if self does not have a pk attribute
+            if not self_with_pk.pk:
+                raise AttributeError(f"{self} does not have a pk attribute")
+            logger.debug("Updating file name for %s to %s/%s.%s", self_with_pk, upload_dir, self_with_pk.pk, extension)
+            file_field = getattr(self, file_field_name, None)
+            if file_field and self_with_pk.pk and file_field.name:
+                # Define new filename with ID
+                new_filename = f"{upload_dir}/{self_with_pk.pk}.{extension}"
 
-            # Move and rename the file if it exists
-            if default_storage.exists(file_field.name):
-                default_storage.save(new_filename, file_field)
-                default_storage.delete(file_field.name)
+                # Move and rename the file if it exists
+                if default_storage.exists(file_field.name):
+                    default_storage.save(new_filename, file_field)
+                    default_storage.delete(file_field.name)
 
-            # Update the file field to new path
-            file_field.name = new_filename
-            setattr(self, file_field_name, file_field)
+                # Update the file field to new path
+                file_field.name = new_filename
+                setattr(self, file_field_name, file_field)

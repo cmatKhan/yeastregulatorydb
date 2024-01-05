@@ -28,7 +28,7 @@ class PromoterSet(BaseModel, GzipFileUploadWithIdMixin):
         "'name' column by the GenomicFeature id",
     )
     notes = models.CharField(
-        max_length=100, default="none", help_text="free entry text field, no more than 100 char long"
+        max_length=500, default="none", help_text="free entry text field, no more than 100 char long"
     )
 
     def __str__(self):
