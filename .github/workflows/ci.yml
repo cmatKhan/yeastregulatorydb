@@ -54,7 +54,12 @@ jobs:
         run: docker compose -f local.yml run --rm django python manage.py migrate
 
       - name: Run Django Tests
-        run: docker compose -f local.yml run django pytest
+        run: docker compose -f local.yml run django coverage run -m pytest
 
       - name: Tear down the Stack
         run: docker compose -f local.yml down
+
+      - name: Upload coverage reports to Codecov
+        uses: codecov/codecov-action@v3
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
