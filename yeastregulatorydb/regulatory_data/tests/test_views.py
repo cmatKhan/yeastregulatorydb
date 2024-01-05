@@ -264,6 +264,7 @@ def test_single_binding_upload_with_promotersetsig(
         data.pop("regulator")
         data["regulator_locus_tag"] = regulator.genomicfeature.locus_tag
 
+        settings.CELERY_TASK_ALWAYS_EAGER = True
         response = client.post(reverse("api:binding-list"), data, format="multipart")
 
         assert response.status_code == 201, response.data

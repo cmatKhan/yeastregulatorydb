@@ -154,7 +154,15 @@ def datasource(db) -> DataSource:
 def fileformat_data() -> dict:
     # harb, hu both csvs
     return {
-        "array": ({"gene_id": "int", "effect": "float", "pval": "float"}, ",", "effect", 0.0, "pval", 1.0, "gene_id"),
+        "array": (
+            {"gene_id": "int", "effect": "float", "pval": "float"},
+            ",",
+            "effect",
+            0.0,
+            "pval",
+            1.0,
+            "gene_id",
+        ),
         "qbed": (
             {"chr": "str", "start": "int", "end": "int", "depth": "int", "strand": "str"},
             "\t",

@@ -17,7 +17,7 @@ class PromoterSetSigViewSet(UpdateModifiedMixin, viewsets.ModelViewSet):
     A viewset for viewing and editing PromoterSetSig instances.
     """
 
-    queryset = PromoterSetSig.objects.all()
+    queryset = PromoterSetSig.objects.all().order_by("id")
     authentication_classes = [SessionAuthentication, TokenAuthentication]
     permission_classes = [IsAuthenticated]
     serializer_class = PromoterSetSigSerializer

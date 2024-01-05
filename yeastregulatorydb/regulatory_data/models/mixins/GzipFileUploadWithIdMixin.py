@@ -43,7 +43,7 @@ class GzipFileUploadWithIdMixin:  # pylint: disable=too-few-public-methods
 
         def save(self, *args, **kwargs):
             super().save(*args, **kwargs)
-            self.update_file_name('file', 'hu', 'tsv.gz')
+            self.update_file_name('file', 'hu', 'csv.gz')
             super().save(update_fields=['file'])
 
         # Other fields and methods...
@@ -73,13 +73,16 @@ class GzipFileUploadWithIdMixin:  # pylint: disable=too-few-public-methods
         except AttributeError:
             logger.info('No file field name provided. Skipping update_file_name for "%s"', self)
         else:
-            extension = ".".join(file_name_parts[-2:]) if len(file_name_parts) > 1 else file_name_parts[1:]
-            if not extension:
-                logger.warning(
-                    'Could not extract extension from file name "%s". Setting to `.txt.gz`',
-                    getattr(self, file_field_name).name,
-                )
-                extension = ".txt.gz"
+            if extension:
+                logger.debug("Using provided extension: %s", extension)
+            else:
+                extension = ".".join(file_name_parts[-2:]) if len(file_name_parts) > 1 else file_name_parts[1:]
+                if not extension:
+                    logger.warning(
+                        'Could not extract extension from file name "%s". Setting to `.txt.gz`',
+                        getattr(self, file_field_name).name,
+                    )
+                    extension = ".txt.gz"
             # Cast self to HasPkProtocol to assure mypy that self has a pk attribute
             self_with_pk = cast(HasPkProtocol, self)
             # raise AttributeError if self does not have a pk attribute

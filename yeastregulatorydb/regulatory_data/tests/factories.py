@@ -153,12 +153,12 @@ class CallingCardsBackgroundFactory(DjangoModelFactory):
     uploader = SubFactory(UserFactory)
     modifier = SubFactory(UserFactory)
     name = Faker("pystr", max_chars=10)
-    file = FileField(filename="testfile.tsv.gz")
+    file = FileField(filename="testfile.qbed.gz")
     fileformat = SubFactory(FileFormatFactory)
     genomic_inserts = Faker("random_digit_not_null")
     mito_inserts = Faker("random_digit_not_null")
     plasmid_inserts = Faker("random_digit_not_null")
-    notes = Faker("sentence", nb_words=10)
+    notes = LazyFunction(sentence_with_max_chars)
 
     class Meta:
         model = CallingCardsBackground
@@ -219,7 +219,7 @@ class PromoterSetSigFactory(DjangoModelFactory):
     promoter = SubFactory(PromoterSetFactory)
     background = SubFactory(CallingCardsBackgroundFactory)
     fileformat = SubFactory(FileFormatFactory)
-    file = FileField(filename="testfile.tsv.gz")
+    file = FileField(filename="testfile.csv.gz")
 
     class Meta:
         model = PromoterSetSig

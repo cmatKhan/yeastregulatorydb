@@ -56,7 +56,7 @@ class RankResponse(BaseModel, GzipFileUploadWithIdMixin):
     )
 
     def __str__(self):
-        return f"pk:{self.pk};promotersetsig:{self.binding};expression:{self.expression}"
+        return f"pk:{self.pk};promotersetsig:{self.promotersetsig};expression:{self.expression}"
 
     class Meta:
         db_table = "rankresponse"
@@ -64,14 +64,16 @@ class RankResponse(BaseModel, GzipFileUploadWithIdMixin):
     # pylint:disable=R0801
     def save(self, *args, **kwargs):
         # Store the old file path
-        old_file_name = self.file.name if self.file else None
+        is_create = self.pk is None
         super().save(*args, **kwargs)
-        self.update_file_name("file", "rankresponse", "csv.gz")
-        new_file_name = self.file.name
-        super().save(update_fields=["file"])
-        # If the file name changed, delete the old file
-        if old_file_name and old_file_name != new_file_name:
-            default_storage.delete(old_file_name)
+        if is_create:
+            old_file_name = self.file.name if self.file else None
+            self.update_file_name("file", "rankresponse", "csv.gz")
+            new_file_name = self.file.name
+            super().save(update_fields=["file"])
+            # If the file name changed, delete the old file
+            # if old_file_name and old_file_name != new_file_name:
+            #     default_storage.delete(old_file_name)
 
     # pylint:enable=R0801
 
