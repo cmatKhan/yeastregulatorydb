@@ -106,12 +106,18 @@ def test_rank_response_task(
     request.user = user
 
     # create the promoter set record
-    promotersetsig_path = test_data_dict["binding"]["chipexo"]["files"][1]
-    assert os.path.basename(promotersetsig_path) == "28366_yiming_promoter_sig.csv.gz"
+    promotersetsig_path = next(
+        file
+        for file in test_data_dict["binding"]["chipexo"]["files"]
+        if os.path.basename(file) == "28366_yiming_promoter_sig.csv.gz"
+    )
     assert os.path.exists(promotersetsig_path), f"path: {promotersetsig_path}"
 
-    expression_path = test_data_dict["expression"]["mcisaac"]["files"][0]
-    assert os.path.basename(expression_path) == "hap5_15min_mcisaac_chr1.csv.gz"
+    expression_path = next(
+        file
+        for file in test_data_dict["expression"]["mcisaac"]["files"]
+        if os.path.basename(file) == "hap5_15min_mcisaac_chr1.csv.gz"
+    )
     assert os.path.exists(expression_path), f"path: {expression_path}"
 
     binding_record = BindingFactory.create(source=chipexo_datasource, regulator=regulator)

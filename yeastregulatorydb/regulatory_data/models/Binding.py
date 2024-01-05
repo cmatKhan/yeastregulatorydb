@@ -15,6 +15,24 @@ class Binding(BaseModel, GzipFileUploadWithIdMixin):
     Store some metadata and filepaths to binding data
     """
 
+    CONDITION_CHOICES = [
+        ("unknown", "unknown"),
+        ("YPD", "YPD"),
+        ("SM", "SM"),
+        ("RAPA", "RAPA"),
+        ("H2O2Hi", "H2O2Hi"),
+        ("H2O2Lo", "H2O2Lo"),
+        ("Acid", "Acid"),
+        ("Alpha", "Alpha"),
+        ("BUT14", "BUT14"),
+        ("BUT90", "BUT90"),
+        ("Thi-", "Thi-"),
+        ("GAL", "GAL"),
+        ("HEAT", "HEAT"),
+        ("Pi-", "Pi-"),
+        ("RAFF", "RAFF"),
+    ]
+
     regulator = models.ForeignKey(
         "Regulator", on_delete=models.CASCADE, help_text="Foreign key to the Regulator table"
     )
@@ -35,7 +53,13 @@ class Binding(BaseModel, GzipFileUploadWithIdMixin):
     strain = models.CharField(
         max_length=20,
         default="unknown",
-        help_text="If the strain identifier is known, it is provided. " "Otherwise, the value is `unknown`",
+        help_text="If the strain identifier is known, it is provided. Otherwise, the value is `unknown`",
+    )
+    condition = models.CharField(
+        max_length=20,
+        default="unknown",
+        choices=CONDITION_CHOICES,
+        help_text="If the condition is known, it is provided. Otherwise, the value is `unknown`",
     )
     file = models.FileField(
         upload_to="temp", help_text="A file which stores data on regulator/DNA interaction", blank=True, null=True
