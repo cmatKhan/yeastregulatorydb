@@ -47,32 +47,15 @@ jobs:
           file envs.tar.gz
           tar -xzvf envs.tar.gz
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Cache Docker layers
-        uses: actions/cache@v3
-        with:
-          path: /tmp/.buildx-cache
-          key: ${{ runner.os }}-buildx-${{ github.sha }}
-          restore-keys: |
-            ${{ runner.os }}-buildx-
-
-      # Build the Stack using Docker Compose with Buildx
       - name: Build the Stack
-        run: |
-          docker buildx create --use
-          docker compose -f local.yml build --builder mybuilder --build-arg BUILDKIT_INLINE_CACHE=1 --cache-from type=local,src=/tmp/.buildx-cache --cache-to type=local,dest=/tmp/.buildx-cache,mode=max
-
-      #- name: Build the Stack
-      #  run: docker compose -f local.yml build
+        run: docker compose -f local.yml build
 
       - name: Run DB Migrations
         run: docker compose -f local.yml run --rm django python manage.py migrate
 
       - name: Run Django Tests
         run: |
-          docker compose -f local.yml run django coverage run -m pytest
+          docker compose -f local.yml run django coverage run -m pytest |
           docker compose -f local.yml run django coverage xml
 
       - name: Tear down the Stack
