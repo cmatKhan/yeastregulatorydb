@@ -31,7 +31,9 @@ class CustomValidateMixin:  # pylint: disable=too-few-public-methods
         # require that the user is authenticated
         request = self.context.get("request")
         if not request.user.is_authenticated:
-            raise serializers.ValidationError("User must be authenticated to validate data and create a new record.")
+            raise serializers.ValidationError(
+                {"user": "User must be authenticated to validate data and create a new record."}
+            )
 
         # these fields are expected to be overwritten in `create` and `update`
         data["uploader"] = request.user
@@ -46,7 +48,7 @@ class CustomValidateMixin:  # pylint: disable=too-few-public-methods
         Check that the uploader is `None` -- the user should not be passing this value.
         """
         if value is not None:
-            raise serializers.ValidationError("This field is read-only.")
+            raise serializers.ValidationError({"uploader": "This field is read-only."})
         return value
 
     def validate_upload_date(self, value):
@@ -54,7 +56,7 @@ class CustomValidateMixin:  # pylint: disable=too-few-public-methods
         Check that the upload_date is `None` -- the user should not be passing this value.
         """
         if value is not None:
-            raise serializers.ValidationError("This field is read-only.")
+            raise serializers.ValidationError({"upload_date": "This field is read-only."})
         return value
 
     def validate_modifier(self, value):
@@ -62,7 +64,7 @@ class CustomValidateMixin:  # pylint: disable=too-few-public-methods
         Check that the modifier is `None` -- the user should not be passing this value.
         """
         if value is not None:
-            raise serializers.ValidationError("This field is read-only.")
+            raise serializers.ValidationError({"modifier": "This field is read-only."})
         return value
 
     def validate_modified_date(self, value):
@@ -70,7 +72,7 @@ class CustomValidateMixin:  # pylint: disable=too-few-public-methods
         Check that the modified_date is `None` -- the user should not be passing this value.
         """
         if value is not None:
-            raise serializers.ValidationError("This field is read-only.")
+            raise serializers.ValidationError({"modified_date": "This field is read-only."})
         return value
 
     def create(self, validated_data):
@@ -79,7 +81,7 @@ class CustomValidateMixin:  # pylint: disable=too-few-public-methods
 
         # Get the user from the request
         if not request.user.is_authenticated:
-            raise serializers.ValidationError("User must be authenticated to create a new record.")
+            raise serializers.ValidationError({"user": "User must be authenticated to create a new record."})
 
         # Set the uploader and modifier fields
         validated_data["uploader"] = request.user
@@ -93,7 +95,7 @@ class CustomValidateMixin:  # pylint: disable=too-few-public-methods
 
         # Get the user from the request
         if not request.user.is_authenticated:
-            raise serializers.ValidationError("User must be authenticated to create a new record.")
+            raise serializers.ValidationError({"user": "User must be authenticated to create a new record."})
 
         # Set the modifier field
         validated_data["modifier"] = request.user

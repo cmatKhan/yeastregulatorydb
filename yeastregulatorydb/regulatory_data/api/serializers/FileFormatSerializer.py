@@ -31,16 +31,21 @@ class FileFormatSerializer(CustomValidateMixin, serializers.ModelSerializer):
         valid_types = ["str", "int", "float"]
         if not isinstance(value, dict):
             raise serializers.ValidationError(
-                "FileFormat field `fields` must be a dictionary "
-                "(which it will be if a valid json is passed. You may need to "
-                "check your JSON if this is a PUT or UPDATE)."
+                {
+                    "fileformat": "FileFormat field `fields` must be a dictionary "
+                    "(which it will be if a valid json is passed. You may need to "
+                    "check your JSON if this is a PUT or UPDATE)."
+                }
             )
         for key, val in value.items():
             if isinstance(val, list):
                 continue
             if val not in valid_types:
                 raise serializers.ValidationError(
-                    f"Invalid datatype for field '{key}': '{val}'. Field types must be one of {valid_types} or a list."
+                    {
+                        "fields": f"Invalid datatype for field '{key}': '{val}'. "
+                        "Field types must be one of {valid_types} or a list."
+                    }
                 )
         return value
 

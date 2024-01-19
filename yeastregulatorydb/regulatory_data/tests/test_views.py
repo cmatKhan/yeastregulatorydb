@@ -1,12 +1,16 @@
+import io
 import os
 import re
 import tarfile
 import tempfile
+from urllib.parse import urlencode
 
+import pandas as pd
 import pytest
 from django.conf import settings
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.db.models.query import QuerySet
+from django.http import QueryDict
 from django.test import RequestFactory
 from django.urls import reverse
 from rest_framework.authtoken.models import Token
@@ -14,7 +18,13 @@ from rest_framework.test import APIClient, APIRequestFactory, force_authenticate
 
 from yeastregulatorydb.users.models import User
 
-from ..api.serializers import CallingCardsBackgroundSerializer, ExpressionSerializer, PromoterSetSerializer
+from ..api.serializers import (
+    BindingSerializer,
+    CallingCardsBackgroundSerializer,
+    ExpressionSerializer,
+    PromoterSetSerializer,
+    PromoterSetSigSerializer,
+)
 from ..api.views import ChrMapViewSet, GenomicFeatureViewSet
 from ..models import Binding, ChrMap, DataSource, Expression, PromoterSetSig, RankResponse, Regulator
 from .factories import (
@@ -23,6 +33,8 @@ from .factories import (
     ExpressionFactory,
     GenomicFeatureFactory,
     PromoterSetFactory,
+    PromoterSetSigFactory,
+    RegulatorFactory,
 )
 from .utils.model_to_dict_select import model_to_dict_select
 
@@ -183,8 +195,17 @@ def test_single_binding_upload(
         data.pop("regulator")
         data["regulator_locus_tag"] = regulator.genomicfeature.locus_tag
 
+        # Define your query parameters
+        query_params = {"testing": "True"}
+
+        # Create the URL for the request
+        url = reverse("api:binding-list")
+
+        # Add the query parameters to the URL
+        url += "?" + urlencode(query_params)
+
         settings.CELERY_TASK_ALWAYS_EAGER = True
-        response = client.post(reverse("api:binding-list"), data, format="multipart")
+        response = client.post(url, data, format="multipart")
 
         assert response.status_code == 201, response.data
         assert Binding.objects.count() == 1
@@ -202,11 +223,139 @@ def test_single_binding_upload(
 
 
 @pytest.mark.django_db
-def test_single_binding_upload_with_promotersetsig(
+def test_single_binding_harbison_upload(
+    harbison_datasource: DataSource,
+    regulator: Regulator,
+    chrmap: QuerySet,
+    test_data_dict: dict,
+    user: User,
+    fileformat: QuerySet,
+    mcisaac_datasource: DataSource,
+):
+    factory = APIRequestFactory()
+    request = factory.get("/")
+    request.user = user
+
+    token = Token.objects.get(user=user)
+    client = APIClient()
+    client.credentials(HTTP_AUTHORIZATION="Token " + token.key)
+
+    genomicfeature_instance = GenomicFeatureFactory.create(symbol="RTG3")
+    rtg3_regulator = RegulatorFactory.create(genomicfeature=genomicfeature_instance)
+
+    expression_path = next(
+        file
+        for file in test_data_dict["expression"]["mcisaac"]["files"]
+        if os.path.basename(file) == "140_SMY2111_20160421_P_ZEV_15.csv.gz"
+    )
+    assert os.path.exists(expression_path), f"path: {expression_path}"
+
+    # Open the file and read its content
+    with open(expression_path, "rb") as file_obj:
+        file_content = file_obj.read()
+        # Create a SimpleUploadedFile instance
+        upload_file = SimpleUploadedFile(
+            "140_SMY2111_20160421_P_ZEV_15.csv.gz", file_content, content_type="application/gzip"
+        )
+        data = model_to_dict_select(
+            ExpressionFactory.build(source=mcisaac_datasource, regulator=rtg3_regulator, file=upload_file)
+        )
+        expression_serializer = ExpressionSerializer(data=data, context={"request": request})
+        assert expression_serializer.is_valid() is True, expression_serializer.errors
+        expression_serializer.save()
+
+    # set path to test data and check that it exists
+    promoterset_path = next(
+        file
+        for file in test_data_dict["promoters"]["files"]
+        if os.path.basename(file) == "yiming_promoters_chrI.bed.gz"
+    )
+    assert os.path.exists(promoterset_path), f"path: {promoterset_path}"
+
+    # Open the file and read its content
+    with open(promoterset_path, "rb") as file_obj:
+        file_content = file_obj.read()
+        # Create a SimpleUploadedFile instance
+        upload_file = SimpleUploadedFile("yiming_promoters_chrI.bed.gz", file_content, content_type="application/gzip")
+        data = model_to_dict_select(PromoterSetFactory.build(name="yiming", file=upload_file))
+        serializer = PromoterSetSerializer(data=data, context={"request": request})
+        assert serializer.is_valid() is True, serializer.errors
+        serializer.save()
+
+    background_path = next(
+        file
+        for file in test_data_dict["background"]["files"]
+        if os.path.basename(file) == "adh1_background_chrI.qbed.gz"
+    )
+    assert os.path.exists(background_path), f"path: {background_path}"
+
+    # Open the file and read its content
+    with open(background_path, "rb") as file_obj:
+        file_content = file_obj.read()
+        # Create a SimpleUploadedFile instance
+        upload_file = SimpleUploadedFile("adh1_background_chrI.qbed.gz", file_content, content_type="application/gzip")
+        data = model_to_dict_select(
+            CallingCardsBackgroundFactory.build(
+                name="adh1", fileformat=fileformat.get(fileformat="qbed"), file=upload_file
+            )
+        )
+        ccbackground_serializer = CallingCardsBackgroundSerializer(data=data, context={"request": request})
+        assert ccbackground_serializer.is_valid() is True, ccbackground_serializer.errors
+        ccbackground_serializer.save()
+
+    binding_path = next(
+        file
+        for file in test_data_dict["binding"]["harbison"]["files"]
+        if os.path.basename(file) == "140_H2O2Lo.csv.gz"
+    )
+    assert os.path.exists(binding_path), f"path: {binding_path}"
+
+    # Open the file and read its content
+    with open(binding_path, "rb") as file_obj:
+        file_content = file_obj.read()
+        # Create a SimpleUploadedFile instance
+        upload_file = SimpleUploadedFile("140_H2O2Lo.csv.gz", file_content, content_type="application/gzip")
+        data = model_to_dict_select(BindingFactory.build())
+        # set path to test data and check that it exists
+        data["file"] = upload_file
+        # note: test passing the regulator_locus_tag and source_name
+        # instead of the regulator and source ids works
+        data.pop("source")
+        data["source_name"] = harbison_datasource.name
+        data.pop("regulator")
+        data["regulator_symbol"] = "RTG3"  # regulator.genomicfeature.locus_tag
+        data["condition"] = "H2O2Lo"
+
+        # Define your query parameters
+        query_params = {"testing": "True"}
+
+        # Create the URL for the request
+        url = reverse("api:binding-list")
+
+        # Add the query parameters to the URL
+        url += "?" + urlencode(query_params)
+
+        settings.CELERY_TASK_ALWAYS_EAGER = True
+        response = client.post(url, data, format="multipart")
+
+        assert response.status_code == 201, response.data
+        assert Binding.objects.count() == 1
+        assert Binding.objects.get().file.name == "", Binding.objects.get().file.name
+        # assert that there exists a promotersetsig with this binding instance id
+        assert PromoterSetSig.objects.count() == 1, PromoterSetSig.objects.count()
+        assert PromoterSetSig.objects.filter(binding=Binding.objects.get()).exists(), PromoterSetSig.objects.all()
+        # assert that there is a rankresponse with the promotersetsig instance id
+        assert RankResponse.objects.count() == 1, RankResponse.objects.count()
+        assert RankResponse.objects.filter(
+            promotersetsig=PromoterSetSig.objects.get()
+        ).exists(), RankResponse.objects.all()
+
+
+@pytest.mark.django_db
+def test_single_binding_upload_with_promotersetsig_and_combinedfile(
     harbison_datasource: DataSource,
     mcisaac_datasource: DataSource,
     regulator: Regulator,
-    chrmap: QuerySet,
     user: User,
     test_data_dict: dict,
 ):
@@ -264,8 +413,17 @@ def test_single_binding_upload_with_promotersetsig(
         data.pop("regulator")
         data["regulator_locus_tag"] = regulator.genomicfeature.locus_tag
 
+        # Define your query parameters
+        query_params = {"testing": "True"}
+
+        # Create the URL for the request
+        url = reverse("api:binding-list")
+
+        # Add the query parameters to the URL
+        url += "?" + urlencode(query_params)
+
         settings.CELERY_TASK_ALWAYS_EAGER = True
-        response = client.post(reverse("api:binding-list"), data, format="multipart")
+        response = client.post(url, data, format="multipart")
 
         assert response.status_code == 201, response.data
         assert Binding.objects.count() == 1
@@ -280,6 +438,27 @@ def test_single_binding_upload_with_promotersetsig(
             re.match(r"promotersetsig\/\d+\.csv\.gz$", PromoterSetSig.objects.get().file.name) is not None
         ), PromoterSetSig.objects.get().file.name
         assert RankResponse.objects.count() == 1, RankResponse.objects.count()
+
+        # get the response from the expression-combined endpoint
+        response = client.get(reverse("api:promotersetsig-combined"), {"regulator_symbol": "HAP5"})
+
+        assert response.status_code == 200, response.data
+
+        # Save the response content to a BytesIO object
+        content = io.BytesIO(b"".join(response.streaming_content))
+        # Reset the cursor to the beginning of the file
+        content.seek(0)
+        # Read the BytesIO object into a DataFrame
+        df = pd.read_csv(content, compression="gzip")
+        assert "regulator_id" in df.columns, df.columns
+        assert "regulator_locus_tag" in df.columns, df.columns
+        assert "regulator_symbol" in df.columns, df.columns
+        assert "target_id" in df.columns, df.columns
+        assert "target_locus_tag" in df.columns, df.columns
+        assert "target_symbol" in df.columns, df.columns
+        assert "record_id" in df.columns, df.columns
+        assert "effect" in df.columns, df.columns
+        assert "pvalue" in df.columns, df.columns
 
 
 @pytest.mark.django_db
@@ -331,48 +510,105 @@ def test_bulk_binding_upload(
         tar_handle.close()
 
 
-@pytest.mark.django_db
-def test_expression_single_upload(
-    mcisaac_datasource: DataSource, regulator: Regulator, chrmap: QuerySet, test_data_dict: dict, user: User
+@pytest.mark.django_db()
+def test_expression_task_upload(
+    hu_datasource: DataSource, chrmap: QuerySet, fileformat: QueryDict, test_data_dict: dict, user: User
 ):
+    factory = APIRequestFactory()
+    request = factory.get("/")
+    request.user = user
+
     token = Token.objects.get(user=user)
     client = APIClient()
     client.credentials(HTTP_AUTHORIZATION="Token " + token.key)
 
-    data = model_to_dict_select(ExpressionFactory.build())
-    # set path to test data and check that it exists
+    genomicfeature_instance = GenomicFeatureFactory.create(symbol="RTG3")
+    rtg3_regulator = RegulatorFactory.create(genomicfeature=genomicfeature_instance)
 
-    file_path = next(
+    binding_path = next(
         file
-        for file in test_data_dict["expression"]["mcisaac"]["files"]
-        if os.path.basename(file) in "hap5_15min_mcisaac_chr1.csv.gz"
+        for file in test_data_dict["binding"]["harbison"]["files"]
+        if os.path.basename(file) == "140_H2O2Lo.csv.gz"
     )
-    assert os.path.exists(file_path), f"path: {file_path}"
+    assert os.path.exists(binding_path), f"path: {binding_path}"
 
     # Open the file and read its content
-    with open(file_path, "rb") as file_obj:
+    with open(binding_path, "rb") as file_obj:
         file_content = file_obj.read()
         # Create a SimpleUploadedFile instance
-        upload_file = SimpleUploadedFile(
-            "hap5_15min_mcisaac_chr1.csv.gz", file_content, content_type="application/gzip"
-        )
+        upload_file = SimpleUploadedFile("140_H2O2Lo.csv.gz", file_content, content_type="application/gzip")
+        data = model_to_dict_select(BindingFactory.build())
+        # set path to test data and check that it exists
         data["file"] = upload_file
-        data["source"] = mcisaac_datasource.id
-        # test that passing the regulator symbol works
+        # note: test passing the regulator_locus_tag and source_name
+        # instead of the regulator and source ids works
+        data.pop("source")
+        data["source_name"] = hu_datasource.name
         data.pop("regulator")
-        data["regulator_symbol"] = regulator.genomicfeature.symbol
+        data["regulator_symbol"] = "RTG3"
+        data["condition"] = "H2O2Lo"
+        binding_serializer = BindingSerializer(data=data, context={"request": request})
+        assert binding_serializer.is_valid() is True, binding_serializer.errors
+        binding_instance = binding_serializer.save()
 
-        response = client.post(reverse("api:expression-list"), data, format="multipart")
+    promotersetsig_path = next(
+        file for file in test_data_dict["promotersetsig"]["files"] if os.path.basename(file) == "RTG3_harbison.csv.gz"
+    )
+    assert os.path.exists(promotersetsig_path), f"path: {promotersetsig_path}"
+
+    # Open the file and read its content
+    with open(promotersetsig_path, "rb") as file_obj:
+        file_content = file_obj.read()
+        # Create a SimpleUploadedFile instance
+        upload_file = SimpleUploadedFile("RTG3_harbison.csv.gz", file_content, content_type="application/gzip")
+        data = model_to_dict_select(PromoterSetSigFactory.build())
+        data["file"] = upload_file
+        data["binding"] = binding_instance.id
+        data["fileformat"] = fileformat.get(fileformat="array").id
+        promotersetsig_serializer = PromoterSetSigSerializer(data=data, context={"request": request})
+        assert promotersetsig_serializer.is_valid() is True, promotersetsig_serializer.errors
+        promotersetsig_serializer.save()
+
+    expression_file_path = next(
+        file for file in test_data_dict["expression"]["hu"]["files"] if os.path.basename(file) in "RTG3.csv.gz"
+    )
+    assert os.path.exists(expression_file_path), f"path: {expression_file_path}"
+
+    expression_data = model_to_dict_select(ExpressionFactory.build())
+    # set path to test data and check that it exists
+
+    # Open the file and read its content
+    with open(expression_file_path, "rb") as file_obj:
+        file_content = file_obj.read()
+        # Create a SimpleUploadedFile instance
+        upload_file = SimpleUploadedFile("RTG3.csv.gz", file_content, content_type="application/gzip")
+        expression_data["file"] = upload_file
+        expression_data["source"] = hu_datasource.id
+        # test that passing the regulator symbol works
+        expression_data["regulator"] = rtg3_regulator.id
+
+        # Define your query parameters
+        query_params = {"testing": "True"}
+
+        # Create the URL for the request
+        url = reverse("api:expression-list")
+
+        # Add the query parameters to the URL
+        url += "?" + urlencode(query_params)
+
+        settings.CELERY_TASK_ALWAYS_EAGER = True
+        response = client.post(url, expression_data, format="multipart")
 
         assert response.status_code == 201, response.data
         assert Expression.objects.count() == 1
         assert (
-            re.match(r"expression\/mcisaac_oe\/\d+\.csv\.gz$", Expression.objects.get().file.name) is not None
+            re.match(r"expression\/hu_reimann_tfko\/\d+\.csv\.gz$", Expression.objects.get().file.name) is not None
         ), Expression.objects.get().file.name
+        assert RankResponse.objects.count() == 1, RankResponse.objects.count()
 
 
 @pytest.mark.django_db
-def test_expression_bulk_upload(
+def test_expression_bulk_upload_and_combinedfile(
     chrmap: QuerySet, hu_datasource: DataSource, mcisaac_datasource: DataSource, user: User, test_data_dict: dict
 ):
     token = Token.objects.get(user=user)
@@ -419,6 +655,27 @@ def test_expression_bulk_upload(
         assert Expression.objects.count() == 2, Expression.objects.count()
         csv_handle.close()
         tar_handle.close()
+
+        # get the response from the expression-combined endpoint
+        response = client.get(reverse("api:expression-combined"), {"regulator_symbol": "HAP5"})
+
+        assert response.status_code == 200, response.data
+
+        # Save the response content to a BytesIO object
+        content = io.BytesIO(b"".join(response.streaming_content))
+        # Reset the cursor to the beginning of the file
+        content.seek(0)
+        # Read the BytesIO object into a DataFrame
+        df = pd.read_csv(content, compression="gzip")
+        assert "regulator_id" in df.columns, df.columns
+        assert "regulator_locus_tag" in df.columns, df.columns
+        assert "regulator_symbol" in df.columns, df.columns
+        assert "target_id" in df.columns, df.columns
+        assert "target_locus_tag" in df.columns, df.columns
+        assert "target_symbol" in df.columns, df.columns
+        assert "record_id" in df.columns, df.columns
+        assert "effect" in df.columns, df.columns
+        assert "pvalue" in df.columns, df.columns
 
 
 @pytest.mark.django_db
@@ -490,9 +747,18 @@ def test_rank_response_summary(
         data = model_to_dict_select(
             BindingFactory.build(source=chipexo_datasource, regulator=regulator, file=upload_file)
         )
+        # Define your query parameters
+        query_params = {"testing": "True"}
+
+        # Create the URL for the request
+        url = reverse("api:binding-list")
+
+        # Add the query parameters to the URL
+        url += "?" + urlencode(query_params)
 
         settings.CELERY_TASK_ALWAYS_EAGER = True
-        response = client.post(reverse("api:binding-list"), data, format="multipart")
+        response = client.post(url, data, format="multipart")
+
         assert response.status_code == 201, response.data
         assert Binding.objects.count() == 1
         assert PromoterSetSig.objects.count() == 1

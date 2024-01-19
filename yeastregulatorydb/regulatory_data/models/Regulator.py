@@ -24,6 +24,7 @@ class RegulatorManager(models.Manager):
 
     def annotated(self):
         return self.select_related(
+            "uploader",
             "genomicfeature",
         ).annotate(
             regulator_locus_tag=models.F("genomicfeature__locus_tag"),

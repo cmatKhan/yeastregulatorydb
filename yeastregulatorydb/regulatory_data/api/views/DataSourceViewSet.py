@@ -6,10 +6,10 @@ from rest_framework.permissions import IsAuthenticated
 from ...models.DataSource import DataSource
 from ..filters.DataSourceFilter import DataSourceFilter
 from ..serializers.DataSourceSerializer import DataSourceSerializer
-from .mixins.UpdateModifiedMixin import UpdateModifiedMixin
+from .mixins import ExportTableAsGzipFileMixin, UpdateModifiedMixin
 
 
-class DataSourceViewSet(UpdateModifiedMixin, viewsets.ModelViewSet):
+class DataSourceViewSet(UpdateModifiedMixin, ExportTableAsGzipFileMixin, viewsets.ModelViewSet):
     """
     A viewset for viewing and editing DataSource instances.
     """

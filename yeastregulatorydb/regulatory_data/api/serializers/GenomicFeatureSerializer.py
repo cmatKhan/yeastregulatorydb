@@ -18,23 +18,23 @@ class GenomicFeatureSerializer(CustomValidateMixin, serializers.ModelSerializer)
         greater than 0.
         """
         if "chr" not in self.initial_data:
-            raise serializers.ValidationError("`chr` field is missing")
+            raise serializers.ValidationError({"file": "`chr` field is missing"})
         if "end" not in self.initial_data:
-            raise serializers.ValidationError("`end` field is missing")
+            raise serializers.ValidationError({"file": "`end` field is missing"})
         if isinstance(value, str) and value.isdigit():
             value = int(value)
         elif not isinstance(value, int):
-            raise serializers.ValidationError("`start` value must be an integer")
+            raise serializers.ValidationError({"file" "`start` value must be an integer"})
 
         if value < 1:
-            raise serializers.ValidationError("`start` value cannot be less than 1")
+            raise serializers.ValidationError({"file": "`start` value cannot be less than 1"})
 
         chr = ChrMap.objects.get(pk=self.initial_data["chr"])
         if value > chr.seqlength:
-            raise serializers.ValidationError("`start` of feature cannot exceed length of chromosome")
+            raise serializers.ValidationError({"file": "`start` of feature cannot exceed length of chromosome"})
 
         if "end" in self.initial_data and value > self.initial_data["end"]:
-            raise serializers.ValidationError("`start` value cannot be greater than end value")
+            raise serializers.ValidationError({"file": "`start` value cannot be greater than end value"})
 
         return value
 
@@ -46,19 +46,19 @@ class GenomicFeatureSerializer(CustomValidateMixin, serializers.ModelSerializer)
         `validate_start` method.
         """
         if "chr" not in self.initial_data:
-            raise serializers.ValidationError("`chr` field is missing")
+            raise serializers.ValidationError({"file": "`chr` field is missing"})
         if "end" not in self.initial_data:
-            raise serializers.ValidationError("`end` field is missing")
+            raise serializers.ValidationError({"file": "`end` field is missing"})
         if isinstance(value, str) and value.isdigit():
             value = int(value)
         elif not isinstance(value, int):
-            raise serializers.ValidationError("`end` value must be an integer")
+            raise serializers.ValidationError({"file": "`end` value must be an integer"})
 
         if value < 1:
-            raise serializers.ValidationError("`end` value cannot be less than 1")
+            raise serializers.ValidationError({"file": "`end` value cannot be less than 1"})
 
         chr = ChrMap.objects.get(pk=self.initial_data["chr"])
         if value >= chr.seqlength + 1:
-            raise serializers.ValidationError("`end` of feature cannot exceed length of chromosome")
+            raise serializers.ValidationError({"file": "`end` of feature cannot exceed length of chromosome"})
 
         return value

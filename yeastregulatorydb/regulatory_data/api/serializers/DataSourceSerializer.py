@@ -20,7 +20,10 @@ class DataSourceSerializer(CustomValidateMixin, serializers.ModelSerializer):
                 return FileFormat.objects.get(fileformat=value).id
             except FileFormat.DoesNotExist:
                 raise serializers.ValidationError(
-                    "FileFormat not found. Provide either the FileFormat `id` or the `fileformat` string."
+                    {
+                        "fileformat": "FileFormat not found. Provide either the "
+                        "FileFormat `id` or the `fileformat` string."
+                    }
                 )
         return value
 
@@ -31,5 +34,5 @@ class DataSourceSerializer(CustomValidateMixin, serializers.ModelSerializer):
             try:
                 return DataSource.objects.get(name=value).id
             except DataSource.DoesNotExist:
-                raise serializers.ValidationError("Lab not found")
+                raise serializers.ValidationError({"source": "Lab not found"})
         return value.upper()

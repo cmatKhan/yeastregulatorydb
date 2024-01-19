@@ -54,17 +54,19 @@ class FileValidationMixin:
         # fields in the serializer
         if "file" not in attrs.keys():
             raise serializers.ValidationError(
-                "file is a required fields in any model serializer using the GenomicFileValidaitionMixin"
+                {"file": "file is a required fields in any model serializer using the GenomicFileValidaitionMixin"}
             )
         # check that there is data in the file
         if attrs.get("file").size == 0:
-            raise serializers.ValidationError("File is empty")
+            raise serializers.ValidationError({"file": "File is empty"})
         # check extension
         if not attrs.get("file").name.endswith(".gz"):
             raise serializers.ValidationError(
-                "all uploaded files are expected to be gzipped tsv files. "
-                "The file extension before .gz does not matter, but if it is gzipped, "
-                "there should be a .gz extention. Gzip it and try again."
+                {
+                    "file": "all uploaded files are expected to be gzipped tsv files. "
+                    "The file extension before .gz does not matter, but if it is gzipped, "
+                    "there should be a .gz extention. Gzip it and try again."
+                }
             )
         # read in the file with pandas. raise a validationerror if it fails
         if self.instance:  # type: ignore[attr-defined]
@@ -99,19 +101,19 @@ class FileValidationMixin:
         try:
             decompressed_file = gzip.decompress(attrs.get("file").read())
         except OSError:
-            raise serializers.ValidationError("The file is not a valid gzipped file.")
+            raise serializers.ValidationError({"file": "The file is not a valid gzipped file."})
 
         # Convert the bytes object to a StringIO object
         try:
             file_like_object = io.StringIO(decompressed_file.decode())
         except UnicodeDecodeError:
-            raise serializers.ValidationError("The file content could not be decoded.")
+            raise serializers.ValidationError({"file": "The file content could not be decoded."})
 
         # Try to read the data into a pandas DataFrame
         try:
             df = pd.read_csv(file_like_object, sep=separator)
         except pd.errors.ParserError:
-            raise serializers.ValidationError("The file could not be parsed with separator: {separator}")
+            raise serializers.ValidationError({"file": "The file could not be parsed with separator: {separator}"})
         try:
             if {"chr", "start", "end"}.issubset(set(df.columns)):
                 logger.info("Validating genomic coordinates in uploaded file")
@@ -125,5 +127,5 @@ class FileValidationMixin:
             else:
                 df = validate_df(df, fields)
         except ValueError as e:
-            raise serializers.ValidationError(f"Invalid file. Error: {e}")
+            raise serializers.ValidationError({"file": f"Invalid file. Error: {e}"})
         return attrs

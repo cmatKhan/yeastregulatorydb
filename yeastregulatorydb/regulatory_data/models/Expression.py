@@ -19,28 +19,37 @@ class Expression(BaseModel, GzipFileUploadWithIdMixin):
     batch = models.CharField(
         max_length=20,
         default="undefined",
-        help_text="A batch identifier for a set of data, " "eg the run number in the case of calling cards",
+        help_text="A batch identifier for a set of data, eg the run number in the case of calling cards",
+        db_index=True,
     )
-    replicate = models.PositiveIntegerField(default=1, help_text="Replicate number")
+    strain = models.CharField(
+        max_length=20,
+        default="undefined",
+        help_text="The strain used in the experiment. This will be derived from the original data source. Default value is `undefined`",
+    )
+    replicate = models.PositiveIntegerField(default=1, help_text="Replicate number", db_index=True)
     control = models.CharField(
         choices=[("undefined", "undefined"), ("wt", "wt"), ("wt_mata", "wt_mata")],
         default="undefined",
         help_text="Intended for micro-array data, this field records the "
         "control strain used to generate the relative intensity data",
+        db_index=True,
     )
     mechanism = models.CharField(
         choices=[("gev", "gev"), ("zev", "zev"), ("tfko", "tfko")],
         max_length=10,
         default="undefined",
         help_text="The mechanism by which the regulator was perturbed",
+        db_index=True,
     )
     restriction = models.CharField(
         choices=[("undefined", "undefined"), ("P", "P"), ("M", "M"), ("N", "N")],
         max_length=10,
         default="undefined",
         help_text="This is a feature of the McIsaac ZEV data",
+        db_index=True,
     )
-    time = models.PositiveIntegerField(default=0, help_text="Timepoint of the experiment in minutes")
+    time = models.PositiveIntegerField(default=0, help_text="Timepoint of the experiment in minutes", db_index=True)
     source = models.ForeignKey("DataSource", on_delete=models.CASCADE)
     file = models.FileField(
         upload_to="temp",
@@ -53,6 +62,17 @@ class Expression(BaseModel, GzipFileUploadWithIdMixin):
 
     class Meta:
         db_table = "expression"
+        unique_together = (
+            "regulator",
+            "batch",
+            "strain",
+            "replicate",
+            "control",
+            "mechanism",
+            "restriction",
+            "time",
+            "source",
+        )
 
     def save(self, *args, **kwargs):
         # Store the old file path
@@ -66,6 +86,14 @@ class Expression(BaseModel, GzipFileUploadWithIdMixin):
             # If the file name changed, delete the old file
             # if old_file_name and old_file_name != new_file_name:
             #     default_storage.delete(old_file_name)
+
+    def get_genomicfeature(self):
+        """return the genomicfeature associated with this expression instance"""
+        return self.regulator
+
+    def get_fileformat(self):
+        """return the fileformat associated with this expression instance"""
+        return self.source.fileformat
 
     # pylint: disable=R0801
     # def save(self, *args, **kwargs):

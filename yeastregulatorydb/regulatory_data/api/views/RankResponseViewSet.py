@@ -53,5 +53,5 @@ class RankResponseViewSet(UpdateModifiedMixin, viewsets.ModelViewSet):
                 df.to_csv(tmpfile.name, compression="gzip", index=False)
                 tmpfile.seek(0)
                 response = HttpResponse(tmpfile, content_type="application/gzip")
-                response["Content-Disposition"] = "attachment; filename=rank_response_summary.csvgz"
+                response["Content-Disposition"] = "attachment; filename=rank_response_summary.csv.gz"
                 return response

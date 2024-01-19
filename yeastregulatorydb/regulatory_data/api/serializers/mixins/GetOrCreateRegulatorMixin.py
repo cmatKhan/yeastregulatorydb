@@ -48,12 +48,14 @@ class GetOrCreateRegulatorMixin:
         # is in the request data
         if "regulator_locus_tag" not in data and "regulator_symbol" not in data:
             raise serializers.ValidationError(
-                "If you do not provide `regulator`, you "
-                "must provide either `regulator_locus_tag` or `regulator_symbol`"
+                {
+                    "regulator": "If you do not provide `regulator`, you "
+                    "must provide either `regulator_locus_tag` or `regulator_symbol`"
+                }
             )
         elif "regulator_locus_tag" in data and "regulator_symbol" in data:
             raise serializers.ValidationError(
-                "You must provide either regulator_locus_tag or regulator_symbol, not both"
+                {"regulator": "You must provide either regulator_locus_tag or regulator_symbol, not both"}
             )
         else:
             # try to get the regulator instance based on the regulator locus tag or symbol
@@ -82,9 +84,12 @@ class GetOrCreateRegulatorMixin:
                 # response
                 except GenomicFeature.DoesNotExist:
                     raise serializers.ValidationError(
-                        "Genomic Feature not found for locus identifier %s " % data.get("regulator_locus_tag")
-                        if data.get("regulator_locus_tag")
-                        else data.get("regulator_symbol")
+                        {
+                            "genomicfeature": "Genomic Feature not found for locus identifier %s "
+                            % data.get("regulator_locus_tag")
+                            if data.get("regulator_locus_tag")
+                            else data.get("regulator_symbol")
+                        }
                     )
                 # else, try to create a new regulator instance
                 else:
@@ -97,17 +102,19 @@ class GetOrCreateRegulatorMixin:
                     # if the regulator data is invalid, then return a 400
                     except serializers.ValidationError as e:
                         raise serializers.ValidationError(
-                            "The Regulator instance created for regulator locus %s is invalid: %s"
-                            % (
-                                data.get("regulator_locus_tag")
-                                if data.get("regulator_locus_tag")
-                                else data.get("regulator_symbol"),
-                                e,
-                            )
+                            {
+                                "regulator": "The Regulator instance created for regulator locus %s is invalid: %s"
+                                % (
+                                    data.get("regulator_locus_tag")
+                                    if data.get("regulator_locus_tag")
+                                    else data.get("regulator_symbol"),
+                                    e,
+                                )
+                            }
                         )
                     except AttributeError as e:
                         raise serializers.ValidationError(
-                            "Attribute error while creating a new regulator instance: %s" % e
+                            {"regulator": "Attribute error while creating a new regulator instance: %s" % e}
                         )
                     else:
                         # if the regulator data is valid, then try to create
@@ -117,11 +124,11 @@ class GetOrCreateRegulatorMixin:
                             regulator_instance = regulator_serializer.save()
                         except IntegrityError as e:
                             raise serializers.ValidationError(
-                                "Database error while creating a new regulator instance: %s" % e
+                                {"regulator": "Database error while creating a new regulator instance: %s" % e}
                             )
                         except ValueError as e:
                             raise serializers.ValidationError(
-                                "Value error while creating a new regulator instance: %s" % e
+                                {"regulator": "Value error while creating a new regulator instance: %s" % e}
                             )
         return regulator_instance
 

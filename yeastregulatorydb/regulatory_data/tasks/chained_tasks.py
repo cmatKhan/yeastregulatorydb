@@ -26,7 +26,7 @@ def promotersetsig_rankedresponse_chained(binding_id, user_id, promotersetsig_fi
     # Create a chain of tasks
     task = chain(
         promoter_significance_task.s(binding_id, user_id, promotersetsig_filetype, **kwargs),
-        rank_response_tasks.s(user_id=user_id, **kwargs),
+        # rank_response_tasks.s(user_id=user_id, **kwargs),
     )
     result = task.apply_async()
     return result

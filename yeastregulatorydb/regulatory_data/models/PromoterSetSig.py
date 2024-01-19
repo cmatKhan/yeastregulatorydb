@@ -66,6 +66,14 @@ class PromoterSetSig(BaseModel, GzipFileUploadWithIdMixin):
 
     # pylint:enable=R0801
 
+    def get_genomicfeature(self):
+        """return the genomicfeature associated with this promotersetsig instance"""
+        return self.binding.regulator
+
+    def get_fileformat(self):
+        """return the fileformat associated with this expression instance"""
+        return self.fileformat
+
 
 @receiver(models.signals.post_delete, sender=PromoterSetSig)
 def remove_file_from_s3(sender, instance, using, **kwargs):  # pylint: disable=unused-argument

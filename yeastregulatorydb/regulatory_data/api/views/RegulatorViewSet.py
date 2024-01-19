@@ -6,10 +6,10 @@ from rest_framework.permissions import IsAuthenticated
 from ...models.Regulator import Regulator
 from ..filters.RegulatorFilter import RegulatorFilter
 from ..serializers.RegulatorSerializer import RegulatorSerializer
-from .mixins.UpdateModifiedMixin import UpdateModifiedMixin
+from .mixins import ExportTableAsGzipFileMixin, UpdateModifiedMixin
 
 
-class RegulatorViewSet(UpdateModifiedMixin, viewsets.ModelViewSet):
+class RegulatorViewSet(UpdateModifiedMixin, ExportTableAsGzipFileMixin, viewsets.ModelViewSet):
     """
     A viewset for viewing and editing Regulator instances.
     """

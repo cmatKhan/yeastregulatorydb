@@ -31,15 +31,19 @@ class GetDataSourceMixin:
         """
         if "source_name" not in data:
             raise serializers.ValidationError(
-                "You must provide either field `source` with a valid source "
-                "instance `id` or `source_name` with a valid DataSource "
-                "instance name"
+                {
+                    "source": "You must provide either field `source` with a valid source "
+                    "instance `id` or `source_name` with a valid DataSource "
+                    "instance name"
+                }
             )
         else:
             try:
                 return DataSource.objects.get(name=data.get("source_name"))
             except DataSource.DoesNotExist:
-                raise serializers.ValidationError("Source with name %s does not exist" % data.get("source_name"))
+                raise serializers.ValidationError(
+                    {"source": "Source with name %s does not exist" % data.get("source_name")}
+                )
 
     def to_internal_value(self, data: Any) -> Any:
         """

@@ -6,10 +6,10 @@ from rest_framework.permissions import IsAuthenticated
 from ...models.FileFormat import FileFormat
 from ..filters.FileFormatFilter import FileFormatFilter
 from ..serializers.FileFormatSerializer import FileFormatSerializer
-from .mixins.UpdateModifiedMixin import UpdateModifiedMixin
+from .mixins import ExportTableAsGzipFileMixin, UpdateModifiedMixin
 
 
-class FileFormatViewSet(UpdateModifiedMixin, viewsets.ModelViewSet):
+class FileFormatViewSet(UpdateModifiedMixin, ExportTableAsGzipFileMixin, viewsets.ModelViewSet):
     """
     A viewset for viewing and editing FileFormat instances.
     """

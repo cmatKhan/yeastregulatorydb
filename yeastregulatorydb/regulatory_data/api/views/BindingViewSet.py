@@ -1,25 +1,26 @@
 from django.conf import settings
 from django.core.cache import cache
 from django.core.files.storage import default_storage
-from django.db import transaction
+from django.db import IntegrityError, transaction
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import viewsets
 from rest_framework.authentication import SessionAuthentication, TokenAuthentication
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.serializers import ValidationError
 
 from ...models.Binding import Binding
 from ...tasks import promotersetsig_rankedresponse_chained, rank_response_task
 from ..filters import BindingFilter
-from ..serializers import BindingSerializer, PromoterSetSigSerializer
-from .mixins import BulkUploadMixin, UpdateModifiedMixin
+from ..serializers import BindingManualQCSerializer, BindingSerializer, PromoterSetSigSerializer
+from .mixins import BulkUploadMixin, ExportTableAsGzipFileMixin, UpdateModifiedMixin
 
 
-class BindingViewSet(BulkUploadMixin, UpdateModifiedMixin, viewsets.ModelViewSet):
+class BindingViewSet(BulkUploadMixin, UpdateModifiedMixin, ExportTableAsGzipFileMixin, viewsets.ModelViewSet):
     """
     A viewset for viewing and editing Binding instances.
     """
 
-    queryset = Binding.objects.all()
+    queryset = Binding.objects.select_related("uploader", "regulator", "regulator__genomicfeature", "source").all()
     authentication_classes = [SessionAuthentication, TokenAuthentication]
     permission_classes = [IsAuthenticated]
     serializer_class = BindingSerializer
@@ -29,7 +30,20 @@ class BindingViewSet(BulkUploadMixin, UpdateModifiedMixin, viewsets.ModelViewSet
     @transaction.atomic
     def perform_create(self, serializer):
         try:
-            instance = serializer.save()
+            try:
+                instance = serializer.save()
+            except IntegrityError as e:
+                raise ValidationError({"binding": str(e)})
+            if instance is None:
+                raise ValidationError(
+                    {"binding": "Could not save Binding instance. " "Not sure why. Check logs and contact your admin"}
+                )
+            # create a BindingManualQC instance and save to the DB
+            bindingmanualqc_serializer = BindingManualQCSerializer(
+                data={"binding": instance.id}, context={"request": self.request}
+            )
+            bindingmanualqc_serializer.is_valid(raise_exception=True)
+            bindingmanualqc_instance = bindingmanualqc_serializer.save()
 
             # if the source.name is in the settings NULL_BINDING_FILE_DATASOURCES,
             # then the `file` needs to be added to the promotersetsig table
@@ -44,20 +58,26 @@ class BindingViewSet(BulkUploadMixin, UpdateModifiedMixin, viewsets.ModelViewSet
                     context={"request": self.request},
                 )
                 promotersetsig_serializer.is_valid(raise_exception=True)
-                promotersetsiginstance = promotersetsig_serializer.save()
+                try:
+                    promotersetsiginstance = promotersetsig_serializer.save()
+                except IntegrityError as e:
+                    raise ValidationError({"promotersetsig": str(e)})
                 # if the promotersetsiginstance was successfully saved, then try
                 # to launch a rankresponse task
                 lock_id = "add_data_lock"
                 acquire_lock = lambda: cache.add(lock_id, True, timeout=60 * 60)  # flake8: noqa: E731
                 release_lock = lambda: cache.delete(lock_id)  # flake8: noqa: E731
 
-                if acquire_lock():
-                    promotersetsiginstance.rankresponse_processing = True
-                    promotersetsiginstance.save()
-                    try:
-                        rank_response_task.delay(promotersetsiginstance.id, self.request.user.id)
-                    finally:
-                        release_lock()
+                # if acquire_lock():
+                #     try:
+                #         if self.request.query_params.get("testing"):
+                #             rank_response_task.delay(promotersetsiginstance.id, self.request.user.id)
+                #         else:
+                #             transaction.on_commit(
+                #                 lambda: rank_response_task.delay(promotersetsiginstance.id, self.request.user.id)
+                #             )
+                #     finally:
+                #         release_lock()
 
             # if the source.assay is recognized as one associated with a task,
             # set the promotersetsig_processing attribute
@@ -69,15 +89,22 @@ class BindingViewSet(BulkUploadMixin, UpdateModifiedMixin, viewsets.ModelViewSet
                 promotersetsig_format = settings.CALLINGCARDS_PROMOTER_SIG_FORMAT
 
             if promotersetsig_format:
-                # this attribute is added to the returned serialized data
-                instance.promotersetsig_processing = True
                 lock_id = "add_data_lock"
                 acquire_lock = lambda: cache.add(lock_id, True, timeout=60 * 60)  # flake8: noqa: E731
                 release_lock = lambda: cache.delete(lock_id)  # flake8: noqa: E731
 
                 if acquire_lock():
                     try:
-                        promotersetsig_rankedresponse_chained(instance.id, self.request.user.id, promotersetsig_format)
+                        if self.request.query_params.get("testing"):
+                            promotersetsig_rankedresponse_chained(
+                                instance.id, self.request.user.id, promotersetsig_format
+                            )
+                        else:
+                            transaction.on_commit(
+                                lambda: promotersetsig_rankedresponse_chained(
+                                    instance.id, self.request.user.id, promotersetsig_format
+                                )
+                            )
                     finally:
                         release_lock()
         except:

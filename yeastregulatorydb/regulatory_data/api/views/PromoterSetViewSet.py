@@ -1,9 +1,11 @@
 from django.conf import settings
 from django.core.cache import cache
+from django.db import IntegrityError, transaction
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import viewsets
 from rest_framework.authentication import SessionAuthentication, TokenAuthentication
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.serializers import ValidationError
 
 from ...models import Binding, PromoterSet
 from ...tasks import promotersetsig_rankedresponse_chained
@@ -17,7 +19,7 @@ class PromoterSetViewSet(UpdateModifiedMixin, viewsets.ModelViewSet):
     A viewset for viewing and editing PromoterSet instances.
     """
 
-    queryset = PromoterSet.objects.all()
+    queryset = PromoterSet.objects.select_related("uploader").all()
     authentication_classes = [SessionAuthentication, TokenAuthentication]
     permission_classes = [IsAuthenticated]
     serializer_class = PromoterSetSerializer
@@ -25,8 +27,16 @@ class PromoterSetViewSet(UpdateModifiedMixin, viewsets.ModelViewSet):
     filterset_class = PromoterSetFilter
 
 
+@transaction.atomic
 def perform_create(self, serializer):
-    instance = serializer.save()
+    try:
+        instance = serializer.save()
+    except IntegrityError as e:
+        raise ValidationError({"promoterset": str(e)})
+    if instance is None:
+        raise ValidationError(
+            {"promoterset": "Could not save PromoterSet instance. " "Not sure why. Check logs and contact your admin"}
+        )
 
     instance.promotersetsig_processing = False
     lock_id = "add_data_lock"
@@ -46,8 +56,15 @@ def perform_create(self, serializer):
 
                 if task_type:
                     instance.promotersetsig_processing = True
-                    promotersetsig_rankedresponse_chained(
-                        binding_obj.id, self.request.user.id, task_type, promoterset_id=instance.id
-                    )
+                    if self.request.query_params.get("test"):
+                        promotersetsig_rankedresponse_chained(
+                            binding_obj.id, self.request.user.id, task_type, promoterset_id=instance.id, testing=True
+                        )
+                    else:
+                        transaction.on_commit(
+                            lambda: promotersetsig_rankedresponse_chained(
+                                binding_obj.id, self.request.user.id, task_type, promoterset_id=instance.id
+                            )
+                        )
         finally:
             release_lock()

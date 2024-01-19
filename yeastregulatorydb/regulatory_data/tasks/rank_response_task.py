@@ -48,7 +48,7 @@ def rank_response_task(
     try:
         promotersetsig_record = PromoterSetSig.objects.get(id=promotersetsig_id)
     except PromoterSetSig.DoesNotExist:
-        raise ValueError(f"Binding record with id {promotersetsig_id} does not exist")
+        raise ValueError(f"PromoterSetSig record with id {promotersetsig_id} does not exist")
 
     try:
         rankresponse_format = FileFormat.objects.get(fileformat="rankresponse")
@@ -71,10 +71,14 @@ def rank_response_task(
         for record in expression_objects_iterator:
             expression_filepath = extract_file_from_storage(record.file, tmpdir)
 
-            expr_pval_thres = kwargs.get(
-                "expression_pvalue_threshold", record.source.fileformat.default_pvalue_threshold
+            # if the expression pval column is none, set the thres to none. This
+            # is in the event that there is no pvalue column
+            # TODO consider requiring a pvalue column?
+            expr_pval_thres = (
+                None
+                if record.source.fileformat.pval_col == "none" or record.source.fileformat.pval_col is None
+                else kwargs.get("expression_pvalue_threshold", record.source.fileformat.default_pvalue_threshold)
             )
-            expr_pval_thres = None if expr_pval_thres == 1.0 else expr_pval_thres
 
             config_dict = {
                 "binding_data_path": promotersetsig_filepath,
