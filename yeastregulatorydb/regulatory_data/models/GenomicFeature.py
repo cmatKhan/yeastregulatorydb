@@ -149,7 +149,7 @@ class GenomicFeature(BaseModel):
         """
         Returns a string representation of the `GenomicFeature` model.
         """
-        return f"{self.symbol}({self.locus_tag}; pk: {self.pk}"
+        return f"{self.symbol}_{self.locus_tag}; pk: {self.pk}"
 
     class Meta:
         managed = True

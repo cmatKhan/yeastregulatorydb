@@ -13,7 +13,7 @@ class ChrMapViewSet(UpdateModifiedMixin, viewsets.ModelViewSet):
     A viewset for viewing and editing ChrMap instances.
     """
 
-    queryset = ChrMap.objects.all()
+    queryset = ChrMap.objects.select_related("uploader").all()
     authentication_classes = [SessionAuthentication, TokenAuthentication]
     permission_classes = [IsAuthenticated]
     serializer_class = ChrMapSerializer

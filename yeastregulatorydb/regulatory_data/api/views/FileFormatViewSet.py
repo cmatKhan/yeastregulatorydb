@@ -14,7 +14,7 @@ class FileFormatViewSet(UpdateModifiedMixin, ExportTableAsGzipFileMixin, viewset
     A viewset for viewing and editing FileFormat instances.
     """
 
-    queryset = FileFormat.objects.all()
+    queryset = FileFormat.objects.select_related("uploader").all()
     authentication_classes = [SessionAuthentication, TokenAuthentication]
     permission_classes = [IsAuthenticated]
     serializer_class = FileFormatSerializer

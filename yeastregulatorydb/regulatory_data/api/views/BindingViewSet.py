@@ -9,7 +9,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.serializers import ValidationError
 
 from ...models.Binding import Binding
-from ...tasks import promotersetsig_rankedresponse_chained, rank_response_task
+from ...tasks import promotersetsig_rankedresponse_chained
 from ..filters import BindingFilter
 from ..serializers import BindingManualQCSerializer, BindingSerializer, PromoterSetSigSerializer
 from .mixins import BulkUploadMixin, ExportTableAsGzipFileMixin, UpdateModifiedMixin
@@ -20,7 +20,11 @@ class BindingViewSet(BulkUploadMixin, UpdateModifiedMixin, ExportTableAsGzipFile
     A viewset for viewing and editing Binding instances.
     """
 
-    queryset = Binding.objects.select_related("uploader", "regulator", "regulator__genomicfeature", "source").all()
+    queryset = (
+        Binding.objects.select_related("uploader", "regulator", "regulator__genomicfeature", "source")
+        .all()
+        .order_by("-id")
+    )
     authentication_classes = [SessionAuthentication, TokenAuthentication]
     permission_classes = [IsAuthenticated]
     serializer_class = BindingSerializer
@@ -36,11 +40,15 @@ class BindingViewSet(BulkUploadMixin, UpdateModifiedMixin, ExportTableAsGzipFile
                 raise ValidationError({"binding": str(e)})
             if instance is None:
                 raise ValidationError(
-                    {"binding": "Could not save Binding instance. " "Not sure why. Check logs and contact your admin"}
+                    {"binding": "Could not save Binding instance. Not sure why. Check logs and contact your admin"}
                 )
             # create a BindingManualQC instance and save to the DB
+            bindingmanualqc_data = self.request.data.copy()
+            bindingmanualqc_data["binding"] = instance.id
+            del bindingmanualqc_data["notes"]
+            bindingmanualqc_data["notes"] = bindingmanualqc_data.get("qc_notes", "none")
             bindingmanualqc_serializer = BindingManualQCSerializer(
-                data={"binding": instance.id}, context={"request": self.request}
+                data=bindingmanualqc_data, context={"request": self.request}
             )
             bindingmanualqc_serializer.is_valid(raise_exception=True)
             bindingmanualqc_instance = bindingmanualqc_serializer.save()
@@ -67,17 +75,6 @@ class BindingViewSet(BulkUploadMixin, UpdateModifiedMixin, ExportTableAsGzipFile
                 lock_id = "add_data_lock"
                 acquire_lock = lambda: cache.add(lock_id, True, timeout=60 * 60)  # flake8: noqa: E731
                 release_lock = lambda: cache.delete(lock_id)  # flake8: noqa: E731
-
-                # if acquire_lock():
-                #     try:
-                #         if self.request.query_params.get("testing"):
-                #             rank_response_task.delay(promotersetsiginstance.id, self.request.user.id)
-                #         else:
-                #             transaction.on_commit(
-                #                 lambda: rank_response_task.delay(promotersetsiginstance.id, self.request.user.id)
-                #             )
-                #     finally:
-                #         release_lock()
 
             # if the source.assay is recognized as one associated with a task,
             # set the promotersetsig_processing attribute
@@ -113,11 +110,16 @@ class BindingViewSet(BulkUploadMixin, UpdateModifiedMixin, ExportTableAsGzipFile
                 default_storage.delete(instance.file.name)
 
             # Delete the file of the promotersetsiginstance if it exists and an exception occurs
-            if (
-                promotersetsiginstance
-                and promotersetsiginstance.file
-                and default_storage.exists(promotersetsiginstance.file.name)
-            ):
-                default_storage.delete(promotersetsiginstance.file.name)
+            try:
+                if (
+                    promotersetsiginstance
+                    and promotersetsiginstance.file
+                    and default_storage.exists(promotersetsiginstance.file.name)
+                ):
+                    default_storage.delete(promotersetsiginstance.file.name)
+            except UnboundLocalError:
+                pass
+            except Exception as exc:
+                raise ValidationError({"BindingViewSet": str(exc)})
 
             raise

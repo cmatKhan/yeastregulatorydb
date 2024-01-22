@@ -83,7 +83,7 @@ class Binding(BaseModel, GzipFileUploadWithIdMixin):
     )
 
     def __str__(self):
-        return f"{self.source}_{self.regulator}__{self.batch}__{self.replicate}"
+        return str(self.pk)
 
     class Meta:
         db_table = "binding"

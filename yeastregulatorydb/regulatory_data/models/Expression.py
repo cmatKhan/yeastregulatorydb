@@ -58,7 +58,7 @@ class Expression(BaseModel, GzipFileUploadWithIdMixin):
     notes = models.CharField(max_length=100, default="none", help_text="Free entry notes about the data")
 
     def __str__(self):
-        return f"{self.source}_{self.regulator}__{self.batch}__{self.replicate}"
+        return f"{self.pk}"
 
     class Meta:
         db_table = "expression"

@@ -14,7 +14,20 @@ class BindingManualQCViewSet(UpdateModifiedMixin, viewsets.ModelViewSet):
     A viewset for viewing and editing BindingManualQC instances.
     """
 
-    queryset = BindingManualQC.objects.all()
+    queryset = (
+        BindingManualQC.objects.select_related(
+            "uploader",
+            "modifier",
+            "binding",
+            "binding__regulator",
+            "binding__regulator__genomicfeature",
+            "binding__source",
+            "binding__source__fileformat",
+        )
+        .all()
+        .order_by("-id")
+    )
+
     authentication_classes = [SessionAuthentication, TokenAuthentication]
     permission_classes = [IsAuthenticated]
     serializer_class = BindingManualQCSerializer

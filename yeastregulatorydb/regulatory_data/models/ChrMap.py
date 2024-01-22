@@ -52,7 +52,7 @@ class ChrMap(BaseModel):
     )
 
     def __str__(self):
-        return f"{self.ucsc}(chrID:{self.pk})"
+        return f"{self.ucsc}"
 
     class Meta:
         managed = True

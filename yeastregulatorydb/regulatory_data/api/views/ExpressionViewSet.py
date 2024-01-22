@@ -7,8 +7,7 @@ from rest_framework.authentication import SessionAuthentication, TokenAuthentica
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.serializers import ValidationError
 
-from ...models import Expression, PromoterSetSig
-from ...tasks import rank_response_tasks
+from ...models import Expression
 from ..filters import ExpressionFilter
 from ..serializers import ExpressionManualQCSerializer, ExpressionSerializer
 from .mixins import BulkUploadMixin, ExportTableAsGzipFileMixin, GetCombinedGenomicFileMixin, UpdateModifiedMixin
@@ -25,7 +24,9 @@ class ExpressionViewSet(
     A viewset for viewing and editing Expression instances.
     """
 
-    queryset = Expression.objects.all()
+    queryset = Expression.objects.select_related(
+        "uploader", "regulator", "regulator__genomicfeature", "source", "source__fileformat"
+    ).all()
     authentication_classes = [SessionAuthentication, TokenAuthentication]
     permission_classes = [IsAuthenticated]
     serializer_class = ExpressionSerializer
@@ -56,34 +57,6 @@ class ExpressionViewSet(
             except IntegrityError as e:
                 ValidationError({"expression": str(e)})
 
-            # Create a chain of tasks for each promotersetsig_id
-        #     lock_id = "add_data_lock"
-        #     acquire_lock = lambda: cache.add(lock_id, True, timeout=60 * 60)  # flake8: noqa: E731
-        #     release_lock = lambda: cache.delete(lock_id)  # flake8: noqa: E731
-
-        #     if acquire_lock():
-        #         promotersetsig_id_list = list(
-        #             PromoterSetSig.objects.filter(binding__regulator__id=instance.regulator.id).values_list(
-        #                 "id", flat=True
-        #             )
-        #         )
-
-        #         if promotersetsig_id_list:
-        #             try:
-        #                 if self.request.query_params.get("testing"):
-        #                     rank_response_tasks.delay(
-        #                         promotersetsig_id_list, self.request.user.id, expression_id=instance.id
-        #                     )
-        #                 else:
-        #                     transaction.on_commit(
-        #                         lambda: rank_response_tasks.delay(
-        #                             promotersetsig_id_list, self.request.user.id, expression_id=instance.id
-        #                         )
-        #                     )
-        #             finally:
-        #                 release_lock()
-        #         else:
-        #             release_lock()
         except:
             # Delete the file of the instance if an exception occurs
             if instance.file and default_storage.exists(instance.file.name):

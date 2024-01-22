@@ -3,7 +3,6 @@ from celery import chain
 from config import celery_app
 
 from .promoter_significance_task import promoter_significance_task
-from .rank_response_task import rank_response_tasks
 
 
 @celery_app.task()
@@ -26,7 +25,6 @@ def promotersetsig_rankedresponse_chained(binding_id, user_id, promotersetsig_fi
     # Create a chain of tasks
     task = chain(
         promoter_significance_task.s(binding_id, user_id, promotersetsig_filetype, **kwargs),
-        # rank_response_tasks.s(user_id=user_id, **kwargs),
     )
     result = task.apply_async()
     return result

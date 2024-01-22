@@ -70,7 +70,7 @@ class Regulator(BaseModel):
     )
 
     def __str__(self):
-        return str(self.genomicfeature) + "_" + str(self.pk)
+        return str(self.pk)
 
     class Meta:
         managed = True

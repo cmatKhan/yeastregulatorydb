@@ -5,11 +5,11 @@ from ...models.BindingManualQC import BindingManualQC
 
 class BindingManualQCFilter(django_filters.FilterSet):
     id = django_filters.NumberFilter()
-    pk = django_filters.NumberFilter()
     binding = django_filters.NumberFilter()
-    best_datatype = django_filters.BooleanFilter()
-    data_usable = django_filters.BooleanFilter()
-    passing_replicate = django_filters.BooleanFilter()
+    best_datatype = django_filters.ChoiceFilter(choices=BindingManualQC.MANUAL_QC_CHOICES)
+    data_usable = django_filters.ChoiceFilter(choices=BindingManualQC.MANUAL_QC_CHOICES)
+    passing_replicate = django_filters.ChoiceFilter(choices=BindingManualQC.MANUAL_QC_CHOICES)
+    rank_recall = django_filters.ChoiceFilter(choices=BindingManualQC.MANUAL_QC_CHOICES)
     regulator = django_filters.NumberFilter(field_name="binding__regulator")
     regulator_locus_tag = django_filters.CharFilter(
         field_name="binding__regulator__genomicfeature__locus_tag", lookup_expr="iexact"
@@ -24,7 +24,6 @@ class BindingManualQCFilter(django_filters.FilterSet):
         model = BindingManualQC
         fields = [
             "id",
-            "pk",
             "binding",
             "best_datatype",
             "data_usable",

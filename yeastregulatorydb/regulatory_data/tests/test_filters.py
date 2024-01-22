@@ -218,8 +218,8 @@ def test_expression_filter():
     source1 = DataSourceFactory()
     source2 = DataSourceFactory()
     expression1 = ExpressionFactory(
-        regulator=regulator1,
         id=1,
+        regulator=regulator1,
         batch="batch1",
         replicate=1,
         control="undefined",
@@ -229,8 +229,8 @@ def test_expression_filter():
         source=source1,
     )
     expression2 = ExpressionFactory(
-        regulator=regulator2,
         id=2,
+        regulator=regulator2,
         batch="batch2",
         replicate=2,
         control="wt",
@@ -238,6 +238,17 @@ def test_expression_filter():
         restriction="M",
         time=2,
         source=source2,
+    )
+    expression3 = ExpressionFactory(
+        id=3,
+        regulator=regulator1,
+        batch="batch1",
+        replicate=1,
+        control="undefined",
+        mechanism="gev",
+        restriction="P",
+        time=3,
+        source=source1,
     )
 
     # Define the filter parameters and their expected values
@@ -254,6 +265,7 @@ def test_expression_filter():
         {"restriction": "P"},
         {"time": 1},
         {"source": source1.id},
+        {"source_time": f"{source1.name},{expression1.time}"},
         {"lab": source1.lab},
         {"assay": source1.assay},
         {"workflow": source1.workflow},
@@ -262,8 +274,14 @@ def test_expression_filter():
     # Apply each filter and check if it returns the expected expressions
     for params in filter_params:
         f = ExpressionFilter(params, queryset=Expression.objects.all())
-        assert expression1 in f.qs
-        assert expression2 not in f.qs
+        filtered_qs = f.qs
+        if params.get("source_time"):
+            assert expression1 in filtered_qs
+            assert expression2 in filtered_qs
+            assert expression3 not in filtered_qs
+        else:
+            assert expression1 in filtered_qs
+            assert expression2 not in filtered_qs
 
 
 @pytest.mark.django_db

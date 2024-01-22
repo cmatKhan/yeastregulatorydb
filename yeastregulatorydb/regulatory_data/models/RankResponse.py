@@ -56,7 +56,7 @@ class RankResponse(BaseModel, GzipFileUploadWithIdMixin):
     )
 
     def __str__(self):
-        return f"pk:{self.pk};promotersetsig:{self.promotersetsig};expression:{self.expression}"
+        return f"pk:{self.pk}"
 
     class Meta:
         db_table = "rankresponse"

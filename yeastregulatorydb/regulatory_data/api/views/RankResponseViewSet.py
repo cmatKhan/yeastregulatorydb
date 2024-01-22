@@ -21,7 +21,13 @@ class RankResponseViewSet(UpdateModifiedMixin, viewsets.ModelViewSet):
     A viewset for viewing and editing RankResponse instances.
     """
 
-    queryset = RankResponse.objects.all().order_by("id")
+    queryset = (
+        RankResponse.objects.select_related(
+            "uploader",
+        )
+        .all()
+        .order_by("id")
+    )
     authentication_classes = [SessionAuthentication, TokenAuthentication]
     permission_classes = [IsAuthenticated]
     serializer_class = RankResponseSerializer

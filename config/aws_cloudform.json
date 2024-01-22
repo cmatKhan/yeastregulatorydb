@@ -1,5 +1,332 @@
 {
 	"AWSTemplateFormatVersion": "2010-09-09",
+	"Description": "CloudFormation template for Django app with RDS, ElastiCache, and ECS",
+	"Resources": {
+		"EC2Role": {
+			"Type": "AWS::IAM::Role",
+			"Properties": {
+				"AssumeRolePolicyDocument": {
+					"Version": "2012-10-17",
+					"Statement": [
+						{
+							"Effect": "Allow",
+							"Principal": {
+								"Service": [
+									"ec2.amazonaws.com"
+								]
+							},
+							"Action": [
+								"sts:AssumeRole"
+							]
+						}
+					]
+				},
+				"Policies": [
+					{
+						"PolicyName": "AccessS3SESCloudWatchPolicy",
+						"PolicyDocument": {
+							"Version": "2012-10-17",
+							"Statement": [
+								{
+									"Effect": "Allow",
+									"Action": [
+										"s3:GetObject",
+										"s3:PutObject",
+										"s3:DeleteObject",
+										"s3:ListBucket"
+									],
+									"Resource": [
+										"arn:aws:s3:::yeastregulatorydb",
+										"arn:aws:s3:::yeastregulatorydb/*"
+									]
+								},
+								{
+									"Effect": "Allow",
+									"Action": [
+										"ses:SendEmail"
+									],
+									"Resource": "*"
+								},
+								{
+									"Effect": "Allow",
+									"Action": [
+										"logs:*",
+										"cloudwatch:*"
+									],
+									"Resource": "*"
+								}
+							]
+						}
+					}
+				]
+			}
+		},
+		"EC2InstanceProfile": {
+			"Type": "AWS::IAM::InstanceProfile",
+			"Properties": {
+				"Roles": [
+					{
+						"Ref": "EC2Role"
+					}
+				]
+			}
+		},
+		"blVPC": {
+			"Type": "AWS::EC2::VPC",
+			"Properties": {
+				"CidrBlock": "10.0.0.0/16",
+				"EnableDnsSupport": "true",
+				"EnableDnsHostnames": "true"
+			},
+			"Metadata": {
+				"AWS::CloudFormation::Designer": {
+					"id": "17d680fa-03da-46f7-8d86-e7cf85002cff"
+				}
+			}
+		},
+		"privatesubnet": {
+			"Type": "AWS::EC2::Subnet",
+			"Properties": {
+				"VpcId": {
+					"Ref": "blVPC"
+				},
+				"CidrBlock": "10.0.1.0/24",
+				"AvailabilityZone": "us-east-1a"
+			},
+			"Metadata": {
+				"AWS::CloudFormation::Designer": {
+					"id": "495f2dd9-4020-4d32-a9fc-98e3f5d38553"
+				}
+			}
+		},
+		"publicsubnet": {
+			"Type": "AWS::EC2::Subnet",
+			"Properties": {
+				"VpcId": {
+					"Ref": "blVPC"
+				},
+				"CidrBlock": "10.0.2.0/24",
+				"AvailabilityZone": "us-east-1a"
+			}
+		},
+		"DjangoAppSecurityGroup": {
+			"Type": "AWS::EC2::SecurityGroup",
+			"Properties": {
+				"GroupDescription": "Security group for Django web app",
+				"VpcId": {
+					"Ref": "blVPC"
+				},
+				"SecurityGroupIngress": [
+					{
+						"IpProtocol": "tcp",
+						"FromPort": 80,
+						"ToPort": 80,
+						"CidrIp": "0.0.0.0/0"
+					},
+					{
+						"IpProtocol": "tcp",
+						"FromPort": 443,
+						"ToPort": 443,
+						"CidrIp": "0.0.0.0/0"
+					},
+					{
+						"IpProtocol": "tcp",
+						"FromPort": 5432,
+						"ToPort": 5432,
+						"SourceSecurityGroupId": {
+							"Ref": "PostgresSecurityGroup"
+						}
+					},
+					{
+						"IpProtocol": "tcp",
+						"FromPort": 6379,
+						"ToPort": 6379,
+						"SourceSecurityGroupId": {
+							"Ref": "RedisSecurityGroup"
+						}
+					}
+				],
+				"Tags": [
+					{
+						"djangorediscelery": "django app securitygroup"
+					}
+				]
+			}
+		},
+		"PostgresSecurityGroup": {
+			"Type": "AWS::RDS::DBSecurityGroup",
+			"Properties": {
+				"DBSecurityGroupIngress": [
+					{
+						"IpProtocol": "tcp",
+						"FromPort": "5432",
+						"ToPort": "5432",
+						"SourceSecurityGroupId": {
+							"Ref": "EC2SecurityGroup"
+						}
+					}
+				],
+				"GroupDescription": "Postgresql RDSSecurityGroup",
+				"Tags": [
+					{
+						"djangorediscelery": "postgresql RDS security group"
+					}
+				]
+			}
+		},
+		"MyRedisCacheCluster": {
+			"Type": "AWS::ElastiCache::CacheCluster",
+			"Properties": {
+				"AutoMinorVersionUpgrade": true,
+				"CacheNodeType": "cache.t2.micro",
+				"CacheParameterGroupName": "default.redis6.x",
+				"Engine": "redis",
+				"EngineVersion": "6.x",
+				"NumCacheNodes": 1,
+				"VpcSecurityGroupIds": [
+					"sg-xxxxxxxx"
+				],
+				"CacheSubnetGroupName": "my-cache-subnet-group",
+				"SnapshotRetentionLimit": 5,
+				"Port": 6379,
+				"TransitEncryptionEnabled": true,
+				"AZMode": "single-az",
+				"PreferredAvailabilityZone": "us-east-1a",
+				"NotificationTopicArn": "",
+				"Tags": [
+					{
+						"Key": "djangorediscelery",
+						"Value": "redis"
+					}
+				]
+			}
+		}
+	},
+	"DjangoAppCluster": {
+		"Type": "AWS::ECS::Cluster",
+		"Properties": {
+			"ClusterName": "DjangoAppCluster"
+		}
+	},
+	"DjangoAppTaskDefinition": {
+		"Type": "AWS::ECS::TaskDefinition",
+		"Properties": {
+			"Family": "DjangoApp",
+			"Cpu": "256",
+			"Memory": "512",
+			"NetworkMode": "awsvpc",
+			"RequiresCompatibilities": [
+				"FARGATE"
+			],
+			"ExecutionRoleArn": {
+				"Ref": "ECSTaskExecutionRole"
+			},
+			"ContainerDefinitions": [
+				{
+					"Name": "django-app-container",
+					"Image": "your-ecr-repo/django-app:latest",
+					"Command": [
+						"/start"
+					],
+					"Essential": true
+					// Additional configurations like port mappings, environment variables
+				}
+			]
+		}
+	},
+	"DjangoAppService": {
+		"Type": "AWS::ECS::Service",
+		"Properties": {
+			"Cluster": {
+				"Ref": "DjangoAppCluster"
+			},
+			"TaskDefinition": {
+				"Ref": "DjangoAppTaskDefinition"
+			},
+			"DesiredCount": 2,
+			"LaunchType": "FARGATE",
+			"NetworkConfiguration": {
+				"AwsvpcConfiguration": {
+					"Subnets": [
+						"subnet-abc123",
+						"subnet-def456"
+					],
+					"SecurityGroups": [
+						"sg-12345678"
+					]
+				}
+			}
+			// Load balancer configuration if needed
+		}
+	},
+	"RedisCacheCluster": {
+		"Type": "AWS::ElastiCache::CacheCluster",
+		"Properties": {
+			"CacheNodeType": "cache.t2.micro",
+			"Engine": "redis",
+			"NumCacheNodes": 1
+			// Additional properties like VPC security group, subnet group
+		}
+	},
+	"DjangoAppDatabase": {
+		"Type": "AWS::RDS::DBInstance",
+		"Properties": {
+			"DBInstanceClass": "db.t2.micro",
+			"Engine": "postgres",
+			"MasterUsername": "adminuser",
+			"MasterUserPassword": "adminpassword"
+			// Additional properties like DB name, security groups
+		}
+	},
+	"ECSServiceAutoScaling": {
+		"Type": "AWS::ApplicationAutoScaling::ScalableTarget",
+		"Properties": {
+			"MinCapacity": 2,
+			"MaxCapacity": 5,
+			"ResourceId": {
+				"Fn::Join": [
+					"",
+					[
+						"service/",
+						{
+							"Ref": "DjangoAppCluster"
+						},
+						"/",
+						{
+							"Ref": "DjangoAppService"
+						}
+					]
+				]
+			},
+			"RoleARN": {
+				"Ref": "AutoscalingRole"
+			},
+			"ScalableDimension": "ecs:service:DesiredCount",
+			"ServiceNamespace": "ecs"
+		}
+	},
+	"CPUUtilizationScalingPolicy": {
+		"Type": "AWS::ApplicationAutoScaling::ScalingPolicy",
+		"Properties": {
+			"PolicyName": "CpuScalingPolicy",
+			"PolicyType": "TargetTrackingScaling",
+			"ScalingTargetId": {
+				"Ref": "ECSServiceAutoScaling"
+			},
+			"TargetTrackingScalingPolicyConfiguration": {
+				"TargetValue": 70,
+				"PredefinedMetricSpecification": {
+					"PredefinedMetricType": "ECSServiceAverageCPUUtilization"
+				}
+			}
+		}
+	}
+	// Define IAM roles, VPC configuration, and other necessary resources
+}
+
+
+{
+	"AWSTemplateFormatVersion": "2010-09-09",
 	"Resources": {
 		"EC2Role": {
 			"Type": "AWS::IAM::Role",
@@ -200,50 +527,30 @@
 				]
 			}
 		},
-		"Type": "AWS::EC2::Instance",
-		"Properties": {
-			"AvailabilityZone": "us-east-1a",
-			"BlockDeviceMappings": [ BlockDeviceMapping, ...
-			],
-			"CreditSpecification": "standard",
-			"DisableApiTermination": false,
-			"EbsOptimized": false,
-			"HostResourceGroupArn": String,
-			"IamInstanceProfile": String,
-			"ImageId": String,
-			"InstanceInitiatedShutdownBehavior": String,
-			"InstanceType": String,
-			"Ipv6AddressCount": Integer,
-			"Ipv6Addresses": [ InstanceIpv6Address, ...
-			],
-			"KernelId": String,
-			"KeyName": String,
-			"LaunchTemplate": LaunchTemplateSpecification,
-			"LicenseSpecifications": [ LicenseSpecification, ...
-			],
-			"Monitoring": Boolean,
-			"NetworkInterfaces": [ NetworkInterface, ...
-			],
-			"PlacementGroupName": String,
-			"PrivateDnsNameOptions": PrivateDnsNameOptions,
-			"PrivateIpAddress": String,
-			"PropagateTagsToVolumeOnCreation": Boolean,
-			"RamdiskId": String,
-			"SecurityGroupIds": [ String, ...
-			],
-			"SecurityGroups": [ String, ...
-			],
-			"SourceDestCheck": Boolean,
-			"SsmAssociations": [ SsmAssociation, ...
-			],
-			"SubnetId": String,
-			"Tags": [ Tag, ...
-			],
-			"Tenancy": String,
-			"UserData": String,
-			"Volumes": [ Volume, ...
-			]
+		"DjangoASG": {
+			"Type": "AWS::EC2::LaunchTemplate",
+			"Properties": {
+				"LaunchTemplateData": {
+					"ImageId": "ami-0d5eff06f840b45e9",
+					"InstanceType": "t2.micro",
+					"KeyName": "bl-keypair",
+					"SecurityGroupIds": [
+						{
+							"Ref": "DjangoAppSecurityGroup"
+						}
+					],
+					"UserData": {
+						"Fn::Base64": {
+							"Fn::Join": [
+								"",
+								[
+									"#!/bin/bash -xe\n",
+								]
+							]
+						}
+					}
+				}
+			}
 		}
 	}
-}
 }

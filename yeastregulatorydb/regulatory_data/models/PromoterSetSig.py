@@ -34,7 +34,7 @@ class PromoterSetSig(BaseModel, GzipFileUploadWithIdMixin):
     file = models.FileField(upload_to="temp", help_text="A file which stores data on " "regulator/DNA interaction")
 
     def __str__(self):
-        return f"pk:{self.pk};binding:{self.binding};" f"promoter_id:{self.promoter};background:{self.background}"
+        return f"pk:{self.pk}"
 
     class Meta:
         db_table = "promotersetsig"

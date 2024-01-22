@@ -135,7 +135,16 @@ class ExpressionFactory(DjangoModelFactory):
 
     class Meta:
         model = Expression
-        django_get_or_create = ["regulator", "source"]
+        django_get_or_create = [
+            "regulator",
+            "batch",
+            "replicate",
+            "control",
+            "mechanism",
+            "restriction",
+            "time",
+            "source",
+        ]
 
 
 class ExpressionManualQCFactory(DjangoModelFactory):

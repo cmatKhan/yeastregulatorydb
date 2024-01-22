@@ -25,7 +25,7 @@ class ExpressionManualQC(BaseModel):
     )
 
     def __str__(self):
-        return f"expression:{self.expression}"
+        return str(self.pk)
 
     class Meta:
         db_table = "expressionmanualqc"
