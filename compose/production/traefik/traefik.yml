@@ -1,3 +1,6 @@
+api:
+  dashboard: true
+
 log:
   level: INFO
 
@@ -6,10 +9,11 @@ entryPoints:
     # http
     address: ':80'
     http:
-      # https://docs.traefik.io/routing/entrypoints/#entrypoint
+      # Redirect to HTTPS
       redirections:
         entryPoint:
           to: web-secure
+          scheme: https
 
   web-secure:
     # https
@@ -20,42 +24,51 @@ entryPoints:
 
 certificatesResolvers:
   letsencrypt:
-    # https://docs.traefik.io/master/https/acme/#lets-encrypt
     acme:
       email: 'chasem@wustl.edu'
       storage: /etc/traefik/acme/acme.json
-      # https://docs.traefik.io/master/https/acme/#httpchallenge
       httpChallenge:
         entryPoint: web
 
 http:
   routers:
     web-secure-router:
-      rule: 'Host(`example.com`) || Host(`www.example.com`)'
+      rule: 'Host(`yeastregulatorydb.com`) || Host(`www.yeastregulatorydb.com`)'
       entryPoints:
         - web-secure
       middlewares:
         - csrf
       service: django
       tls:
-        # https://docs.traefik.io/master/routing/routers/#certresolver
+        certResolver: letsencrypt
+
+    dashboard:
+      rule: "Host(`traefik.yeastregulatorydb.com`)"
+      entryPoints:
+        - web-secure
+      service: api@internal
+      middlewares:
+        - auth
+      tls:
         certResolver: letsencrypt
 
     flower-secure-router:
-      rule: 'Host(`example.com`)'
+      rule: 'Host(`yeastregulatorydb.com`)'
       entryPoints:
         - flower
       service: flower
       tls:
-        # https://docs.traefik.io/master/routing/routers/#certresolver
         certResolver: letsencrypt
 
   middlewares:
     csrf:
-      # https://docs.traefik.io/master/middlewares/headers/#hostsproxyheaders
-      # https://docs.djangoproject.com/en/dev/ref/csrf/#ajax
       headers:
         hostsProxyHeaders: ['X-CSRFToken']
+
+    auth:
+      basicAuth:
+        users:
+          - "admin:$2y$05$gMtvNzmR/XDTMzqDYOzJo.zoaLOY2BNOgncORJo0PyLakKFv.Jsv2"  # Example, replace with actual hashed credentials
 
   services:
     django:
@@ -69,7 +82,6 @@ http:
           - url: http://flower:5555
 
 providers:
-  # https://docs.traefik.io/master/providers/file/
   file:
     filename: /etc/traefik/traefik.yml
     watch: true

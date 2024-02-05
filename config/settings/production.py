@@ -1,5 +1,6 @@
 from .base import *  # noqa
 from .base import env
+import os
 
 # GENERAL
 # ------------------------------------------------------------------------------
@@ -118,7 +119,13 @@ INSTALLED_APPS += ["anymail"]  # noqa: F405
 # https://anymail.readthedocs.io/en/stable/installation/#anymail-settings-reference
 # https://anymail.readthedocs.io/en/stable/esps/amazon_ses/
 EMAIL_BACKEND = "anymail.backends.amazon_ses.EmailBackend"
-ANYMAIL = {}
+ANYMAIL = {
+    "AMAZON_SES_CLIENT_PARAMS": {
+        "aws_access_key_id": os.getenv("DJANGO_AWS_ACCESS_KEY_ID"),
+        "aws_secret_access_key": os.getenv("DJANGO_AWS_SECRET_ACCESS_KEY"),
+        "region_name": os.getenv("AWS_DEFAULT_REGION"),
+    },
+}
 
 
 # LOGGING
