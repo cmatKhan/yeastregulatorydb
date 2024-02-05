@@ -14,7 +14,7 @@ class DataSourceViewSet(UpdateModifiedMixin, ExportTableAsGzipFileMixin, viewset
     A viewset for viewing and editing DataSource instances.
     """
 
-    queryset = DataSource.objects.select_related("uploader", "fileformat").all()
+    queryset = DataSource.objects.select_related("uploader", "fileformat").all().order_by("id")
     authentication_classes = [SessionAuthentication, TokenAuthentication]
     permission_classes = [IsAuthenticated]
     serializer_class = DataSourceSerializer

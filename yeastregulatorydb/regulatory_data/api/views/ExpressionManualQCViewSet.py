@@ -21,7 +21,7 @@ class ExpressionManualQCViewSet(UpdateModifiedMixin, viewsets.ModelViewSet):
         "expression__regulator__genomicfeature",
         "expression__source",
         "expression__source__fileformat",
-    ).all()
+    ).all().order_by("-id")
     authentication_classes = [SessionAuthentication, TokenAuthentication]
     permission_classes = [IsAuthenticated]
     serializer_class = ExpressionManualQCSerializer

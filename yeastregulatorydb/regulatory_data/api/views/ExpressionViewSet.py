@@ -26,7 +26,7 @@ class ExpressionViewSet(
 
     queryset = Expression.objects.select_related(
         "uploader", "regulator", "regulator__genomicfeature", "source", "source__fileformat"
-    ).all()
+    ).all().order_by("-id")
     authentication_classes = [SessionAuthentication, TokenAuthentication]
     permission_classes = [IsAuthenticated]
     serializer_class = ExpressionSerializer
