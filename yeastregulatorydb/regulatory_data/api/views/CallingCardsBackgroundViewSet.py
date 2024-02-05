@@ -18,7 +18,7 @@ class CallingCardsBackgroundViewSet(UpdateModifiedMixin, viewsets.ModelViewSet):
     A viewset for viewing and editing CallingCardsBackground instances.
     """
 
-    queryset = CallingCardsBackground.objects.select_related("uploader", "fileformat").all()
+    queryset = CallingCardsBackground.objects.select_related("uploader", "fileformat").all().order_by("-id")
     authentication_classes = [SessionAuthentication, TokenAuthentication]
     permission_classes = [IsAuthenticated]
     serializer_class = CallingCardsBackgroundSerializer

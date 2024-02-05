@@ -14,7 +14,7 @@ class RegulatorViewSet(UpdateModifiedMixin, ExportTableAsGzipFileMixin, viewsets
     A viewset for viewing and editing Regulator instances.
     """
 
-    queryset = Regulator.objects.annotated().all()
+    queryset = Regulator.objects.annotated().all().order_by("id")
     authentication_classes = [SessionAuthentication, TokenAuthentication]
     permission_classes = [IsAuthenticated]
     serializer_class = RegulatorSerializer
