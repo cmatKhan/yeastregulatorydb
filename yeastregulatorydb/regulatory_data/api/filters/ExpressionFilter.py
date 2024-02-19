@@ -1,7 +1,6 @@
 import logging
 
 import django_filters
-from django.core.exceptions import ValidationError
 from django.db.models import Q
 from django.db.models.query import QuerySet
 

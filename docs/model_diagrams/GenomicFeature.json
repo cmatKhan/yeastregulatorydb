@@ -1,0 +1,75 @@
+{
+  "model_name": "GenomicFeature",
+  "fields": [
+    {
+      "name": "id",
+      "type": "BigAutoField"
+    },
+    {
+      "name": "upload_date",
+      "type": "DateField"
+    },
+    {
+      "name": "modified_date",
+      "type": "DateTimeField"
+    },
+    {
+      "name": "start",
+      "type": "PositiveIntegerField"
+    },
+    {
+      "name": "end",
+      "type": "PositiveIntegerField"
+    },
+    {
+      "name": "strand",
+      "type": "CharField"
+    },
+    {
+      "name": "type",
+      "type": "CharField"
+    },
+    {
+      "name": "locus_tag",
+      "type": "CharField"
+    },
+    {
+      "name": "symbol",
+      "type": "CharField"
+    },
+    {
+      "name": "source",
+      "type": "CharField"
+    },
+    {
+      "name": "alias",
+      "type": "CharField"
+    },
+    {
+      "name": "note",
+      "type": "CharField"
+    }
+  ],
+  "relationships": [
+    {
+      "name": "regulator",
+      "related_model": "Regulator",
+      "type": "UnknownRelation"
+    },
+    {
+      "name": "uploader",
+      "related_model": "User",
+      "type": "ForeignKey"
+    },
+    {
+      "name": "modifier",
+      "related_model": "User",
+      "type": "ForeignKey"
+    },
+    {
+      "name": "chr",
+      "related_model": "ChrMap",
+      "type": "ForeignKey"
+    }
+  ]
+}

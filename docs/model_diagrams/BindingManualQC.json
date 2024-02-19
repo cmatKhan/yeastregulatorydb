@@ -1,0 +1,54 @@
+{
+  "model_name": "BindingManualQC",
+  "fields": [
+    {
+      "name": "id",
+      "type": "BigAutoField"
+    },
+    {
+      "name": "upload_date",
+      "type": "DateField"
+    },
+    {
+      "name": "modified_date",
+      "type": "DateTimeField"
+    },
+    {
+      "name": "best_datatype",
+      "type": "CharField"
+    },
+    {
+      "name": "data_usable",
+      "type": "CharField"
+    },
+    {
+      "name": "passing_replicate",
+      "type": "CharField"
+    },
+    {
+      "name": "rank_recall",
+      "type": "CharField"
+    },
+    {
+      "name": "notes",
+      "type": "CharField"
+    }
+  ],
+  "relationships": [
+    {
+      "name": "uploader",
+      "related_model": "User",
+      "type": "ForeignKey"
+    },
+    {
+      "name": "modifier",
+      "related_model": "User",
+      "type": "ForeignKey"
+    },
+    {
+      "name": "binding",
+      "related_model": "Binding",
+      "type": "ForeignKey"
+    }
+  ]
+}

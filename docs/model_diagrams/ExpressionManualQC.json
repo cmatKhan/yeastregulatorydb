@@ -1,0 +1,38 @@
+{
+  "model_name": "ExpressionManualQC",
+  "fields": [
+    {
+      "name": "id",
+      "type": "BigAutoField"
+    },
+    {
+      "name": "upload_date",
+      "type": "DateField"
+    },
+    {
+      "name": "modified_date",
+      "type": "DateTimeField"
+    },
+    {
+      "name": "strain_verified",
+      "type": "CharField"
+    }
+  ],
+  "relationships": [
+    {
+      "name": "uploader",
+      "related_model": "User",
+      "type": "ForeignKey"
+    },
+    {
+      "name": "modifier",
+      "related_model": "User",
+      "type": "ForeignKey"
+    },
+    {
+      "name": "expression",
+      "related_model": "Expression",
+      "type": "ForeignKey"
+    }
+  ]
+}

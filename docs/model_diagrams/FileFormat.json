@@ -1,0 +1,81 @@
+{
+  "model_name": "FileFormat",
+  "fields": [
+    {
+      "name": "id",
+      "type": "BigAutoField"
+    },
+    {
+      "name": "upload_date",
+      "type": "DateField"
+    },
+    {
+      "name": "modified_date",
+      "type": "DateTimeField"
+    },
+    {
+      "name": "fileformat",
+      "type": "CharField"
+    },
+    {
+      "name": "fields",
+      "type": "JSONField"
+    },
+    {
+      "name": "separator",
+      "type": "CharField"
+    },
+    {
+      "name": "feature_identifier_col",
+      "type": "CharField"
+    },
+    {
+      "name": "effect_col",
+      "type": "CharField"
+    },
+    {
+      "name": "default_effect_threshold",
+      "type": "FloatField"
+    },
+    {
+      "name": "pval_col",
+      "type": "CharField"
+    },
+    {
+      "name": "default_pvalue_threshold",
+      "type": "FloatField"
+    }
+  ],
+  "relationships": [
+    {
+      "name": "callingcardsbackground",
+      "related_model": "CallingCardsBackground",
+      "type": "UnknownRelation"
+    },
+    {
+      "name": "datasource",
+      "related_model": "DataSource",
+      "type": "UnknownRelation"
+    },
+    {
+      "name": "promotersetsig",
+      "related_model": "PromoterSetSig",
+      "type": "UnknownRelation"
+    },
+    {
+      "name": "rankresponse",
+      "related_model": "RankResponse",
+      "type": "UnknownRelation"
+    },
+    {
+      "name": "uploader",
+      "related_model": "User",
+      "type": "ForeignKey"
+    },
+    {
+      "name": "modifier",
+      "related_model": "User",
+      "type": "ForeignKey"
+    }
+  ]
+}

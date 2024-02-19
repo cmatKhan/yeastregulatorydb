@@ -1,7 +1,3 @@
-import tempfile
-
-import pandas as pd
-from django.core.cache import cache
 from django.db import IntegrityError
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import viewsets
@@ -30,6 +26,7 @@ class PromoterSetSigViewSet(
             "background",
             "fileformat",
         )
+        .prefetch_related("binding__bindingmanualqc")
         .all()
         .order_by("id")
     )

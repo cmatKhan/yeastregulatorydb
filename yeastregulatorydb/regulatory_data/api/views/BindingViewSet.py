@@ -8,7 +8,7 @@ from rest_framework.authentication import SessionAuthentication, TokenAuthentica
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.serializers import ValidationError
 
-from ...models.Binding import Binding
+from ...models import Binding
 from ...tasks import promotersetsig_rankedresponse_chained
 from ..filters import BindingFilter
 from ..serializers import BindingManualQCSerializer, BindingSerializer, PromoterSetSigSerializer
@@ -31,6 +31,7 @@ class BindingViewSet(BulkUploadMixin, UpdateModifiedMixin, ExportTableAsGzipFile
     filter_backends = [DjangoFilterBackend]
     filterset_class = BindingFilter
 
+    # note that the hop info are added in the FileFormatMixin in the serializers
     @transaction.atomic
     def perform_create(self, serializer):
         try:
@@ -45,13 +46,12 @@ class BindingViewSet(BulkUploadMixin, UpdateModifiedMixin, ExportTableAsGzipFile
             # create a BindingManualQC instance and save to the DB
             bindingmanualqc_data = self.request.data.copy()
             bindingmanualqc_data["binding"] = instance.id
-            del bindingmanualqc_data["notes"]
-            bindingmanualqc_data["notes"] = bindingmanualqc_data.get("qc_notes", "none")
+            bindingmanualqc_data["notes"] = bindingmanualqc_data.pop("qc_notes", "none")
             bindingmanualqc_serializer = BindingManualQCSerializer(
                 data=bindingmanualqc_data, context={"request": self.request}
             )
             bindingmanualqc_serializer.is_valid(raise_exception=True)
-            bindingmanualqc_instance = bindingmanualqc_serializer.save()
+            bindingmanualqc_serializer.save()
 
             # if the source.name is in the settings NULL_BINDING_FILE_DATASOURCES,
             # then the `file` needs to be added to the promotersetsig table
@@ -92,7 +92,7 @@ class BindingViewSet(BulkUploadMixin, UpdateModifiedMixin, ExportTableAsGzipFile
 
                 if acquire_lock():
                     try:
-                        if self.request.query_params.get("testing"):
+                        if self.request.data.get("testing", False) or self.request.query_params.get("testing", False):
                             promotersetsig_rankedresponse_chained(
                                 instance.id, self.request.user.id, promotersetsig_format
                             )
@@ -104,7 +104,7 @@ class BindingViewSet(BulkUploadMixin, UpdateModifiedMixin, ExportTableAsGzipFile
                             )
                     finally:
                         release_lock()
-        except:
+        except:  # noqa: E722
             # Delete the file of the instance if an exception occurs
             if instance.file and default_storage.exists(instance.file.name):
                 default_storage.delete(instance.file.name)

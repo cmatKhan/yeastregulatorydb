@@ -1,4 +1,3 @@
-from django.core.cache import cache
 from django.core.files.storage import default_storage
 from django.db import IntegrityError, transaction
 from django_filters.rest_framework import DjangoFilterBackend
@@ -24,9 +23,13 @@ class ExpressionViewSet(
     A viewset for viewing and editing Expression instances.
     """
 
-    queryset = Expression.objects.select_related(
-        "uploader", "regulator", "regulator__genomicfeature", "source", "source__fileformat"
-    ).all().order_by("-id")
+    queryset = (
+        Expression.objects.select_related(
+            "uploader", "regulator", "regulator__genomicfeature", "source", "source__fileformat"
+        )
+        .all()
+        .order_by("-id")
+    )
     authentication_classes = [SessionAuthentication, TokenAuthentication]
     permission_classes = [IsAuthenticated]
     serializer_class = ExpressionSerializer
@@ -53,11 +56,11 @@ class ExpressionViewSet(
             )
             expressionmanualqc_serializer.is_valid(raise_exception=True)
             try:
-                expressionmanualqc_instance = expressionmanualqc_serializer.save()
+                expressionmanualqc_serializer.save()
             except IntegrityError as e:
                 ValidationError({"expression": str(e)})
 
-        except:
+        except:  # noqa: E722
             # Delete the file of the instance if an exception occurs
             if instance.file and default_storage.exists(instance.file.name):
                 default_storage.delete(instance.file.name)

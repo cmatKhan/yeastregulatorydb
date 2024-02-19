@@ -1,0 +1,70 @@
+{
+  "model_name": "ChrMap",
+  "fields": [
+    {
+      "name": "id",
+      "type": "BigAutoField"
+    },
+    {
+      "name": "upload_date",
+      "type": "DateField"
+    },
+    {
+      "name": "modified_date",
+      "type": "DateTimeField"
+    },
+    {
+      "name": "refseq",
+      "type": "CharField"
+    },
+    {
+      "name": "igenomes",
+      "type": "CharField"
+    },
+    {
+      "name": "ensembl",
+      "type": "CharField"
+    },
+    {
+      "name": "ucsc",
+      "type": "CharField"
+    },
+    {
+      "name": "mitra",
+      "type": "CharField"
+    },
+    {
+      "name": "numbered",
+      "type": "CharField"
+    },
+    {
+      "name": "chr",
+      "type": "CharField"
+    },
+    {
+      "name": "seqlength",
+      "type": "PositiveIntegerField"
+    },
+    {
+      "name": "type",
+      "type": "CharField"
+    }
+  ],
+  "relationships": [
+    {
+      "name": "genomicfeature",
+      "related_model": "GenomicFeature",
+      "type": "UnknownRelation"
+    },
+    {
+      "name": "uploader",
+      "related_model": "User",
+      "type": "ForeignKey"
+    },
+    {
+      "name": "modifier",
+      "related_model": "User",
+      "type": "ForeignKey"
+    }
+  ]
+}

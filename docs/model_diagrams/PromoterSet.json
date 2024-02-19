@@ -1,0 +1,46 @@
+{
+  "model_name": "PromoterSet",
+  "fields": [
+    {
+      "name": "id",
+      "type": "BigAutoField"
+    },
+    {
+      "name": "upload_date",
+      "type": "DateField"
+    },
+    {
+      "name": "modified_date",
+      "type": "DateTimeField"
+    },
+    {
+      "name": "name",
+      "type": "CharField"
+    },
+    {
+      "name": "file",
+      "type": "FileField"
+    },
+    {
+      "name": "notes",
+      "type": "CharField"
+    }
+  ],
+  "relationships": [
+    {
+      "name": "promotersetsig",
+      "related_model": "PromoterSetSig",
+      "type": "UnknownRelation"
+    },
+    {
+      "name": "uploader",
+      "related_model": "User",
+      "type": "ForeignKey"
+    },
+    {
+      "name": "modifier",
+      "related_model": "User",
+      "type": "ForeignKey"
+    }
+  ]
+}

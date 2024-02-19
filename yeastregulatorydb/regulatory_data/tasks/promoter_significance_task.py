@@ -73,6 +73,7 @@ def promoter_significance_task(binding_id: int, user_id: int, output_fileformat:
     with tempfile.TemporaryDirectory() as tmpdir:
         chrmap_filepath = os.path.join(tmpdir, "chrmap.csv")
 
+        # write chrmap to local tmpfile
         pd.DataFrame(list(ChrMap.objects.all().values())).to_csv(chrmap_filepath, index=False)
 
         binding_filepath = extract_file_from_storage(binding_record.file, tmpdir)

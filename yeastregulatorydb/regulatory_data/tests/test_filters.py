@@ -110,33 +110,32 @@ def test_binding_manual_qc_filter():
     binding_manual_qc1 = BindingManualQCFactory(
         binding=binding1,
         id=1,
-        best_datatype=True,
-        data_usable=True,
-        passing_replicate=True,
+        best_datatype="pass",
+        data_usable="pass",
+        passing_replicate="pass",
     )
     binding_manual_qc2 = BindingManualQCFactory(
         binding=binding2,
         id=2,
-        best_datatype=False,
-        data_usable=False,
-        passing_replicate=False,
+        best_datatype="fail",
+        data_usable="unreviewed",
+        passing_replicate="fail",
     )
 
     # Define the filter parameters and their expected values
     filter_params = [
         {"id": 1},
-        {"pk": 1},
         {"binding": binding1.id},
-        {"best_datatype": True},
-        {"data_usable": True},
-        {"passing_replicate": True},
+        {"best_datatype": "pass"},
+        {"data_usable": "pass"},
+        {"passing_replicate": "pass"},
     ]
 
     # Apply each filter and check if it returns the expected bindings
     for params in filter_params:
         f = BindingManualQCFilter(params, queryset=BindingManualQC.objects.all())
-        assert binding_manual_qc1 in f.qs
-        assert binding_manual_qc2 not in f.qs
+        assert binding_manual_qc1 in f.qs, f"error params: {params}"
+        assert binding_manual_qc2 not in f.qs, f"error params: {params}"
 
 
 @pytest.mark.django_db

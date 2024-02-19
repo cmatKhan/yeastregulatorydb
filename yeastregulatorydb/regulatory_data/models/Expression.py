@@ -1,6 +1,5 @@
 import logging
 
-from django.core.files.storage import default_storage
 from django.db import models
 from django.dispatch import receiver
 
@@ -25,7 +24,8 @@ class Expression(BaseModel, GzipFileUploadWithIdMixin):
     strain = models.CharField(
         max_length=20,
         default="undefined",
-        help_text="The strain used in the experiment. This will be derived from the original data source. Default value is `undefined`",
+        help_text="The strain used in the experiment. This will be derived "
+        "from the original data source. Default value is `undefined`",
     )
     replicate = models.PositiveIntegerField(default=1, help_text="Replicate number", db_index=True)
     control = models.CharField(
@@ -79,13 +79,8 @@ class Expression(BaseModel, GzipFileUploadWithIdMixin):
         is_create = self.pk is None
         super().save(*args, **kwargs)
         if is_create:
-            old_file_name = self.file.name if self.file else None
             self.update_file_name("file", f"expression/{self.source.name}", "csv.gz")
-            new_file_name = self.file.name
             super().save(update_fields=["file"])
-            # If the file name changed, delete the old file
-            # if old_file_name and old_file_name != new_file_name:
-            #     default_storage.delete(old_file_name)
 
     def get_genomicfeature(self):
         """return the genomicfeature associated with this expression instance"""
@@ -94,20 +89,6 @@ class Expression(BaseModel, GzipFileUploadWithIdMixin):
     def get_fileformat(self):
         """return the fileformat associated with this expression instance"""
         return self.source.fileformat
-
-    # pylint: disable=R0801
-    # def save(self, *args, **kwargs):
-    #     # Store the old file path
-    #     old_file_name = self.file.name if self.file else None
-    #     super().save(*args, **kwargs)
-    #     self.update_file_name("file", f"expression/{self.source.name}", "csv.gz")
-    #     new_file_name = self.file.name
-    #     super().save(update_fields=["file"])
-    #     # If the file name changed, delete the old file
-    #     if old_file_name and old_file_name != new_file_name:
-    #         default_storage.delete(old_file_name)
-
-    # pylint: enable=R0801
 
 
 # pylint: disable=R0801

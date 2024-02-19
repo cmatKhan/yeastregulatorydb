@@ -314,6 +314,7 @@ def callingcardsbackground(db, fileformat: dict) -> CallingCardsBackground:
 def cc_datasource(db, fileformat: QuerySet) -> DataSource:
     qbed_fileformat = fileformat.filter(fileformat="qbed").first()
     content = {
+        "id": 99,
         "name": "brent_nf_cc",
         "fileformat": qbed_fileformat,
         "lab": "brent",

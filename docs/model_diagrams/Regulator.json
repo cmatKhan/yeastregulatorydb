@@ -1,0 +1,52 @@
+{
+  "model_name": "Regulator",
+  "fields": [
+    {
+      "name": "id",
+      "type": "BigAutoField"
+    },
+    {
+      "name": "upload_date",
+      "type": "DateField"
+    },
+    {
+      "name": "modified_date",
+      "type": "DateTimeField"
+    },
+    {
+      "name": "under_development",
+      "type": "BooleanField"
+    },
+    {
+      "name": "notes",
+      "type": "CharField"
+    }
+  ],
+  "relationships": [
+    {
+      "name": "binding",
+      "related_model": "Binding",
+      "type": "UnknownRelation"
+    },
+    {
+      "name": "expression",
+      "related_model": "Expression",
+      "type": "UnknownRelation"
+    },
+    {
+      "name": "uploader",
+      "related_model": "User",
+      "type": "ForeignKey"
+    },
+    {
+      "name": "modifier",
+      "related_model": "User",
+      "type": "ForeignKey"
+    },
+    {
+      "name": "genomicfeature",
+      "related_model": "GenomicFeature",
+      "type": "ForeignKey"
+    }
+  ]
+}

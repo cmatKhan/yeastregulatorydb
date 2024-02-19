@@ -1,0 +1,72 @@
+{
+  "model_name": "DataSource",
+  "fields": [
+    {
+      "name": "id",
+      "type": "BigAutoField"
+    },
+    {
+      "name": "upload_date",
+      "type": "DateField"
+    },
+    {
+      "name": "modified_date",
+      "type": "DateTimeField"
+    },
+    {
+      "name": "name",
+      "type": "CharField"
+    },
+    {
+      "name": "lab",
+      "type": "CharField"
+    },
+    {
+      "name": "assay",
+      "type": "CharField"
+    },
+    {
+      "name": "workflow",
+      "type": "CharField"
+    },
+    {
+      "name": "description",
+      "type": "CharField"
+    },
+    {
+      "name": "citation",
+      "type": "CharField"
+    },
+    {
+      "name": "notes",
+      "type": "CharField"
+    }
+  ],
+  "relationships": [
+    {
+      "name": "binding",
+      "related_model": "Binding",
+      "type": "UnknownRelation"
+    },
+    {
+      "name": "expression",
+      "related_model": "Expression",
+      "type": "UnknownRelation"
+    },
+    {
+      "name": "uploader",
+      "related_model": "User",
+      "type": "ForeignKey"
+    },
+    {
+      "name": "modifier",
+      "related_model": "User",
+      "type": "ForeignKey"
+    },
+    {
+      "name": "fileformat",
+      "related_model": "FileFormat",
+      "type": "ForeignKey"
+    }
+  ]
+}

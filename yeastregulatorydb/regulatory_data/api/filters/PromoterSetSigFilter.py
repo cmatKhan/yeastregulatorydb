@@ -1,5 +1,6 @@
 import django_filters
 
+from ...models.BindingManualQC import BindingManualQC
 from ...models.PromoterSetSig import PromoterSetSig
 
 
@@ -23,6 +24,9 @@ class PromoterSetSigFilter(django_filters.FilterSet):
     lab = django_filters.CharFilter(field_name="binding__source__lab", lookup_expr="iexact")
     assay = django_filters.CharFilter(field_name="binding__source__assay", lookup_expr="iexact")
     workflow = django_filters.CharFilter(field_name="binding__source__workflow", lookup_expr="iexact")
+    data_usable = django_filters.ChoiceFilter(
+        field_name="binding__bindingmanualqc__data_usable", choices=BindingManualQC.MANUAL_QC_CHOICES
+    )
 
     # pylint: disable=R0801
     class Meta:
@@ -41,6 +45,7 @@ class PromoterSetSigFilter(django_filters.FilterSet):
             "lab",
             "assay",
             "workflow",
+            "data_usable",
         ]
 
         # pylint: enable=R0801

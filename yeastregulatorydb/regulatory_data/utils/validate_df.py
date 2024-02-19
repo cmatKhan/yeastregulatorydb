@@ -52,7 +52,7 @@ def validate_df(
             # raise an error if there are decimal values in an `int` column
             if expected_type_or_levels == int:
                 try:
-                    if df[colname].apply(float.is_integer).all() == False:
+                    if not df[colname].apply(float.is_integer).all():
                         raise ValueError(
                             f"Column {colname} is expected to be an int. It contains decimal values or `NaN`. Fix it!"
                         )

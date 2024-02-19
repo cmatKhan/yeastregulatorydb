@@ -14,14 +14,18 @@ class ExpressionManualQCViewSet(UpdateModifiedMixin, viewsets.ModelViewSet):
     A viewset for viewing and editing ExpressionManualQC instances.
     """
 
-    queryset = ExpressionManualQC.objects.select_related(
-        "uploader",
-        "expression",
-        "expression__regulator",
-        "expression__regulator__genomicfeature",
-        "expression__source",
-        "expression__source__fileformat",
-    ).all().order_by("-id")
+    queryset = (
+        ExpressionManualQC.objects.select_related(
+            "uploader",
+            "expression",
+            "expression__regulator",
+            "expression__regulator__genomicfeature",
+            "expression__source",
+            "expression__source__fileformat",
+        )
+        .all()
+        .order_by("-id")
+    )
     authentication_classes = [SessionAuthentication, TokenAuthentication]
     permission_classes = [IsAuthenticated]
     serializer_class = ExpressionManualQCSerializer

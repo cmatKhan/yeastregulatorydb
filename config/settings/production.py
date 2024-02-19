@@ -1,6 +1,7 @@
+import os
+
 from .base import *  # noqa
 from .base import env
-import os
 
 # GENERAL
 # ------------------------------------------------------------------------------
@@ -8,6 +9,7 @@ import os
 SECRET_KEY = env("DJANGO_SECRET_KEY")
 # https://docs.djangoproject.com/en/dev/ref/settings/#allowed-hosts
 ALLOWED_HOSTS = env.list("DJANGO_ALLOWED_HOSTS", default=["example.com"])
+REDIS_URL = "redis://" + env("REDIS_HOST", "redis") + ":" + env("REDIS_PORT", "6379") + "/0"
 
 # DATABASES
 # ------------------------------------------------------------------------------
@@ -18,7 +20,7 @@ DATABASES["default"]["CONN_MAX_AGE"] = env.int("CONN_MAX_AGE", default=60)  # no
 CACHES = {
     "default": {
         "BACKEND": "django_redis.cache.RedisCache",
-        "LOCATION": env("REDIS_URL"),
+        "LOCATION": REDIS_URL,
         "OPTIONS": {
             "CLIENT_CLASS": "django_redis.client.DefaultClient",
             # Mimicing memcache behavior.

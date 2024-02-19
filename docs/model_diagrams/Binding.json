@@ -1,0 +1,89 @@
+{
+  "model_name": "Binding",
+  "fields": [
+    {
+      "name": "id",
+      "type": "BigAutoField"
+    },
+    {
+      "name": "upload_date",
+      "type": "DateField"
+    },
+    {
+      "name": "modified_date",
+      "type": "DateTimeField"
+    },
+    {
+      "name": "batch",
+      "type": "CharField"
+    },
+    {
+      "name": "replicate",
+      "type": "PositiveIntegerField"
+    },
+    {
+      "name": "source_orig_id",
+      "type": "CharField"
+    },
+    {
+      "name": "strain",
+      "type": "CharField"
+    },
+    {
+      "name": "condition",
+      "type": "CharField"
+    },
+    {
+      "name": "file",
+      "type": "FileField"
+    },
+    {
+      "name": "genomic_inserts",
+      "type": "PositiveIntegerField"
+    },
+    {
+      "name": "mito_inserts",
+      "type": "PositiveIntegerField"
+    },
+    {
+      "name": "plasmid_inserts",
+      "type": "PositiveIntegerField"
+    },
+    {
+      "name": "notes",
+      "type": "CharField"
+    }
+  ],
+  "relationships": [
+    {
+      "name": "bindingmanualqc",
+      "related_model": "BindingManualQC",
+      "type": "UnknownRelation"
+    },
+    {
+      "name": "promotersetsig",
+      "related_model": "PromoterSetSig",
+      "type": "UnknownRelation"
+    },
+    {
+      "name": "uploader",
+      "related_model": "User",
+      "type": "ForeignKey"
+    },
+    {
+      "name": "modifier",
+      "related_model": "User",
+      "type": "ForeignKey"
+    },
+    {
+      "name": "regulator",
+      "related_model": "Regulator",
+      "type": "ForeignKey"
+    },
+    {
+      "name": "source",
+      "related_model": "DataSource",
+      "type": "ForeignKey"
+    }
+  ]
+}

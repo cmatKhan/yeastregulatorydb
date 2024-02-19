@@ -1,4 +1,3 @@
-import pandas as pd
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import viewsets
 from rest_framework.authentication import SessionAuthentication, TokenAuthentication

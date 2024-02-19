@@ -1,0 +1,85 @@
+{
+  "model_name": "Expression",
+  "fields": [
+    {
+      "name": "id",
+      "type": "BigAutoField"
+    },
+    {
+      "name": "upload_date",
+      "type": "DateField"
+    },
+    {
+      "name": "modified_date",
+      "type": "DateTimeField"
+    },
+    {
+      "name": "batch",
+      "type": "CharField"
+    },
+    {
+      "name": "strain",
+      "type": "CharField"
+    },
+    {
+      "name": "replicate",
+      "type": "PositiveIntegerField"
+    },
+    {
+      "name": "control",
+      "type": "CharField"
+    },
+    {
+      "name": "mechanism",
+      "type": "CharField"
+    },
+    {
+      "name": "restriction",
+      "type": "CharField"
+    },
+    {
+      "name": "time",
+      "type": "PositiveIntegerField"
+    },
+    {
+      "name": "file",
+      "type": "FileField"
+    },
+    {
+      "name": "notes",
+      "type": "CharField"
+    }
+  ],
+  "relationships": [
+    {
+      "name": "expressionmanualqc",
+      "related_model": "ExpressionManualQC",
+      "type": "UnknownRelation"
+    },
+    {
+      "name": "rankresponse",
+      "related_model": "RankResponse",
+      "type": "UnknownRelation"
+    },
+    {
+      "name": "uploader",
+      "related_model": "User",
+      "type": "ForeignKey"
+    },
+    {
+      "name": "modifier",
+      "related_model": "User",
+      "type": "ForeignKey"
+    },
+    {
+      "name": "regulator",
+      "related_model": "Regulator",
+      "type": "ForeignKey"
+    },
+    {
+      "name": "source",
+      "related_model": "DataSource",
+      "type": "ForeignKey"
+    }
+  ]
+}

@@ -1,6 +1,5 @@
 import logging
 
-from django.core.files.storage import default_storage
 from django.db import models
 from django.dispatch import receiver
 
@@ -94,9 +93,7 @@ class Binding(BaseModel, GzipFileUploadWithIdMixin):
         is_create = self.pk is None
         super().save(*args, **kwargs)
         if is_create:
-            old_file_name = self.file.name if self.file else None
             self.update_file_name("file", f"binding/{self.source.name}")
-            new_file_name = self.file.name
             super().save(update_fields=["file"])
 
 

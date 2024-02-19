@@ -12,6 +12,7 @@
 
 import os
 import sys
+
 import django
 
 if os.getenv("READTHEDOCS", default=False) == "True":
@@ -20,8 +21,10 @@ if os.getenv("READTHEDOCS", default=False) == "True":
     os.environ["USE_DOCKER"] = "no"
 else:
     sys.path.insert(0, os.path.abspath("/app"))
+
+REDIS_URL = "redis://" + os.getenv("REDIS_HOST", "redis") + ":" + os.getenv("REDIS_PORT", "6379") + "/0"
 os.environ["DATABASE_URL"] = "sqlite:///readthedocs.db"
-os.environ["CELERY_BROKER_URL"] = os.getenv("REDIS_URL", "redis://redis:6379")
+os.environ["CELERY_BROKER_URL"] = REDIS_URL
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings.local")
 django.setup()
 

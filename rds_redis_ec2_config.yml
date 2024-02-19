@@ -150,4 +150,3 @@ Outputs:
   EC2InstancePublicIP:
     Description: Public IP of the EC2 instance
     Value: !GetAtt MyEC2Instance.PublicIp
-

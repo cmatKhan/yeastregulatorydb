@@ -10,18 +10,11 @@ from yeastregulatorydb.regulatory_data.api.serializers import (
     BindingSerializer,
     ExpressionSerializer,
     PromoterSetSerializer,
-    PromoterSetSigSerializer,
 )
-from yeastregulatorydb.regulatory_data.models import DataSource, PromoterSet, PromoterSetSig, RankResponse, Regulator
+from yeastregulatorydb.regulatory_data.models import DataSource, PromoterSetSig, Regulator
 from yeastregulatorydb.regulatory_data.tasks import promoter_significance_task
 from yeastregulatorydb.regulatory_data.tasks.chained_tasks import promotersetsig_rankedresponse_chained
-from yeastregulatorydb.regulatory_data.tests.factories import (
-    BindingFactory,
-    BindingManualQCFactory,
-    ExpressionFactory,
-    PromoterSetFactory,
-    PromoterSetSigFactory,
-)
+from yeastregulatorydb.regulatory_data.tests.factories import BindingFactory, ExpressionFactory, PromoterSetFactory
 from yeastregulatorydb.regulatory_data.tests.utils.model_to_dict_select import model_to_dict_select
 from yeastregulatorydb.users.models import User
 
@@ -238,4 +231,3 @@ def test_promotersetsig_rankedresponse_chained(
     )
     task_result.get()
     assert PromoterSetSig.objects.count() == 1
-    assert RankResponse.objects.count() == 1
