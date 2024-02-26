@@ -83,16 +83,16 @@ Resources:
       VpcSecurityGroupIds:
         - !Ref MyCacheSecurityGroup
 
-  MyEC2Instance:
-    Type: AWS::EC2::Instance
-    DependsOn:
-      - MyInstanceSecurityGroup
-    Properties:
-      ImageId: ami-05fb0b8c1424f266b
-      InstanceType: t2.micro
-      SecurityGroupIds:
-        - !GetAtt MyInstanceSecurityGroup.GroupId
-      KeyName: general_strides
+  # MyEC2Instance:
+  #   Type: AWS::EC2::Instance
+  #   DependsOn:
+  #     - MyInstanceSecurityGroup
+  #   Properties:
+  #     ImageId: ami-05fb0b8c1424f266b
+  #     InstanceType: t2.micro
+  #     SecurityGroupIds:
+  #       - !GetAtt MyInstanceSecurityGroup.GroupId
+  #     KeyName: general_strides
 
   MyDBSecurityGroup:
     Type: AWS::EC2::SecurityGroup
