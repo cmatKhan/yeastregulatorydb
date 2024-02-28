@@ -4,8 +4,11 @@ set -o errexit
 set -o pipefail
 set -o nounset
 
+
+
 # N.B. If only .env files supported variable expansion...
 export CELERY_BROKER_URL="redis://${REDIS_HOST}:${REDIS_PORT}/0"
+
 
 if [ -z "${POSTGRES_USER}" ]; then
     base_postgres_image_default_user='postgres'
@@ -19,39 +22,26 @@ import time
 
 import psycopg
 
-def database_exists(conn_params, dbname):
-    with psycopg.connect(**conn_params) as conn:
-        with conn.cursor() as cur:
-            cur.execute("SELECT 1 FROM pg_database WHERE datname = %s", (dbname,))
-            return cur.fetchone() is not None
+suggest_unrecoverable_after = 30
+start = time.time()
 
-def create_database(conn_params, dbname):
-    with psycopg.connect(**conn_params) as conn:
-        conn.autocommit = True
-        with conn.cursor() as cur:
-            cur.execute(f"CREATE DATABASE \"{dbname}\"")
+while True:
+    try:
+        psycopg.connect(
+            dbname="${POSTGRES_DB}",
+            user="${POSTGRES_USER}",
+            password="${POSTGRES_PASSWORD}",
+            host="${POSTGRES_HOST}",
+            port="${POSTGRES_PORT}",
+        )
+        break
+    except psycopg.OperationalError as error:
+        sys.stderr.write("Waiting for PostgreSQL to become available...\n")
 
-conn_params = {
-    "dbname": "postgres",  # connect to the default database to check/create
-    "user": "${POSTGRES_USER}",
-    "password": "${POSTGRES_PASSWORD}",
-    "host": "${POSTGRES_HOST}",
-    "port": "${POSTGRES_PORT}"
-}
+        if time.time() - start > suggest_unrecoverable_after:
+            sys.stderr.write("  This is taking longer than expected. The following exception may be indicative of an unrecoverable error: '{}'\n".format(error))
 
-dbname = "${POSTGRES_DB}"
-
-if not database_exists(conn_params, dbname):
-    print("Database does not exist. Creating database: {}".format(dbname))
-    create_database(conn_params, dbname)
-else:
-    print("Database {} already exists.".format(dbname))
-
-# Now connect to the target database
-conn_params["dbname"] = dbname
-with psycopg.connect(**conn_params) as conn:
-    print('Connected to the database successfully')
-
+    time.sleep(1)
 END
 
 >&2 echo 'PostgreSQL is available'
