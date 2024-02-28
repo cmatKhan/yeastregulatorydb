@@ -96,6 +96,20 @@ cd yeastregulatorydb
 celery -A config.celery_app worker -B -l info
 ```
 
+## Github CI
+
+To run the CI that is in this repo, you need to transform the `.envs` directory
+into a binary string and save it as a secret. This can be done like so:
+
+```bash
+tar -czvf envs.tar.gz .envs
+base64 envs.tar.gz > .tmp.txt
+```
+
+Then, go to the settings of the repo, and add a secret called `ENV_FILE` with
+the string in .tmp.txt. Make sure that and the .tar.gz does not get pushed to
+git.
+
 ## Deployment
 
 The following details how to deploy this application.
