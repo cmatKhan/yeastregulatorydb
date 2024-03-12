@@ -50,19 +50,19 @@ start_service() {
         celeryworker)
             singularity exec --bind .:/app \
                              --env-file ./.envs/.local/.concat_env_files \
-                             $django_sif /entrypoint /start-celeryworker &> celeryworker_log.txt &
+                             $django_sif bash -c 'cd /app && /entrypoint /start-celeryworker' &> celeryworker_log.txt &
             check_service_ready "Celery worker" "echo 'Celery worker is ready'"
             ;;
         celerybeat)
             singularity exec --bind .:/app \
                              --env-file ./.envs/.local/.concat_env_files \
-                             $django_sif /entrypoint /start-celerybeat &> celerybeat_log.txt &
+                             $django_sif bash -c 'cd /app && /entrypoint /start-celerybeat' &> celerybeat_log.txt &
             check_service_ready "Celery beat" "echo 'Celery beat is ready'"
             ;;
         celeryflower)
             singularity exec --bind .:/app \
                              --env-file ./.envs/.local/.concat_env_files \
-                             $django_sif /entrypoint /start-flower &> celeryflower_log.txt &
+                             $django_sif bash -c 'cd /app && /entrypoint /start-flower' &> celeryflower_log.txt &
             check_service_ready "Celery flower" "echo 'Celery flower is ready'"
             ;;
         *)
