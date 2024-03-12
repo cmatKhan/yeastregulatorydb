@@ -24,8 +24,9 @@ check_service_ready() {
 start_service() {
     case $1 in
         postgres)
-            singularity exec --bind $yeastregulatorydb_local_postgres_data:/var/lib/postgresql/data \
-                             --bind $yeastregulatorydb_local_postgres_data_backups:/backups \
+            singularity run  --bind $postgres_data:/var/lib/postgresql/data \
+                             --bind $postgres_run:/var/run/postgresql \
+                             --bind $postgres_backup:/backups \
                              --env-file ./.envs/.local/.postgres $postgres_sif \
                              &>./postgres_log.txt &
             check_service_ready "PostgreSQL" "pg_isready -h localhost -p 5432"
@@ -39,7 +40,7 @@ start_service() {
                              --env-file ./.envs/.local/.django \
                              --env-file ./.envs/.local/.postgres \
                              --env-file ./.envs/.local/.regulatory_data \
-                             $django_sif /start &> django_log.txt &
+                             $django_sif bash -c 'cd /app && /start' &> django_log.txt &
             check_service_ready "Django app" "curl -s http://localhost:8000 > /dev/null"
             ;;
         docs)
@@ -93,14 +94,16 @@ Launch Singularity containers for a Django application with optional services.
     -r, --redis_sif PATH                path to the Redis Singularity image file
     -d, --django_sif PATH               path to the Django Singularity image file
     -o, --docs_sif PATH                 path to the Docs Singularity image file
-    -g, --postgres_data PATH            path to the PostgreSQL data directory
-    -b, --postgres_backup PATH          path to the PostgreSQL data backups directory
+    -g, --postgres_data PATH            path to the PostgreSQL data directory, eg postgres_data
+    -b, --postgres_backup PATH          path to the PostgreSQL data backups directory, eg postgres_backup
+    -v, --postgres_run PATH             path to the PostgresSQL run directory, eg postgres_run
     -t, --timeout MINUTES               optional timeout in minutes for service readiness checks (default: 3)
     -s, --services "SERVICE1 SERVICE2"  optional comma separated, no spaces, list of services to start (e.g., postgres,redis,django)
 
 Examples:
     ${0##*/} -p /path/to/postgres.sif -r /path/to/redis.sif -d /path/to/django.sif -o /path/to/docs.sif \\
-             -g /path/to/postgres_data -b /path/to/postgres_backup -t 3 -s "postgres redis django"
+             -g /path/to/postgres_data -b /path/to/postgres_backup -v postgres_run /path/to/postgres_run \\
+             -t 3 -s "postgres redis django"
 EOF
 }
 
@@ -109,13 +112,14 @@ postgres_sif=""
 redis_sif=""
 django_sif=""
 docs_sif=""
-postgres_data=""
-postgres_backup=""
+postgres_data=postgres_data
+postgres_backup=postgres_backup
+postgres_run=postgres_run
 timeout_minutes=3
 services_to_start=()
 
 # Parse options
-OPTS=$(getopt -o hp:r:d:o:g:b:t:s: --long help,postgres_sif:,redis_sif:,django_sif:,docs_sif:,postgres_data:,postgres_backup:,timeout:,services: -n 'parse-options' -- "$@")
+OPTS=$(getopt -o hp:r:d:o:g:b:v:t:s: --long help,postgres_sif:,redis_sif:,django_sif:,docs_sif:,postgres_data:,postgres_backup:,postgres_run:,timeout:,services: -n 'parse-options' -- "$@")
 if [ $? != 0 ] ; then echo "Failed parsing options." >&2 ; exit 1 ; fi
 
 eval set -- "$OPTS"
@@ -129,6 +133,7 @@ while true; do
         -o | --docs_sif ) docs_sif="$2"; shift 2 ;;
         -g | --postgres_data ) postgres_data="$2"; shift 2 ;;
         -b | --postgres_backup ) postgres_backup="$2"; shift 2 ;;
+        -v | --postgres_run ) postgres_run="$2"; shift 2 ;;
         -t | --timeout ) timeout_minutes="$2"; shift 2 ;;
         -s | --services )
             IFS=',' read -r -a services_to_start <<< "$2"

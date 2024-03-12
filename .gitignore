@@ -5,6 +5,12 @@ __pycache__/
 *$py.class
 .ipynb_checkpoints
 *.ipynb
+postgres_data/*
+postgres_run/*
+backup/*
+postgres_log.txt
+redis_log.txt
+django_log.txt
 
 # C extensions
 *.so
