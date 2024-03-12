@@ -38,7 +38,7 @@ start_service() {
         django)
             singularity exec --bind .:/app \
                              --env-file ./.envs/.local/.concat_env_files \
-                             $django_sif bash -c 'cd /app && /start' &> django_log.txt &
+                             $django_sif bash -c 'cd /app && /entrypoint /start' &> django_log.txt &
             check_service_ready "Django app" "curl -s http://localhost:8000 > /dev/null"
             ;;
         docs)
