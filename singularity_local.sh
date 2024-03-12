@@ -49,26 +49,20 @@ start_service() {
             ;;
         celeryworker)
             singularity exec --bind .:/app \
-                             --env-file ./.envs/.local/.django \
-                             --env-file ./.envs/.local/.postgres \
-                             --env-file ./.envs/.local/.regulatory_data \
-                             $django_sif /start-celeryworker &> celeryworker_log.txt &
+                             --env-file ./.envs/.local/.concat_env_files \
+                             $django_sif /entrypoint /start-celeryworker &> celeryworker_log.txt &
             check_service_ready "Celery worker" "echo 'Celery worker is ready'"
             ;;
         celerybeat)
             singularity exec --bind .:/app \
-                             --env-file ./.envs/.local/.django \
-                             --env-file ./.envs/.local/.postgres \
-                             --env-file ./.envs/.local/.regulatory_data \
-                             $django_sif /start-celerybeat &> celerybeat_log.txt &
+                             --env-file ./.envs/.local/.concat_env_files \
+                             $django_sif /entrypoint /start-celerybeat &> celerybeat_log.txt &
             check_service_ready "Celery beat" "echo 'Celery beat is ready'"
             ;;
         celeryflower)
             singularity exec --bind .:/app \
-                             --env-file ./.envs/.local/.django \
-                             --env-file ./.envs/.local/.postgres \
-                             --env-file ./.envs/.local/.regulatory_data \
-                             $django_sif /start-flower &> celeryflower_log.txt &
+                             --env-file ./.envs/.local/.concat_env_files \
+                             $django_sif /entrypoint /start-flower &> celeryflower_log.txt &
             check_service_ready "Celery flower" "echo 'Celery flower is ready'"
             ;;
         *)
@@ -162,153 +156,3 @@ main() {
 
 # Call main function
 main "$@"
-
-
-
-# let "timeout_seconds=timeout_minutes * 60"
-
-# # Implement the rest of your script here, including loading spack packages,
-# # starting the services as specified in `services_to_start`, and checking for their readiness.
-# # You'll replace or modify the previous loop and checks according to the new variables used.
-
-
-# # Define an array of Spack packages to load
-# spack_packages=("postgresql" "singularityce" "redis")
-
-# # Loop over the array of packages
-# for pkg in "${spack_packages[@]}"; do
-#     if ! eval $(spack load --sh $pkg); then
-#         echo "Error loading $pkg package with spack. Ensure the package exists and is available."
-#         exit 1
-#     fi
-#     echo "$pkg loaded successfully."
-# done
-
-# # pass in the path to where you want postgres data to be
-# # stored on your local machine
-# yeastregulatorydb_local_postgres_data=$1
-# yeastregulatorydb_local_postgres_data_backups=$2
-
-# # paths to sif files
-# postgres_sif=$3
-# redis_sif=$4
-# django_sif=$5
-# docs_sif=$6
-
-# # optional arguments
-# TIMEOUT_MINUTES="${7:-3}"
-
-# # Convert minutes to seconds for the timeout
-# let "TIMEOUT_SECONDS=TIMEOUT_MINUTES * 60"
-
-# # start the postgres container
-# singularity exec $postgres_sif \
-#     --bind $yeastregulatorydb_local_postgres_data:/var/lib/postgresql/data \
-#     --bind $yeastregulatorydb_local_postgres_data_backups:/backups \
-#     --env-file ./.envs/.local/.postgres &
-
-# # Counter to keep track of the time elapsed
-# counter=0
-# # check that the postgres container is up and running
-# # before starting the next container. Timeout and issue exit
-# # error if it takes too long
-# while ! pg_isready -h localhost -p 5432; do
-#     if [ "$counter" -lt "$TIMEOUT_SECONDS" ]; then
-#         echo "Waiting for PostgreSQL to start... $((counter++))s"
-#         sleep 1
-#     else
-#         echo "Timeout reached. PostgreSQL did not start within $TIMEOUT_MINUTES minutes."
-#         exit 1
-#     fi
-# done
-
-# echo "PostgreSQL is up and running."
-
-# # Start the redis container
-# singularity exec $redis_sif redis-server &
-
-# counter=0
-# # Check if Redis is ready
-# echo "Waiting for Redis to start..."
-# while ! redis-cli ping > /dev/null 2>&1; do
-#     if [ "$counter" -lt "$TIMEOUT_SECONDS" ]; then
-#         sleep 1
-#         ((counter++))
-#         echo "Checking Redis... ($counter seconds)"
-#     else
-#         echo "Timeout reached. Redis did not start within $(($TIMEOUT_SECONDS / 60)) minutes."
-#         exit 1
-#     fi
-# done
-
-# echo "Redis is up and running."
-
-# singularity exec $django_sif \
-#     --bind .:/app \
-#     --env-file ./.envs/.local/.django \
-#     --env-file ./.envs/.local/.postgres \
-#     --env-file ./.envs/.local/.regulatory_data \
-#     --port 8000:8000 \
-#     /start &
-
-# # Check if the Django app is ready
-# counter=0
-# echo "Waiting for Django app to start..."
-# while ! curl -s http://localhost:8000 > /dev/null; do
-#     if [ "$counter" -lt "$TIMEOUT_SECONDS" ]; then
-#         sleep 1
-#         ((counter++))
-#         echo "Checking Django app... ($counter seconds)"
-#     else
-#         echo "Timeout reached. Django did not start within $(($TIMEOUT_SECONDS / 60)) minutes."
-#         exit 1
-#     fi
-# done
-
-# echo "Django app is up and running."
-
-
-
-# #   docs:
-# #     image: yeastregulatorydb_local_docs
-# #     container_name: yeastregulatorydb_local_docs
-# #     build:
-# #       context: .
-# #       dockerfile: ./compose/local/docs/Dockerfile
-# #     env_file:
-# #       - ./.envs/.local/.django
-# #     volumes:
-# #       - ./docs:/docs:z
-# #       - ./config:/app/config:z
-# #       - ./yeastregulatorydb:/app/yeastregulatorydb:z
-# #     ports:
-# #       - '9000:9000'
-# #     command: /start-docs
-
-# #   celeryworker:
-# #     <<: *django
-# #     image: yeastregulatorydb_local_celeryworker
-# #     container_name: yeastregulatorydb_local_celeryworker
-# #     depends_on:
-# #       - redis
-# #       - postgres
-# #     ports: []
-# #     command: /start-celeryworker
-
-# #   celerybeat:
-# #     <<: *django
-# #     image: yeastregulatorydb_local_celerybeat
-# #     container_name: yeastregulatorydb_local_celerybeat
-# #     depends_on:
-# #       - redis
-# #       - postgres
-# #     ports: []
-# #     command: /start-celerybeat
-
-# #   flower:
-#     <<: *django
-#     image: yeastregulatorydb_local_flower
-#     container_name: yeastregulatorydb_local_flower
-#     ports:
-#       - '5555:5555'
-#     command: /start-flower
