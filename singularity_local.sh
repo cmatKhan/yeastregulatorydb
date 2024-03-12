@@ -5,15 +5,15 @@ check_service_ready() {
     local service_name=$1
     local check_command=$2
     local counter=0
-    
+
     echo "Waiting for $service_name to start..."
     while ! eval $check_command; do
-        if [ "$counter" -lt "$TIMEOUT_SECONDS" ]; then
+        if [ "$counter" -lt "$timeout_seconds" ]; then
             sleep 1
             ((counter++))
             echo "Checking $service_name... ($counter seconds)"
         else
-            echo "Timeout reached. $service_name did not start within $TIMEOUT_MINUTES minutes."
+            echo "Timeout reached. $service_name did not start within $timeout_minutes minutes."
             exit 1
         fi
     done
@@ -164,7 +164,7 @@ main "$@"
 
 # let "timeout_seconds=timeout_minutes * 60"
 
-# # Implement the rest of your script here, including loading spack packages, 
+# # Implement the rest of your script here, including loading spack packages,
 # # starting the services as specified in `services_to_start`, and checking for their readiness.
 # # You'll replace or modify the previous loop and checks according to the new variables used.
 
@@ -181,7 +181,7 @@ main "$@"
 #     echo "$pkg loaded successfully."
 # done
 
-# # pass in the path to where you want postgres data to be 
+# # pass in the path to where you want postgres data to be
 # # stored on your local machine
 # yeastregulatorydb_local_postgres_data=$1
 # yeastregulatorydb_local_postgres_data_backups=$2
