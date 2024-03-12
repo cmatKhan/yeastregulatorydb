@@ -35,10 +35,10 @@ start_service() {
             singularity exec $redis_sif redis-server &> redis_log.txt &
             check_service_ready "Redis" "redis-cli ping > /dev/null 2>&1"
             ;;
-            django)
-            singularity exec --bind .:/app $django_sif bash -c '
-                export $(cat ./.envs/.local/.django ./.envs/.local/.postgres ./.envs/.local/.regulatory_data | grep -v "^#" | xargs) &&
-                cd /app && /entrypoint /start' &> django_log.txt &
+        django)
+            singularity exec --bind .:/app \
+                             --env-file ./.envs/.local/.concat_env_files \
+                             $django_sif bash -c 'cd /app && /start' &> django_log.txt &
             check_service_ready "Django app" "curl -s http://localhost:8000 > /dev/null"
             ;;
         docs)
