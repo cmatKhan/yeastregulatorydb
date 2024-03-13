@@ -10,3 +10,8 @@
   -v postgres_run \
   -t 3 \
   -s postgres,redis,django
+
+# keep the job running
+while true; do
+  sleep 3600
+done
