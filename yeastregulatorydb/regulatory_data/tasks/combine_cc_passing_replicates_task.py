@@ -24,7 +24,10 @@ def combine_cc_passing_replicates_task(self, regulator_id: int, user_id: int, **
     """
     Combine the qbed files for the passing replicates of the calling cards assay.
     Note that by default, assay='callingcards' and data_usable='passing'
-    are used as filters.
+    are used as filters. Note that this deduplicates the qbed on `chr`, `start`, `end`
+    such that if there are is an insertion at the same location on opposite strands,
+    one of those insertions will be removed. The strand is set to '*' in the combined
+    file.
 
     :param regulator_id: a regulator id
     :type regulator_id: int
@@ -60,6 +63,10 @@ def combine_cc_passing_replicates_task(self, regulator_id: int, user_id: int, **
         filepath = extract_file_from_storage(cc_record.file)
         # read filepath into pandas dataframe
         df = pd.read_csv(filepath, sep="\t")
+        # deduplicate the dataframe based on chr,start,end so that insertions at the
+        # same position on opposite strands are not counted twice. set the strand to
+        # '*'
+        df = df.drop_duplicates(subset=["chr", "start", "end"])
         qbed_df_list.append(df)
 
     # combine the qbed files
