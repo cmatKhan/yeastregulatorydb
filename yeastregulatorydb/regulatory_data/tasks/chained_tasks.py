@@ -59,12 +59,21 @@ def combine_cc_passing_replicates_promotersig_chained(self, user_id, **kwargs):
         .distinct()
     )
 
+    # NOTE: `deduplicate_experiment` is set to False in promoter_significance_task().
+    # @hen calculating signficance, we do not want to deduplicate since multiple hops
+    # may be recorded at the same coordinate from different experiments. However, note
+    # that in combine_cc_passing_replicates_task(), each individual qbed is deduplicated
+    # to remove insertions with the same coordinate on opposite strands (so there is
+    # just one record in that case).
+
     task_ids = []
     for regulator_id in regulator_id_list:
         # Create a chain of tasks
         task = chain(
             combine_cc_passing_replicates_task.s(regulator_id, user_id, **kwargs),
-            promoter_significance_task.s(user_id, settings.CALLINGCARDS_PROMOTER_SIG_FORMAT, **kwargs),
+            promoter_significance_task.s(
+                user_id, settings.CALLINGCARDS_PROMOTER_SIG_FORMAT, deduplicate_experiment=False, **kwargs
+            ),
         )
         result = task.apply_async()
         task_ids.append(result.id)

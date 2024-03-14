@@ -27,7 +27,7 @@ django-filter==23.5  # https://github.com/carltongibson/django-filter
 
 # Third Party Software
 # ------------------------------------------------------------------------------
-callingcardstools==1.4.1 # https://github.com/cmatkhan/callingcardstools
+callingcardstools==1.5.1 # https://github.com/cmatkhan/callingcardstools
 # for interactive python shell
 ipython==8.18.1 # https://ipython.org
 notebook==7.0.6 # https://jupyter.org/

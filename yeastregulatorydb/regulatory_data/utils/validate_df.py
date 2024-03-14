@@ -45,9 +45,11 @@ def validate_df(
                     df[colname] = df[colname].astype(str)
                 except ValueError:
                     raise ValueError(
-                        f"Column {colname} is expected to be a str. It is not, "
+                        f"Column '{colname}' is expected to be a str. It is not, "
                         "and could not be cast to str. It's actually of type {df[colname].dtype}. Fix it!"
                     )
+                except KeyError:
+                    raise KeyError(f"Column '{colname}' must be present in the dataframe. It is not. Fix it!")
             # if the expected coltype is an int, try to cast all values to int
             # raise an error if there are decimal values in an `int` column
             if expected_type_or_levels == int:
@@ -60,6 +62,8 @@ def validate_df(
                         df[colname] = df[colname].astype(int)
                 except TypeError:
                     logger.debug("column is expected to be an int and is an int column")
+                except KeyError:
+                    raise KeyError(f"Column {colname} must be present in the dataframe. It is not. Fix it!")
             if not all(isinstance(x, expected_type_or_levels) for x in df[colname]):
                 raise ValueError(
                     f"Column {colname} must be of type {str(expected_type_or_levels)}. "
