@@ -19,7 +19,6 @@ cleanup() {
 # Setup trap for cleanup on script exit
 trap cleanup EXIT
 
-
 # Function to check service readiness
 # $1: service name
 # $2: command to check service readiness
@@ -61,6 +60,7 @@ check_service_ready() {
 start_service() {
     # set the local sif_path variable based on the service
     local sif_path=""
+    local cmd=""
     # instantiate the local variable `pid` to store process IDs
     local pid
 
@@ -131,57 +131,77 @@ start_service() {
     # launch the service and check that it is running
     case $1 in
         postgres)
-            singularity run  --bind $POSTGRES_DATA:/var/lib/postgresql/data \
+            cmd="singularity run  --bind $POSTGRES_DATA:/var/lib/postgresql/data \
                              --bind $POSTGRES_RUN:/var/run/postgresql \
                              --bind $POSTGRES_BACKUP:/backups \
                              --env-file $CONCAT_ENV_FILE $sif_path \
-                             &>./postgres_log.txt &
+                             &>./postgres_log.txt &"
+            echo "executing cmd: $cmd"
+            eval $cmd
             pid=$!
             check_service_ready "PostgreSQL" "pg_isready -h localhost -p 5432"
             service_pids[$1]=$pid
             ;;
         redis)
-            singularity exec $sif_path redis-server &> redis_log.txt &
+            cmd="singularity exec $sif_path redis-server &> redis_log.txt &"
+            echo "executing cmd: $cmd"
+            eval $cmd
             pid=$!
             check_service_ready "Redis" "redis-cli ping > /dev/null 2>&1"
             service_pids[$1]=$pid
             ;;
         django)
-            singularity exec --bind $APP_CODEBASE:/app \
+            # if $POSTGRES_HOST, $POSTGRES_PORT, $REDIS_HOST, or $REDIS_PORT are not
+            # empty strings, then pass them as --env variables to singularity
+            cmd="singularity exec --bind $APP_CODEBASE:/app \
                              --env-file $CONCAT_ENV_FILE \
-                             $sif_path bash -c 'cd /app && /entrypoint /start' &> django_log.txt &
+                             $env_vars \
+                             $sif_path bash -c 'cd /app && /entrypoint /start' &> django_log.txt &"
+            echo "executing cmd: $cmd"
+            eval $cmd
             pid=$!
             check_service_ready "Django app" "curl -s http://localhost:8000 > /dev/null"
             service_pids[$1]=$pid
             ;;
         docs)
-            singularity exec --bind $APP_CODEBASE:/app \
+            cmd="singularity exec --bind $APP_CODEBASE:/app \
                              --env-file $CONCAT_ENV_FILE \
-                             $sif_path /start-docs &>docs_log.txt &
+                             $sif_path /start-docs &>docs_log.txt &"
+            echo "executing cmd: $cmd"
+            eval $cmd
             pid=$!
             check_service_ready "Docs" "echo 'Docs is ready'"
             service_pids[$1]=$pid
             ;;
         celeryworker)
-            singularity exec --bind $APP_CODEBASE:/app \
+            cmd="singularity exec --bind $APP_CODEBASE:/app \
                              --env-file $CONCAT_ENV_FILE \
-                             $sif_path bash -c 'cd /app && /entrypoint /start-celeryworker' &> celeryworker_log.txt &
+                             $en_vars \
+                             $sif_path bash -c 'cd /app && /entrypoint /start-celeryworker' &> celeryworker_log.txt &"
+            echo "executing cmd: $cmd"
+            eval $cmd
             pid=$!
             check_service_ready "Celery worker" "echo 'Celery worker is ready'"
             service_pids[$1]=$pid
             ;;
         celerybeat)
-            singularity exec --bind $APP_CODEBASE:/app \
+            cmd="singularity exec --bind $APP_CODEBASE:/app \
                              --env-file $CONCAT_ENV_FILE \
-                             $sif_path bash -c 'cd /app && /entrypoint /start-celerybeat' &> celerybeat_log.txt &
+                             $env_vars \
+                             $sif_path bash -c 'cd /app && /entrypoint /start-celerybeat' &> celerybeat_log.txt &"
+            echo "executing cmd: $cmd"
+            eval $cmd
             pid=$!
             check_service_ready "Celery beat" "echo 'Celery beat is ready'"
             service_pids[$1]=$pid
             ;;
         celeryflower)
-            singularity exec --bind $APP_CODEBASE:/app \
+            cmd="singularity exec --bind $APP_CODEBASE:/app \
                              --env-file $CONCAT_ENV_FILE \
-                             $sif_path bash -c 'cd /app && /entrypoint /start-flower' &> celeryflower_log.txt &
+                             $env_vars \
+                             $sif_path bash -c 'cd /app && /entrypoint /start-flower' &> celeryflower_log.txt &"
+            echo "executing cmd: $cmd"
+            eval $cmd
             pid=$!
             check_service_ready "Celery flower" "echo 'Celery flower is ready'"
             service_pids[$1]=$pid
@@ -319,6 +339,16 @@ main() {
     done
 
     let "timeout_seconds=TIMEOUT_MINUTES * 60"
+
+
+    # Prepare the environment variable string for the django related services
+    local env_vars=""
+
+    # Check and append the variables if they are set
+    env_vars="$env_vars --env POSTGRES_HOST='$POSTGRES_HOST'"
+    env_vars="$env_vars --env POSTGRES_PORT='$POSTGRES_PORT'"
+    env_vars="$env_vars --env REDIS_HOST='$REDIS_HOST'"
+    env_vars="$env_vars --env REDIS_PORT='$REDIS_PORT'"
 
     # Start specified services
     for service in "${SERVICES_TO_START[@]}"; do
