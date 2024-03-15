@@ -234,30 +234,25 @@ REDIS_PORT=6379
 TIMEOUT_MINUTES=3
 SERVICES_TO_START=()
 
-# Parse options
-OPTS=$(getopt -o h:c:p:r:t:s: --long help,config:,postgres_host:,postgres_port:,redis_host:,redis_port:,timeout:,services: -- "$@")
-if [ $? != 0 ] ; then echo "Failed parsing options." >&2 ; exit 1 ; fi
-
-eval set -- "$OPTS"
-
-while true; do
-    case "$1" in
-        -h | --help ) show_help; exit 0 ;;
-        -c | --config ) CONFIG_FILE="$2"; shift 2 ;;
-        -p | --postgres_host ) POSTGRES_HOST="$2"; shift 2 ;;
-        --postgres_port ) POSTGRES_PORT="$2"; shift 2 ;;
-        -r | --redis_host ) REDIS_HOST="$2"; shift 2 ;;
-        --redis_port ) REDIS_PORT="$2"; shift 2 ;;
-        -t | --timeout ) TIMEOUT_MINUTES="$2"; shift 2 ;;
-        -s | --services )
-            IFS=',' read -r -a SERVICES_TO_START <<< "$2"
-            shift 2 ;;
-        -- ) shift; break ;;
-        * ) break ;;
-    esac
-done
 
 main() {
+
+    while true; do
+        case "$1" in
+            -h | --help ) show_help; exit 0 ;;
+            -c | --config ) CONFIG_FILE="$2"; shift 2 ;;
+            -p | --postgres_host ) POSTGRES_HOST="$2"; shift 2 ;;
+            --postgres_port ) POSTGRES_PORT="$2"; shift 2 ;;
+            -r | --redis_host ) REDIS_HOST="$2"; shift 2 ;;
+            --redis_port ) REDIS_PORT="$2"; shift 2 ;;
+            -t | --timeout ) TIMEOUT_MINUTES="$2"; shift 2 ;;
+            -s | --services )
+                IFS=',' read -r -a SERVICES_TO_START <<< "$2"
+                shift 2 ;;
+            -- ) shift; break ;;
+            * ) break ;;
+        esac
+    done
 
     # confirm that the configuration file exists. If it does, source it
     if [ -e "$CONFIG_FILE" ]; then
@@ -295,6 +290,11 @@ main() {
         sleep 60
     done
 }
+
+# Parse options
+OPTS=$(getopt -o h:c:p:r:t:s: --long help,config:,postgres_host:,postgres_port:,redis_host:,redis_port:,timeout:,services: -- "$@")
+if [ $? != 0 ] ; then echo "Failed parsing options." >&2 ; exit 1 ; fi
+eval set -- "$OPTS"
 
 # Call main function
 main "$@"
