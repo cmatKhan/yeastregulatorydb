@@ -262,12 +262,6 @@ main() {
         exit 1
     fi
 
-    # confirm that the concatenated environment file exists
-    if [ ! -e "$CONCAT_ENV_FILE" ]; then
-        echo "Concatenated environment file does not exist: $CONCAT_ENV_FILE"
-        exit 1
-    fi
-
     # Loop over the array of packages necessary to any service and try to load them
     spack_packages=("singularityce")
     for pkg in "${spack_packages[@]}"; do
