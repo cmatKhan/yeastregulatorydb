@@ -196,11 +196,16 @@ start_service() {
 
 show_help() {
 cat << EOF
-Usage: ${0##*/} [OPTIONS]...
+Usage: ${0##*/} <launch_script> <config_file> [OPTIONS]...
 Launch Singularity containers for a Django application with optional services. Note
 that this assumes that postgresql, redis and singularityce can be loaded into the
 environment with spack.
 
+Positional Arguments:
+  LAUNCH_SCRIPT                  Description of the launch script.
+  CONFIG_FILE                    Description of the configuration file.
+
+Options:
     -h, --help                          display this help and exit
     -c, --config PATH                   path to a bash variable assignment style
                                         configuration file. This file can set
@@ -232,7 +237,7 @@ environment with spack.
     -s, --services "SERVICE1 SERVICE2"  Comma-separated list of services to start (e.g., postgres,redis,django). Required.
 
 Examples:
-    ${0##*/} -c config.env -t 3 -s "postgres,redis,django"
+    ${0##*/} ./launch_script.sh config.env --timeout 5 --services "postgres,redis,django"
 EOF
 }
 
@@ -254,34 +259,72 @@ REDIS_PORT=6379
 TIMEOUT_MINUTES=3
 SERVICES_TO_START=()
 
+# Function to parse command-line arguments
+parse_args() {
+    while (( "$#" )); do
+        case "$1" in
+            -h|--help) show_help; exit 0 ;;
+            -p|--postgres_host) POSTGRES_HOST="$2"; shift 2 ;;
+            --postgres_port) POSTGRES_PORT="$2"; shift 2 ;;
+            -r|--redis_host) REDIS_HOST="$2"; shift 2 ;;
+            --redis_port) REDIS_PORT="$2"; shift 2 ;;
+            -t|--timeout) TIMEOUT_MINUTES="$2"; shift 2 ;;
+            -s|--services) IFS=',' read -r -a SERVICES_TO_START <<< "$2"; shift 2 ;;
+            --) shift; break ;;
+            *) break ;; # If unexpected arguments found
+        esac
+    done
+
+    # Process positional arguments for launch_script and config_file
+    if [ -n "$1" ]; then
+        LAUNCH_SCRIPT="$1"; shift
+    fi
+    if [ -n "$1" ]; then
+        CONFIG_FILE="$1"; shift
+    fi
+
+    # Verify mandatory positional arguments are provided
+    if [[ -z "$LAUNCH_SCRIPT" || -z "$CONFIG_FILE" ]]; then
+        echo "Error: LAUNCH_SCRIPT and CONFIG_FILE are required."
+        show_help
+        exit 1
+    fi
+}
 
 main() {
 
-    # confirm that the configuration file exists. If it does, source it
-    if [ -e "$CONFIG_FILE" ]; then
+    # Process positional arguments
+    LAUNCH_SCRIPT="$1"; shift
+    CONFIG_FILE="$1"; shift
+
+    # Verify and source the configuration file
+    if [[ -f "$CONFIG_FILE" ]]; then
         source "$CONFIG_FILE"
     else
-        echo "Configuration file does not exist: $CONFIG_FILE"
+        echo "Error: Configuration file does not exist - $CONFIG_FILE"
         exit 1
     fi
 
-    # note that the cmd line args will override the config file args
-    while true; do
+    # Initialize defaults or overrides from the config file
+    POSTGRES_HOST=${POSTGRES_HOST:-localhost}
+    POSTGRES_PORT=${POSTGRES_PORT:-5432}
+    # Continue with other variables...
+
+    # Command-line options processing
+    while (( "$#" )); do
         case "$1" in
-            -h | --help ) show_help; exit 0 ;;
-            -c | --config ) CONFIG_FILE="$2"; shift 2 ;;
-            -p | --postgres_host ) POSTGRES_HOST="$2"; shift 2 ;;
-            --postgres_port ) POSTGRES_PORT="$2"; shift 2 ;;
-            -r | --redis_host ) REDIS_HOST="$2"; shift 2 ;;
-            --redis_port ) REDIS_PORT="$2"; shift 2 ;;
-            -t | --timeout ) TIMEOUT_MINUTES="$2"; shift 2 ;;
-            -s | --services )
-                IFS=',' read -r -a SERVICES_TO_START <<< "$2"
-                shift 2 ;;
-            -- ) shift; break ;;
-            * ) break ;;
+            -h|--help) show_help; exit 0 ;;
+            -p|--postgres_host) POSTGRES_HOST="$2"; shift 2 ;;
+            --postgres_port) POSTGRES_PORT="$2"; shift 2 ;;
+            -r|--redis_host) REDIS_HOST="$2"; shift 2 ;;
+            --redis_port) REDIS_PORT="$2"; shift 2 ;;
+            -t|--timeout) TIMEOUT_MINUTES="$2"; shift 2 ;;
+            -s|--services) IFS=',' read -r -a SERVICES_TO_START <<< "$2"; shift 2 ;;
+            --) shift; break ;;
+            *) break ;;
         esac
     done
+
 
     # Loop over the array of packages necessary to any service and try to load them
     spack_packages=("singularityce")
@@ -308,10 +351,7 @@ main() {
     done
 }
 
-# Parse options
-OPTS=$(getopt -o h:c:p:r:t:s: --long help,config:,postgres_host:,postgres_port:,redis_host:,redis_port:,timeout:,services: -- "$@")
-if [ $? != 0 ] ; then echo "Failed parsing options." >&2 ; exit 1 ; fi
-eval set -- "$OPTS"
+# Start of the script execution
+parse_args "$@"
 
-# Call main function
-main "$@"
+main
