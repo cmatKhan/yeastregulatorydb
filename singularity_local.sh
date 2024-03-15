@@ -87,16 +87,20 @@ start_service() {
     # spack load the necessary packages based on the service
     case $1 in
         postgres)
+            echo "trying to spack load postgresql..."
             if ! eval $(spack load --sh postgresql); then
                 echo "Error loading PostgreSQL package with spack. Ensure the package exists and is available."
                 exit 1
             fi
+            echo "postgresql loaded successfully."
             ;;
         redis)
+            echo "trying to spack load redis..."
             if ! eval $(spack load --sh redis); then
                 echo "Error loading Redis package with spack. Ensure the package exists and is available."
                 exit 1
             fi
+            echo "redis loaded successfully."
             ;;
     esac
 
@@ -265,6 +269,7 @@ main() {
     # Loop over the array of packages necessary to any service and try to load them
     spack_packages=("singularityce")
     for pkg in "${spack_packages[@]}"; do
+        echo "trying to spack load $pkg..."
         if ! eval $(spack load --sh $pkg); then
             echo "Error loading $pkg package with spack. Ensure the package exists and is available."
             exit 1
@@ -276,6 +281,7 @@ main() {
 
     # Start specified services
     for service in "${services_to_start[@]}"; do
+        echo "attempting to start service: $service"
         start_service $service
     done
 
