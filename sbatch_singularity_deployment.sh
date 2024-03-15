@@ -65,13 +65,13 @@ main () {
     done
 
     # check that launch_script exists
-    if [ ! -f "$launch_script" ]; then
+    if [ ! -e "$launch_script" ]; then
         echo "Error: launch_script not found: $launch_script" >&2
         exit 1
     fi
 
     # check that config_file exists
-    if [ ! -f "$config_file" ]; then
+    if [ ! -e "$config_file" ]; then
         echo "Error: config_file not found: $config_file" >&2
         exit 1
     fi

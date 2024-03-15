@@ -7,7 +7,6 @@ declare -A service_pids
 
 # On EXIT from the script, kill the PID of the services
 cleanup() {
-    echo "Performing cleanup..."
     # Iterate over all PIDs and terminate them
     for pid in "${service_pids[@]}"; do
         if kill -0 "$pid" 2>/dev/null; then
@@ -61,7 +60,7 @@ start_service() {
     esac
 
     # check that the sif file exists
-    if [ ! -f "$sif_path" ]; then
+    if [ ! -e "$sif_path" ]; then
         echo "SIF file for $1 does not exist: $sif_path"
         exit 1
     fi
@@ -262,7 +261,7 @@ main() {
 
     # confirm that the configuration file exists. If it does, source it
     if [ ! -z "${CONFIG_FILE:-}" ]; then
-        if [ -f "$CONFIG_FILE" ]; then
+        if [ -e "$CONFIG_FILE" ]; then
             source "$CONFIG_FILE"
         else
             echo "Configuration file does not exist: $CONFIG_FILE"
@@ -271,7 +270,7 @@ main() {
     fi
 
     # confirm that the concatenated environment file exists
-    if [ ! -f "$CONCAT_ENV_FILE" ]; then
+    if [ ! -e "$CONCAT_ENV_FILE" ]; then
         echo "Concatenated environment file does not exist: $CONCAT_ENV_FILE"
         exit 1
     fi
