@@ -23,36 +23,36 @@ trap cleanup EXIT
 # Function to check service readiness
 # $1: service name
 # $2: command to check service readiness
+# Function to check service readiness
+# Function to check service readiness
 check_service_ready() {
     local service_name=$1
     local check_command=$2
     local counter=0
     local success=0
 
-    echo "Waiting for $service_name to respond..."
+    echo "Waiting for $service_name to start. Will try for $timeout_seconds seconds..."
+
     while [ $counter -lt $timeout_seconds ]; do
-        # Temporarily disable exiting on error
+        # Temporarily disable exit on error
         set +e
         eval $check_command
-        local status=$?
-        # Re-enable exiting on error
-        set -e
-
-        if [ $status -eq 0 ]; then
+        if [ $? -eq 0 ]; then
+            echo "$service_name is up and running."
             success=1
-            break
+            break  # Exit the loop if service is ready
         else
-            sleep 1
             ((counter++))
-            echo "Checking $service_name... ($counter seconds)"
+            echo "Attempt $counter: Checking $service_name..."
+            sleep 1
         fi
+        # Re-enable exit on error
+        set -e
     done
 
     if [ $success -ne 1 ]; then
-        echo "Timeout reached. $service_name did not start within $timeout_seconds seconds."
+        echo "Failed to start $service_name within $timeout_seconds seconds."
         exit 1
-    else
-        echo "$service_name is up and running."
     fi
 }
 
