@@ -11,6 +11,8 @@ backup/*
 postgres_log.txt
 redis_log.txt
 django_log.txt
+celeryworker_log.txt
+slurm-*
 
 # C extensions
 *.so
