@@ -257,6 +257,15 @@ SERVICES_TO_START=()
 
 main() {
 
+    # confirm that the configuration file exists. If it does, source it
+    if [ -e "$CONFIG_FILE" ]; then
+        source "$CONFIG_FILE"
+    else
+        echo "Configuration file does not exist: $CONFIG_FILE"
+        exit 1
+    fi
+
+    # note that the cmd line args will override the config file args
     while true; do
         case "$1" in
             -h | --help ) show_help; exit 0 ;;
@@ -273,14 +282,6 @@ main() {
             * ) break ;;
         esac
     done
-
-    # confirm that the configuration file exists. If it does, source it
-    if [ -e "$CONFIG_FILE" ]; then
-        source "$CONFIG_FILE"
-    else
-        echo "Configuration file does not exist: $CONFIG_FILE"
-        exit 1
-    fi
 
     # Loop over the array of packages necessary to any service and try to load them
     spack_packages=("singularityce")

@@ -101,27 +101,6 @@ main () {
     )
     log "PostgreSQL job submitted with ID: $redis_job_id"
 
-    # Wait for the node names
-    postgres_host=$(get_slurm_job_nodename "$postgres_job_id")
-    log "PostgreSQL running on host: $postgres_host, Port: ${POSTGRES_PORT:-5432}"
-
-    redis_host=$(get_slurm_job_nodename "$redis_job_id")
-    log "Redis running on host: $redis_host, Port: ${REDIS_PORT:-6379}"
-
-    # launch django via sbatch. However, this depends on postgres and redis
-    # log "Submitting Django job with CPUs: $django_cpus, Memory: $django_mem"
-    # django_job_id=$(sbatch \
-    #     -c "$django_cpus" \
-    #     --mem-per-cpu="$django_mem" \
-    #     --dependency=afterok:$postgres_job_id:$redis_job_id \
-    #     $launch_script \
-    #     -c "$config_file" \
-    #     --postgres_host "$postgres_host" \
-    #     --redis_host "$redis_host" \
-    #     -s django | cut -d ' ' -f 4)
-    # log "Django job submitted with dependency on PostgreSQL and Redis. Job ID: $django_job_id"
-
-
 }
 
 # Parse options
