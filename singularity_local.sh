@@ -280,7 +280,7 @@ main() {
     let "timeout_seconds=TIMEOUT_MINUTES * 60"
 
     # Start specified services
-    for service in "${services_to_start[@]}"; do
+    for service in "${SERVICES_TO_START[@]}"; do
         echo "attempting to start service: $service"
         start_service $service
     done
