@@ -176,7 +176,7 @@ start_service() {
         celeryworker)
             cmd="singularity exec --bind $APP_CODEBASE:/app \
                              --env-file $CONCAT_ENV_FILE \
-                             $en_vars \
+                             $env_vars \
                              $sif_path bash -c 'cd /app && /entrypoint /start-celeryworker' &> celeryworker_log.txt &"
             echo "executing cmd: $cmd"
             eval $cmd
