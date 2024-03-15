@@ -2,9 +2,8 @@
 
 # Function to append messages to the log file
 # $1: log message
-# $2: log file
 log() {
-    echo "$(date '+%Y-%m-%d %H:%M:%S') - $1" >> "$2"
+    echo "$(date '+%Y-%m-%d %H:%M:%S') - $1" >> $log_file
 }
 
 # Function to extract the node name(s) allocated to a given Slurm job ID
@@ -40,29 +39,39 @@ Example:
 EOF
 }
 
+# Initialize default values before processing options
+launch_script=""
+config_file=""
+log_file="django_app_launch_log_$(date '+%Y-%m-%d').txt"
+postgres_cpus=2
+postgres_mem="3G"
+redis_cpus=2
+redis_mem="3G"
+django_cpus=2
+django_mem="3G"
+celeryworker_cpus=2
+celeryworker_mem="3G"
+
+while true; do
+    case "$1" in
+        --launch_script ) launch_script="$2"; shift 2 ;;
+        --config ) config_file="$2"; shift 2 ;;
+        --log_file ) log_file="$2"; shift 2 ;;
+        --postgres_cpus ) postgres_cpus="$2"; shift 2 ;;
+        --postgres_mem ) postgres_mem="$2"; shift 2 ;;
+        --redis_cpus ) redis_cpus="$2"; shift 2 ;;
+        --redis_mem ) redis_mem="$2"; shift 2 ;;
+        --django_cpus ) django_cpus="$2"; shift 2 ;;
+        --django_mem ) django_mem="$2"; shift 2 ;;
+        --celeryworker_cpus ) celeryworker_cpus="$2"; shift 2 ;;
+        --celeryworker_mem ) celeryworker_mem="$2"; shift 2 ;;
+        -h | --help ) print_help; exit 0 ;;
+        -- ) shift; break ;;
+        * ) break ;;
+    esac
+done
+
 main () {
-
-    # initialize default string variables
-    local log_file="django_app_launch_log_$(date '+%Y-%m-%d').txt"
-
-    while true; do
-        case "$1" in
-            --launch_script ) launch_script="$2"; shift 2 ;;
-            --config ) config_file="$2"; shift 2 ;;
-            --log_file ) log_file="$2"; shift 2 ;;
-            --postgres_cpus ) postgres_cpus="${2:-2}"; shift 2 ;;
-            --postgres_mem ) postgres_mem="${2:-3G}"; shift 2 ;;
-            --redis_cpus ) redis_cpus="${2:-2}"; shift 2 ;;
-            --redis_mem ) redis_mem="${2:-3G}"; shift 2 ;;
-            --django_cpus ) django_cpus="${2:-2}"; shift 2 ;;
-            --django_mem ) django_mem="${2:-3G}"; shift 2 ;;
-            --celeryworker_cpus ) celeryworker_cpus="${2:-2}"; shift 2 ;;
-            --celeryworker_mem ) celeryworker_mem="${2:-3G}"; shift 2 ;;
-            -h | --help ) print_help; exit 0 ;;
-            -- ) shift; break ;;
-            * ) break ;;
-        esac
-    done
 
     # check that launch_script exists
     if [ ! -e "$launch_script" ]; then
@@ -76,31 +85,31 @@ main () {
         exit 1
     fi
 
-    log "Submitting PostgreSQL job with CPUs: $postgres_cpus, Memory: $postgres_mem" "$log_file"
+    log "Submitting PostgreSQL job with CPUs: $postgres_cpus, Memory: $postgres_mem"
     postgres_job_id=$(
     sbatch -c "$postgres_cpus" --mem-per-cpu="$postgres_mem" \
             $launch_script -c "$config_file" -s postgres \
     | cut -d ' ' -f 4
     )
-    log "PostgreSQL job submitted with ID: $postgres_job_id" "$log_file"
+    log "PostgreSQL job submitted with ID: $postgres_job_id"
 
-    log "Submitting redis job with CPUs: $redis_cpus, Memory: $redis_mem" "$log_file"
+    log "Submitting redis job with CPUs: $redis_cpus, Memory: $redis_mem"
     redis_job_id=$(
     sbatch -c "$redis_cpus" --mem-per-cpu="$redis_mem" \
             $launch_script -c "$config_file" -s redis \
     | cut -d ' ' -f 4
     )
-    log "PostgreSQL job submitted with ID: $redis_job_id" "$log_file"
+    log "PostgreSQL job submitted with ID: $redis_job_id"
 
     # Wait for the node names
     postgres_host=$(get_slurm_job_nodename "$postgres_job_id")
-    log "PostgreSQL running on host: $postgres_host, Port: $POSTGRES_PORT" "$log_file"
+    log "PostgreSQL running on host: $postgres_host, Port: $POSTGRES_PORT"
 
     redis_host=$(get_slurm_job_nodename "$redis_job_id")
-    log "Redis running on host: $redis_host, Port: $REDIS_PORT" "$log_file"
+    log "Redis running on host: $redis_host, Port: $REDIS_PORT"
 
     # launch django via sbatch. However, this depends on postgres and redis
-    log "Submitting Django job with CPUs: $django_cpus, Memory: $django_mem" "$log_file"
+    log "Submitting Django job with CPUs: $django_cpus, Memory: $django_mem"
     django_job_id=$(sbatch \
         -c "$django_cpus" \
         --mem-per-cpu="$django_mem" \
@@ -110,7 +119,7 @@ main () {
         --postgres_host "$postgres_host" \
         --redis_host "$redis_host" \
         -s django | cut -d ' ' -f 4)
-    log "Django job submitted with dependency on PostgreSQL and Redis. Job ID: $django_job_id" "$log_file"
+    log "Django job submitted with dependency on PostgreSQL and Redis. Job ID: $django_job_id"
 
 
 }
