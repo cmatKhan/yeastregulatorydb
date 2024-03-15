@@ -1,5 +1,26 @@
 #!/bin/bash
 
+set -e
+
+# Declare an associative array to keep track of service PIDs
+declare -A service_pids
+
+# On EXIT from the script, kill the PID of the services
+cleanup() {
+    echo "Performing cleanup..."
+    # Iterate over all PIDs and terminate them
+    for pid in "${service_pids[@]}"; do
+        if kill -0 "$pid" 2>/dev/null; then
+            echo "Terminating service with PID $pid"
+            kill -TERM "$pid"
+        fi
+    done
+}
+
+# Setup trap for cleanup on script exit
+trap cleanup EXIT
+
+
 # Function to check service readiness
 check_service_ready() {
     local service_name=$1
@@ -20,10 +41,14 @@ check_service_ready() {
     echo "$service_name is up and running."
 }
 
+
 # Function to start each service
 start_service() {
     # set the local sif_path variable based on the service
     local sif_path=""
+    # instantiate the local variable `pid` to store process IDs
+    local pid
+
     case $1 in
         postgres) sif_path="$POSTGRES_SIF" ;;
         redis) sif_path="$REDIS_SIF" ;;
@@ -32,7 +57,7 @@ start_service() {
         celeryworker) sif_path="$DJANGO_SIF" ;;
         celerybeat) sif_path="$DJANGO_SIF" ;;
         celeryflower) sif_path="$DJANGO_SIF" ;;
-        *) echo "Unknown service: $1"; return ;;
+        *) echo "Unknown service: $1"; exit 1 ;;
     esac
 
     # check that the sif file exists
@@ -92,41 +117,55 @@ start_service() {
                              --bind $POSTGRES_BACKUP:/backups \
                              --env-file $CONCAT_ENV_FILE $sif_path \
                              &>./postgres_log.txt &
+            pid=$!
             check_service_ready "PostgreSQL" "pg_isready -h localhost -p 5432"
+            service_pids[$1]=$pid
             ;;
         redis)
             singularity exec $sif_path redis-server &> redis_log.txt &
+            pid=$!
             check_service_ready "Redis" "redis-cli ping > /dev/null 2>&1"
+            service_pids[$1]=$pid
             ;;
         django)
             singularity exec --bind $APP_CODEBASE:/app \
                              --env-file $CONCAT_ENV_FILE \
                              $sif_path bash -c 'cd /app && /entrypoint /start' &> django_log.txt &
+            pid=$!
             check_service_ready "Django app" "curl -s http://localhost:8000 > /dev/null"
+            service_pids[$1]=$pid
             ;;
         docs)
             singularity exec --bind $APP_CODEBASE:/app \
                              --env-file $CONCAT_ENV_FILE \
                              $sif_path /start-docs &>docs_log.txt &
+            pid=$!
             check_service_ready "Docs" "echo 'Docs is ready'"
+            service_pids[$1]=$pid
             ;;
         celeryworker)
             singularity exec --bind $APP_CODEBASE:/app \
                              --env-file $CONCAT_ENV_FILE \
                              $sif_path bash -c 'cd /app && /entrypoint /start-celeryworker' &> celeryworker_log.txt &
+            pid=$!
             check_service_ready "Celery worker" "echo 'Celery worker is ready'"
+            service_pids[$1]=$pid
             ;;
         celerybeat)
             singularity exec --bind $APP_CODEBASE:/app \
                              --env-file $CONCAT_ENV_FILE \
                              $sif_path bash -c 'cd /app && /entrypoint /start-celerybeat' &> celerybeat_log.txt &
+            pid=$!
             check_service_ready "Celery beat" "echo 'Celery beat is ready'"
+            service_pids[$1]=$pid
             ;;
         celeryflower)
             singularity exec --bind $APP_CODEBASE:/app \
                              --env-file $CONCAT_ENV_FILE \
                              $sif_path bash -c 'cd /app && /entrypoint /start-flower' &> celeryflower_log.txt &
+            pid=$!
             check_service_ready "Celery flower" "echo 'Celery flower is ready'"
+            service_pids[$1]=$pid
             ;;
         *)
             echo "Unknown service: $1"
@@ -254,36 +293,11 @@ main() {
         start_service $service
     done
 
-    exit 0
+    # Keep script running indefinitely
+    while true; do
+        sleep 60
+    done
 }
 
 # Call main function
 main "$@"
-
-# some notes
-#
-# collect the pids of the launched services -- consider killing them if any one service
-# fails or a service is unrecognized
-# declare -A service_pids
-# case $1 in
-#     postgres)
-#         singularity run --bind $POSTGRES_DATA:/var/lib/postgresql/data \
-#                         --bind $POSTGRES_RUN:/var/run/postgresql \
-#                         --bind $POSTGRES_BACKUP:/backups \
-#                         --env-file ./.envs/.local/.postgres $sif_path \
-#                         &>./postgres_log.txt &
-#         pid=$!
-#         check_service_ready "PostgreSQL" "pg_isready -h localhost -p 5432"
-#         ;;
-#     ...
-# esac
-
-# # Store the PID in the associative array
-# service_pids[$1]=$pid
-#
-# Then in main if the start_service has error code 1
-#
-# for pid in "${service_pids[@]}"; do
-#     kill -TERM "$pid"
-# done
-
