@@ -261,19 +261,6 @@ SERVICES_TO_START=()
 
 # Function to parse command-line arguments
 parse_args() {
-    while (( "$#" )); do
-        case "$1" in
-            -h|--help) show_help; exit 0 ;;
-            -p|--postgres_host) POSTGRES_HOST="$2"; shift 2 ;;
-            --postgres_port) POSTGRES_PORT="$2"; shift 2 ;;
-            -r|--redis_host) REDIS_HOST="$2"; shift 2 ;;
-            --redis_port) REDIS_PORT="$2"; shift 2 ;;
-            -t|--timeout) TIMEOUT_MINUTES="$2"; shift 2 ;;
-            -s|--services) IFS=',' read -r -a SERVICES_TO_START <<< "$2"; shift 2 ;;
-            --) shift; break ;;
-            *) break ;; # If unexpected arguments found
-        esac
-    done
 
     # Process positional arguments for launch_script and config_file
     if [ -n "$1" ]; then
@@ -289,13 +276,12 @@ parse_args() {
         show_help
         exit 1
     fi
-}
 
-main() {
-
-    # Process positional arguments
-    LAUNCH_SCRIPT="$1"; shift
-    CONFIG_FILE="$1"; shift
+    # Verity launch_script exists
+    if [[ ! -e "$LAUNCH_SCRIPT" ]]; then
+        echo "Error: Launch script does not exist - $LAUNCH_SCRIPT"
+        exit 1
+    fi
 
     # Verify and source the configuration file
     if [[ -f "$CONFIG_FILE" ]]; then
@@ -305,12 +291,6 @@ main() {
         exit 1
     fi
 
-    # Initialize defaults or overrides from the config file
-    POSTGRES_HOST=${POSTGRES_HOST:-localhost}
-    POSTGRES_PORT=${POSTGRES_PORT:-5432}
-    # Continue with other variables...
-
-    # Command-line options processing
     while (( "$#" )); do
         case "$1" in
             -h|--help) show_help; exit 0 ;;
@@ -321,10 +301,13 @@ main() {
             -t|--timeout) TIMEOUT_MINUTES="$2"; shift 2 ;;
             -s|--services) IFS=',' read -r -a SERVICES_TO_START <<< "$2"; shift 2 ;;
             --) shift; break ;;
-            *) break ;;
+            *) break ;; # If unexpected arguments found
         esac
     done
 
+}
+
+main() {
 
     # Loop over the array of packages necessary to any service and try to load them
     spack_packages=("singularityce")
