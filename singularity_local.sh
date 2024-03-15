@@ -260,13 +260,11 @@ done
 main() {
 
     # confirm that the configuration file exists. If it does, source it
-    if [ ! -z "${CONFIG_FILE:-}" ]; then
-        if [ -e "$CONFIG_FILE" ]; then
-            source "$CONFIG_FILE"
-        else
-            echo "Configuration file does not exist: $CONFIG_FILE"
-            exit 1
-        fi
+    if [ -e "$CONFIG_FILE" ]; then
+        source "$CONFIG_FILE"
+    else
+        echo "Configuration file does not exist: $CONFIG_FILE"
+        exit 1
     fi
 
     # confirm that the concatenated environment file exists
