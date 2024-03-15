@@ -196,38 +196,36 @@ start_service() {
 
 show_help() {
 cat << EOF
-Usage: ${0##*/} <launch_script> <config_file> [OPTIONS]...
+Usage: ${0##*/} <config_file> [OPTIONS]...
 Launch Singularity containers for a Django application with optional services. Note
 that this assumes that postgresql, redis and singularityce can be loaded into the
 environment with spack.
 
 Positional Arguments:
-  LAUNCH_SCRIPT                  Description of the launch script.
-  CONFIG_FILE                    Description of the configuration file.
+  CONFIG_FILE                   path to a bash variable assignment style
+                                configuration file. This file can set
+                                the following variables if not provided as command
+                                line arguments. If the variable is set both in
+                                the configuration file and on the cmd line,
+                                eg for postgres_host, the cmd line value will
+                                override the config file value.:
+                                    - APP_CODEBASE: Path to the Django application codebase. This is bound into the container as /app.
+                                    - CONCAT_ENV_FILE: Path to the concatenated environment file for the Django application.
+                                    - POSTGRES_SIF: Path to the PostgreSQL Singularity image file.
+                                    - REDIS_SIF: Path to the Redis Singularity image file.
+                                    - DJANGO_SIF: Path to the Django Singularity image file.
+                                    - DOCS_SIF: Path to the Docs Singularity image file.
+                                    - POSTGRES_DATA: Path to the PostgreSQL data directory on the host to bind into the container.
+                                    - POSTGRES_BACKUP: Path to the PostgreSQL backup directory on the host to bind into the container.
+                                    - POSTGRES_RUN: Path to the PostgreSQL run directory on the host to bind into the container.
+                                    - POSTGRES_HOST: IP address of the PostgreSQL host (default: localhost).
+                                    - POSTGRES_PORT: Port of the PostgreSQL host (default: 5432).
+                                    - REDIS_HOST: IP address of the Redis host (default: localhost).
+                                    - REDIS_PORT: Port of the Redis host (default: 6379).
+                                    - TIMEOUT_MINUTES: Timeout in minutes for service readiness checks (default: 3).
 
 Options:
     -h, --help                          display this help and exit
-    -c, --config PATH                   path to a bash variable assignment style
-                                        configuration file. This file can set
-                                        the following variables if not provided as command
-                                        line arguments. If the variable is set both in
-                                        the configuration file and on the cmd line,
-                                        eg for postgres_host, the cmd line value will
-                                        override the config file value.:
-                                          - APP_CODEBASE: Path to the Django application codebase. This is bound into the container as /app.
-                                          - CONCAT_ENV_FILE: Path to the concatenated environment file for the Django application.
-                                          - POSTGRES_SIF: Path to the PostgreSQL Singularity image file.
-                                          - REDIS_SIF: Path to the Redis Singularity image file.
-                                          - DJANGO_SIF: Path to the Django Singularity image file.
-                                          - DOCS_SIF: Path to the Docs Singularity image file.
-                                          - POSTGRES_DATA: Path to the PostgreSQL data directory on the host to bind into the container.
-                                          - POSTGRES_BACKUP: Path to the PostgreSQL backup directory on the host to bind into the container.
-                                          - POSTGRES_RUN: Path to the PostgreSQL run directory on the host to bind into the container.
-                                          - POSTGRES_HOST: IP address of the PostgreSQL host (default: localhost).
-                                          - POSTGRES_PORT: Port of the PostgreSQL host (default: 5432).
-                                          - REDIS_HOST: IP address of the Redis host (default: localhost).
-                                          - REDIS_PORT: Port of the Redis host (default: 6379).
-                                          - TIMEOUT_MINUTES: Timeout in minutes for service readiness checks (default: 3).
 
     -p, --postgres_host "192.83.21.1"   IP address of the PostgreSQL host. Defaults to localhost. Overrides configuration file value.
     --postgres_port "5432"              Port of the PostgreSQL host. Defaults to 5432. Overrides configuration file value.
@@ -237,7 +235,7 @@ Options:
     -s, --services "SERVICE1 SERVICE2"  Comma-separated list of services to start (e.g., postgres,redis,django). Required.
 
 Examples:
-    ${0##*/} ./launch_script.sh config.env --timeout 5 --services "postgres,redis,django"
+    ${0##*/} config.env --timeout 5 --services "postgres,redis,django"
 EOF
 }
 
@@ -261,39 +259,39 @@ SERVICES_TO_START=()
 
 # Function to parse command-line arguments
 parse_args() {
+    # First, check for help or unknown options
+    while [[ "$#" -gt 0 ]]; do
+        case "$1" in
+            -h|--help)
+                show_help
+                exit 0
+                ;;
+            -*)
+                echo "Error: Unknown option: $1"
+                exit 1
+                ;;
+            *)
+                # Once the first non-option argument is found, assume it's the config file
+                CONFIG_FILE="$1"
+                shift
+                break
+                ;;
+        esac
+    done
 
-    # Process positional arguments for launch_script and config_file
-    if [ -n "$1" ]; then
-        LAUNCH_SCRIPT="$1"; shift
-    fi
-    if [ -n "$1" ]; then
-        CONFIG_FILE="$1"; shift
-    fi
-
-    # Verify mandatory positional arguments are provided
-    if [[ -z "$LAUNCH_SCRIPT" || -z "$CONFIG_FILE" ]]; then
-        echo "Error: LAUNCH_SCRIPT and CONFIG_FILE are required."
-        show_help
-        exit 1
-    fi
-
-    # Verity launch_script exists
-    if [[ ! -e "$LAUNCH_SCRIPT" ]]; then
-        echo "Error: Launch script does not exist - $LAUNCH_SCRIPT"
-        exit 1
-    fi
-
+    # Now, $1 should be the argument right after the config file if any
     # Verify and source the configuration file
-    if [[ -f "$CONFIG_FILE" ]]; then
+    if [[ -e "$CONFIG_FILE" ]]; then
         source "$CONFIG_FILE"
     else
-        echo "Error: Configuration file does not exist - $CONFIG_FILE"
+        echo "Error: Configuration file does not exist: $CONFIG_FILE"
         exit 1
     fi
 
+    # Process the rest of the arguments -- these will take precedence over what is in
+    # the config file
     while (( "$#" )); do
         case "$1" in
-            -h|--help) show_help; exit 0 ;;
             -p|--postgres_host) POSTGRES_HOST="$2"; shift 2 ;;
             --postgres_port) POSTGRES_PORT="$2"; shift 2 ;;
             -r|--redis_host) REDIS_HOST="$2"; shift 2 ;;
@@ -301,11 +299,11 @@ parse_args() {
             -t|--timeout) TIMEOUT_MINUTES="$2"; shift 2 ;;
             -s|--services) IFS=',' read -r -a SERVICES_TO_START <<< "$2"; shift 2 ;;
             --) shift; break ;;
-            *) break ;; # If unexpected arguments found
+            *) echo "Error: Unknown option: $1"; exit 1 ;; # Handle any unexpected arguments
         esac
     done
-
 }
+
 
 main() {
 
