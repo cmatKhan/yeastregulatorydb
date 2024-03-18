@@ -64,6 +64,21 @@ def validate_df(
                     logger.debug("column is expected to be an int and is an int column")
                 except KeyError:
                     raise KeyError(f"Column {colname} must be present in the dataframe. It is not. Fix it!")
+            # if the expected datatype is float, and some but not all of the values
+            # are floats, then try to cast the column to a float column. if that
+            # fails, then raise the value error
+            if expected_type_or_levels == float:
+                try:
+                    df[colname] = df[colname].astype(float)
+                    # Coercion was successful, so we don't need to raise an error here
+                except ValueError:
+                    # Coercion failed, which means there's a non-numeric value that can't be cast to float
+                    raise ValueError(
+                        f"Column {colname} cannot be entirely cast to type {expected_type_or_levels}. "
+                        f"Found non-numeric values that cannot be converted to floats."
+                    )
+
+            # verify all columns
             if not all(isinstance(x, expected_type_or_levels) for x in df[colname]):
                 raise ValueError(
                     f"Column {colname} must be of type {str(expected_type_or_levels)}. "
