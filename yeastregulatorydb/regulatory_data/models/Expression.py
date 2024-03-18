@@ -49,7 +49,7 @@ class Expression(BaseModel, GzipFileUploadWithIdMixin):
         help_text="This is a feature of the McIsaac ZEV data",
         db_index=True,
     )
-    time = models.PositiveIntegerField(default=0, help_text="Timepoint of the experiment in minutes", db_index=True)
+    time = models.FloatField(default=0, help_text="Timepoint of the experiment in minutes", db_index=True)
     source = models.ForeignKey("DataSource", on_delete=models.CASCADE)
     file = models.FileField(
         upload_to="temp",
