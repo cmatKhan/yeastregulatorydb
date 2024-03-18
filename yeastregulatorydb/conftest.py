@@ -397,6 +397,7 @@ def genomicfeature(db) -> GenomicFeature:
     return GenomicFeatureFactory()
 
 
+# TODO: where this is used, replace in test with the bulk file upload
 @pytest.fixture
 def genomicfeature_chr1_genes(db, chrmap: QuerySet, user: User) -> QuerySet:
     chr1_genes_df = pd.read_csv(os.path.join(TEST_DATA_ROOT, "genome/chr1_genes.csv.gz"), compression="gzip")

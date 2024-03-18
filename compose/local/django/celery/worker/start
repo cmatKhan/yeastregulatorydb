@@ -3,5 +3,12 @@
 set -o errexit
 set -o nounset
 
+# Generate a unique identifier for the worker
+# Using hostname, current timestamp, and the process ID for uniqueness
+unique_name="$(hostname)-$(date +%Y%m%d%H%M%S)-$$"
 
-exec watchfiles --filter python celery.__main__.main --args "-A config.celery_app worker -l INFO --concurrency=${CELERY_WORKER_CONCURRENCY:-1}"
+exec watchfiles --filter python celery.__main__.main --args "\
+-A config.celery_app worker \
+-l INFO \
+--concurrency=${CELERY_WORKER_CONCURRENCY:-1} \
+-n $unique_name"

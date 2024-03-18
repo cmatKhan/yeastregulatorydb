@@ -97,6 +97,32 @@ def test_gene_list(user: User, genomicfeature_chr1_genes: QuerySet, rf: RequestF
     assert response.data["locus_tag"] == "YAL031W-A"
 
 
+def test_bulk_genomicfeature_upload(user: User, chrmap: QuerySet, test_data_dict: dict):
+    factory = APIRequestFactory()
+    request = factory.get("/")
+    request.user = user
+
+    token = Token.objects.get(user=user)
+    client = APIClient()
+    client.credentials(HTTP_AUTHORIZATION="Token " + token.key)
+
+    genomicfeature_path = next(
+        file for file in test_data_dict["genome"]["files"] if os.path.basename(file) == "chr1_genes.csv.gz"
+    )
+    assert os.path.exists(genomicfeature_path), f"path: {genomicfeature_path}"
+
+    # Open the file and read its content
+    with open(genomicfeature_path, "rb") as file_obj:
+        file_content = file_obj.read()
+        # Create a SimpleUploadedFile instance
+        upload_file = SimpleUploadedFile("genomicfeature.csv.gz", file_content, content_type="application/gzip")
+        data = {"csv_file": upload_file}
+
+        response = client.post(reverse("api:genomicfeature-bulk-record-upload"), data, format="multipart")
+
+        assert response.status_code == 201, response.data
+
+
 @pytest.mark.django_db
 def test_single_binding_upload(
     cc_datasource: DataSource,
@@ -593,7 +619,7 @@ def test_bulk_binding_upload(
         }
 
         settings.CELERY_TASK_ALWAYS_EAGER = True
-        response = client.post(reverse("api:binding-bulk-upload"), data, format="multipart")
+        response = client.post(reverse("api:binding-bulk-file-upload"), data, format="multipart")
 
         assert response.status_code == 201, response.data
         assert Binding.objects.count() == 2, Binding.objects.count()
@@ -618,7 +644,7 @@ def test_bulk_binding_upload(
         }
 
         settings.CELERY_TASK_ALWAYS_EAGER = True
-        response = client.post(reverse("api:binding-bulk-upload"), data, format="multipart")
+        response = client.post(reverse("api:binding-bulk-file-upload"), data, format="multipart")
 
         assert response.status_code == 201, response.data
         assert Binding.objects.count() == 4, Binding.objects.count()
@@ -629,7 +655,7 @@ def test_bulk_binding_upload(
 
         qbed_qc_records = BindingManualQC.objects.filter(binding__source__fileformat__fileformat="qbed")
 
-        # test the BindingManualQC bulk-upload endpoint by updating the data_usable
+        # test the BindingManualQC bulk-file-upload endpoint by updating the data_usable
         # field to 'passing' for the BindingManualQC instances foreign keyed to the
         # Binding instances with the qbed fileformat
         data = [{"id": record.id, "data_usable": "pass"} for record in qbed_qc_records]
@@ -781,7 +807,7 @@ def test_expression_bulk_upload_and_combinedfile(
             "tarred_dir": SimpleUploadedFile("tarred_dir.tar", tar_handle.read(), content_type="application/gzip"),
         }
 
-        response = client.post(reverse("api:expression-bulk-upload"), data, format="multipart")
+        response = client.post(reverse("api:expression-bulk-file-upload"), data, format="multipart")
 
         assert response.status_code == 201, response.data
         assert Expression.objects.count() == 2, Expression.objects.count()

@@ -1,6 +1,7 @@
 from .BindingManualQCSerializer import BindingManualQCSerializer
 from .BindingSerializer import BindingSerializer
-from .BulkUploadSerializer import BulkUploadSerializer
+from .BulkFileUploadSerializer import BulkFileUploadSerializer
+from .BulkRecordUploadSerializer import BulkRecordUploadSerializer
 from .CallingCardsBackgroundSerializer import CallingCardsBackgroundSerializer
 from .ChrMapSerializer import ChrMapSerializer
 from .DataSourceSerializer import DataSourceSerializer
@@ -16,7 +17,8 @@ from .RegulatorSerializer import RegulatorSerializer
 __all__ = [
     "BindingManualQCSerializer",
     "BindingSerializer",
-    "BulkUploadSerializer",
+    "BulkFileUploadSerializer",
+    "BulkRecordUploadSerializer",
     "DataSourceSerializer",
     "CallingCardsBackgroundSerializer",
     "ChrMapSerializer",

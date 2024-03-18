@@ -1,3 +1,4 @@
+import gzip
 import os
 import tarfile
 import tempfile
@@ -9,20 +10,25 @@ from rest_framework import status
 from rest_framework.decorators import action
 from rest_framework.response import Response
 
-from ...serializers import BulkUploadSerializer
+from ...serializers import BulkFileUploadSerializer, BulkRecordUploadSerializer
 
 
 class BulkUploadMixin:
     def get_serializer_class(self):
-        if self.action == "bulk_upload":
+        if self.action == "bulk_file_upload":
             # Store the original serializer class
             self.default_serializer_class = self.serializer_class
-            # Set the serializer class to BulkUploadSerializer
-            self.serializer_class = BulkUploadSerializer
+            # Set the serializer class to BulkFileUploadSerializer
+            self.serializer_class = BulkFileUploadSerializer
+        if self.action == "bulk_record_upload":
+            # Store the original serializer class
+            self.default_serializer_class = self.serializer_class
+            # Set the serializer class to BulkFileUploadSerializer
+            self.serializer_class = BulkRecordUploadSerializer
         return super().get_serializer_class()
 
     @action(detail=False, methods=["post"])
-    def bulk_upload(self, request):
+    def bulk_file_upload(self, request):
         bulk_serializer = self.get_serializer(data=request.data)
         if bulk_serializer.is_valid():
             # create a temporary directory
@@ -78,6 +84,43 @@ class BulkUploadMixin:
 
                 # Save the serializers in a transaction so that if one fails,
                 # none of the serializers in the list are saved
+                with transaction.atomic():
+                    for serializer in default_serializer_list:
+                        self.perform_create(serializer)
+                return Response("Bulk upload successful", status=status.HTTP_201_CREATED)
+
+        else:
+            return Response(f"Bulk upload not valid: {bulk_serializer.errors}", status=status.HTTP_400_BAD_REQUEST)
+
+    @action(detail=False, methods=["post"])
+    def bulk_record_upload(self, request):
+        """
+        This method is used to bulk upload records from a CSV file. Iterate through
+        the rows of the CSV file and create a serializer for each row. Validate the
+        serializer and if it is valid, add it to the valid_serializers_list. If there
+        are errors, save the errors in the error_list. if the error_list is empty
+        at the end of the row iteration, then save the valid_serializers_list in a
+        transaction. If there are errors, return a 400 response with the errors.
+        """
+        bulk_serializer = self.get_serializer(data=request.data)
+        if bulk_serializer.is_valid():
+            # Decompress the gzipped file
+            with gzip.open(bulk_serializer.validated_data["csv_file"], "rt") as file_obj:
+                df = pd.read_csv(file_obj, compression="gzip")
+                default_serializer_list = []
+                errors = []
+
+                for index, row in df.iterrows():
+                    row_dict = row.to_dict()
+                    default_serializer = self.default_serializer_class(data=row_dict, context={"request": request})
+                    if default_serializer.is_valid():
+                        default_serializer_list.append(default_serializer)
+                    else:
+                        errors.append(f"Error in row {index}: {default_serializer.errors}")
+
+                if errors:
+                    return Response("\n".join(errors), status=status.HTTP_400_BAD_REQUEST)
+
                 with transaction.atomic():
                     for serializer in default_serializer_list:
                         self.perform_create(serializer)
