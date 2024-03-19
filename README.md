@@ -200,3 +200,22 @@ it okay to delete and re-download it? [y/n] (y): y
   [26/27] keep_local_envs_in_vcs (y): n
   [27/27] debug (n): n
 ```
+
+## notes
+
+- See callingcardsbackground for use of the serializer context. This is useful for
+  passing additional arguments to the validation steps in the serializer
+
+- See callingcardsbackground or binding to see how to use transaction to ensure that
+  the instance/database are ready before kicking off celery tasks
+
+- to use the celery retry functionality, add the following decorator:
+
+```python
+@celery_app.task(bind=True, max_retries=3, default_retry_delay=5)
+def my_tast(self, arg1, arg2):
+    try:
+        # do something
+    except Exception as exc:
+        raise self.retry(exc=exc)
+```

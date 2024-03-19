@@ -22,8 +22,9 @@ from yeastregulatorydb.regulatory_data.utils.extract_file_from_storage import ex
 logger = logging.getLogger(__name__)
 
 
-@celery_app.task()
-def promoter_significance_task(binding_id: int, user_id: int, output_fileformat: str, **kwargs) -> list:
+# TODO implement retry logic
+@celery_app.task(bind=True, max_retries=3, default_retry_delay=5)
+def promoter_significance_task(self, binding_id: int, user_id: int, output_fileformat: str, **kwargs) -> list:
     """For each promoter set in PromoterSet, create the chipexo promoter significance file.
     Return a list of PromoterSetSig objects that may be passed on to the rank response
     endpoint. NOTE that this task expects the following global variables to
@@ -105,6 +106,17 @@ def promoter_significance_task(binding_id: int, user_id: int, output_fileformat:
                 )
                 result_list.append(ResultObject(result, None))
             elif output_fileformat == settings.CALLINGCARDS_PROMOTER_SIG_FORMAT:
+                # Ensure that the expected background records exist
+                if "background_id" in kwargs:
+                    background_records_exist = CallingCardsBackground.objects.filter(
+                        id=kwargs.get("background_id")
+                    ).exists()
+                else:
+                    background_records_exist = CallingCardsBackground.objects.exists()
+
+                if not background_records_exist:
+                    raise ValueError("No background records found")
+
                 # if background_id is passed, then extract only that record.
                 # else, generate an iterator that will return all records in
                 # the CallingCardsBackground table
@@ -113,6 +125,8 @@ def promoter_significance_task(binding_id: int, user_id: int, output_fileformat:
                     if "background_id" in kwargs
                     else CallingCardsBackground.objects.iterator()
                 )
+                if background_objects_iterator is None:
+                    raise ValueError("No background records found")
                 for background_record in background_objects_iterator:
                     background_filepath = extract_file_from_storage(background_record.file, tmpdir)
 

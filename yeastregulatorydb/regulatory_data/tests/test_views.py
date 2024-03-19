@@ -26,7 +26,16 @@ from ..api.serializers import (
     PromoterSetSigSerializer,
 )
 from ..api.views import ChrMapViewSet, GenomicFeatureViewSet
-from ..models import Binding, BindingManualQC, ChrMap, DataSource, Expression, PromoterSetSig, Regulator
+from ..models import (
+    Binding,
+    BindingManualQC,
+    CallingCardsBackground,
+    ChrMap,
+    DataSource,
+    Expression,
+    PromoterSetSig,
+    Regulator,
+)
 from .factories import (
     BindingFactory,
     CallingCardsBackgroundFactory,
@@ -195,9 +204,20 @@ def test_single_binding_upload(
                 name="adh1", fileformat=fileformat.get(fileformat="qbed"), file=upload_file
             )
         )
-        ccbackground_serializer = CallingCardsBackgroundSerializer(data=data, context={"request": request})
-        assert ccbackground_serializer.is_valid() is True, ccbackground_serializer.errors
-        ccbackground_serializer.save()
+        # Define your query parameters
+        background_query_params = {"testing": "True"}
+
+        # Create the URL for the request
+        background_url = reverse("api:callingcardsbackground-list")
+
+        # Add the query parameters to the URL
+        background_url += "?" + urlencode(background_query_params)
+
+        background_res = client.post(background_url, data, format="multipart")
+
+        assert background_res.status_code == 201, background_res.data
+        background_adh1 = CallingCardsBackground.objects.filter(name="adh1").first()
+        assert background_adh1.genomic_inserts == 1622, background_adh1.genomic_inserts
 
     binding_path = next(
         file
@@ -246,6 +266,33 @@ def test_single_binding_upload(
         # assert RankResponse.objects.filter(
         #     promotersetsig=PromoterSetSig.objects.get()
         # ).exists(), RankResponse.objects.all()
+
+    # add another background to test automatic promoterset sig processing
+    dsir4_background_path = next(
+        file
+        for file in test_data_dict["background"]["files"]
+        if os.path.basename(file) == "dsir4_background_chrI.qbed.gz"
+    )
+    with open(dsir4_background_path, "rb") as file_obj:
+        file_content = file_obj.read()
+        # Create a SimpleUploadedFile instance
+        upload_file = SimpleUploadedFile(
+            "dsir4_background_chrI.qbed.gz", file_content, content_type="application/gzip"
+        )
+        data = model_to_dict_select(
+            CallingCardsBackgroundFactory.build(
+                name="dsir4", fileformat=fileformat.get(fileformat="qbed"), file=upload_file
+            )
+        )
+        CELERY_TASK_ALWAYS_EAGER = True
+        background_res = client.post(background_url, data, format="multipart")
+
+        assert background_res.status_code == 201, background_res.data
+        disr4_background = CallingCardsBackground.objects.filter(name="dsir4").first()
+        assert disr4_background.genomic_inserts == 1641, disr4_background.genomic_inserts
+
+        promotersetsig_dsir4 = PromoterSetSig.objects.filter(background__name="dsir4").first()
+        assert promotersetsig_dsir4 is not None, PromoterSetSig.objects.all()
 
 
 @pytest.mark.django_db

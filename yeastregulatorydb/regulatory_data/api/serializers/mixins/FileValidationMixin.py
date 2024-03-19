@@ -37,6 +37,13 @@ class FileValidationMixin:
     """
 
     def validate(self, attrs):
+
+        # in a viewset which uses this serializer, it is possible to set additional
+        # kwargs in the set_serializer_context. See callingcardsbackground for an
+        # example
+        kwargs = {}
+        kwargs["deduplicate_strands"] = self.context.get("deduplicate_strands", True)
+
         # in the django settings, there is a variable NULL_BINDING_FILE_DATASOURCES
         # that has a list of datasource names that are allowed to have null
         # binding.file fields. If the datasource.name in attrs is in that list,
@@ -120,7 +127,9 @@ class FileValidationMixin:
                 df = validate_genomic_df(df, settings.CHR_FORMAT, fields)
                 if "depth" in df.columns:
                     logger.info("Counting genomic insertions and adding the tallies to the initial data")
-                    count_dict = count_hops(df, settings.CHR_FORMAT)
+                    count_dict = count_hops(
+                        df, settings.CHR_FORMAT, deduplicate_strands=kwargs.get("deduplicate_strands", True)
+                    )
                     for key in count_dict.keys():
                         # add the inserts to the initial data
                         attrs[key + "_inserts"] = count_dict[key]
