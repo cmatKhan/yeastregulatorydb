@@ -18,12 +18,12 @@ from yeastregulatorydb.regulatory_data.tasks import (
 from ...models import BindingManualQC
 from ..filters.BindingManualQCFilter import BindingManualQCFilter
 from ..serializers.BindingManualQCSerializer import BindingManualQCSerializer
-from .mixins.UpdateModifiedMixin import UpdateModifiedMixin
+from .mixins import ExportTableAsGzipFileMixin, UpdateModifiedMixin
 
 logger = logging.getLogger(__name__)
 
 
-class BindingManualQCViewSet(UpdateModifiedMixin, viewsets.ModelViewSet):
+class BindingManualQCViewSet(UpdateModifiedMixin, ExportTableAsGzipFileMixin, viewsets.ModelViewSet):
     """
     A viewset for viewing and editing BindingManualQC instances.
     """
