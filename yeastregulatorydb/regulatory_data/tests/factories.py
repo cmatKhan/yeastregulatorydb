@@ -1,9 +1,17 @@
+import os
 import random
 
 import faker
-from factory import Faker, LazyFunction, SubFactory
+import pytest
+from django.core.files import File
+from django.core.files.uploadedfile import SimpleUploadedFile
+from django.urls import reverse
+from django.utils.http import urlencode
+from factory import Faker, LazyFunction, SubFactory, post_generation
 from factory.django import DjangoModelFactory, FileField
+from rest_framework.authtoken.models import Token
 
+from yeastregulatorydb.regulatory_data.api.serializers import ExpressionSerializer, PromoterSetSerializer
 from yeastregulatorydb.users.tests.factories import UserFactory
 
 from ..models import (
@@ -21,6 +29,7 @@ from ..models import (
     RankResponse,
     Regulator,
 )
+from .utils.model_to_dict_select import model_to_dict_select
 
 fake = faker.Faker()
 
@@ -131,7 +140,7 @@ class ExpressionFactory(DjangoModelFactory):
     time = fake.random_digit()
     source = SubFactory(DataSourceFactory)
     file = Faker("file_name")
-    notes = Faker("sentence")
+    notes = LazyFunction(sentence_with_max_chars)
 
     class Meta:
         model = Expression
@@ -145,6 +154,13 @@ class ExpressionFactory(DjangoModelFactory):
             "time",
             "source",
         ]
+
+    @post_generation
+    def attach_real_file(self, create, extracted, **kwargs):
+        if extracted:
+            # Assuming `extracted` is a path to the file
+            with open(extracted, "rb") as f:
+                self.file.save(name=self.file.generate(), content=File(f), save=True)
 
 
 class ExpressionManualQCFactory(DjangoModelFactory):
@@ -250,3 +266,88 @@ class RankResponseFactory(DjangoModelFactory):
     class Meta:
         model = RankResponse
         django_get_or_create = ["promotersetsig", "expression"]
+
+
+@pytest.fixture
+def single_binding_expression_setup(db, user, test_data_dict, mcisaac_datasource, regulator, fileformat):
+    """
+    Fixture to setup database state for tests that involve multiple file uploads
+    and complex interactions.
+    """
+    client = APIClient()
+    token, _ = Token.objects.get_or_create(user=user)
+    client.credentials(HTTP_AUTHORIZATION=f"Token {token.key}")
+
+    # Helper function to upload a file and create an object in the database
+    def upload_file_and_create_object(file_path, factory_class, serializer_class, additional_data={}):
+        with open(file_path, "rb") as file_obj:
+            file_content = file_obj.read()
+            upload_file = SimpleUploadedFile(
+                name=file_path.split("/")[-1], content=file_content, content_type="application/gzip"
+            )
+            data = factory_class.build(file=upload_file, **additional_data)
+            data_dict = {
+                **model_to_dict_select(data),
+                **additional_data,
+            }  # Assume model_to_dict_select serializes the factory-built instance to dict
+            serializer = serializer_class(data=data_dict)
+            assert serializer.is_valid(), serializer.errors
+            serializer.save()
+
+    # Upload all required files and create their respective database entries
+    expression_path = next(
+        file
+        for file in test_data_dict["expression"]["mcisaac"]["files"]
+        if os.path.basename(file) == "hap5_15_mcisc_chr1.csv.gz"
+    )
+    assert os.path.exists(expression_path), f"path: {expression_path}"
+    upload_file_and_create_object(
+        expression_path,
+        ExpressionFactory,
+        ExpressionSerializer,
+        {"source": mcisaac_datasource, "regulator": regulator},
+    )
+
+    promoterset_path = next(
+        file
+        for file in test_data_dict["promoters"]["files"]
+        if os.path.basename(file) == "yiming_promoters_chrI.bed.gz"
+    )
+    assert os.path.exists(promoterset_path), f"path: {promoterset_path}"
+    upload_file_and_create_object(promoterset_path, PromoterSetFactory, PromoterSetSerializer, {"name": "yiming"})
+
+    background_path = next(
+        file
+        for file in test_data_dict["background"]["files"]
+        if os.path.basename(file) == "adh1_background_chrI.qbed.gz"
+    )
+    assert os.path.exists(background_path), f"path: {background_path}"
+    upload_file_and_create_object(
+        background_path,
+        CallingCardsBackgroundFactory,
+        None,
+        {"name": "adh1", "fileformat": fileformat.get(fileformat="qbed")},
+    )
+
+    binding_path = next(
+        file
+        for file in test_data_dict["binding"]["callingcards"]["files"]
+        if os.path.basename(file) == "hap5_expr17_chr1_ucsc.qbed.gz"
+    )
+    assert os.path.exists(binding_path), f"path: {binding_path}"
+    upload_file_and_create_object(
+        binding_path, BindingFactory, None, {"source": mcisaac_datasource, "regulator": regulator}
+    )
+
+    # add another background to test automatic promoterset sig processing
+    dsir4_background_path = next(
+        file
+        for file in test_data_dict["background"]["files"]
+        if os.path.basename(file) == "dsir4_background_chrI.qbed.gz"
+    )
+    assert os.path.exists(dsir4_background_path), f"path: {dsir4_background_path}"
+    upload_file_and_create_object(
+        dsir4_background_path, CallingCardsBackgroundFactory, None, {"name": "dsir4", "fileformat": fileformat}
+    )
+    # Return the client for use in tests if needed
+    return client

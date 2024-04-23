@@ -70,8 +70,5 @@ def perform_create(self, serializer):
         finally:
             release_lock()
 
-    @action(detail=False, methods=["get"])
-    def rankresponse(self, request, *args, **kwargs):
-        pass
 
 

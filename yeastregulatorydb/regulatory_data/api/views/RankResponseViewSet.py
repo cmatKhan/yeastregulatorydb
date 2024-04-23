@@ -45,7 +45,7 @@ class RankResponseViewSet(UpdateModifiedMixin, viewsets.ModelViewSet):
                 {
                     "error": "rank_response_summary returned multiple matches to your query. There should only be 1. "
                     "Contact our admin -- this message shouldn't appear -- but in the meantime, "
-                    "re-submit with only the `rank_response_id` as a paramater"
+                    "re-submit with only the `rank_response_id` as a parameter"
                 },
                 status=status.HTTP_400_BAD_REQUEST,
             )

@@ -11,12 +11,13 @@ from django.conf import settings
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.db.models.query import QuerySet
 from django.http import QueryDict
-from django.test import RequestFactory
+from django.test import AsyncClient, RequestFactory
 from django.urls import reverse
 from rest_framework.authtoken.models import Token
 from rest_framework.test import APIClient, APIRequestFactory, force_authenticate
 
 from yeastregulatorydb.users.models import User
+from yeastregulatorydb.users.tests.factories import UserFactory
 
 from ..api.serializers import (
     BindingSerializer,
@@ -33,6 +34,7 @@ from ..models import (
     ChrMap,
     DataSource,
     Expression,
+    PromoterSet,
     PromoterSetSig,
     Regulator,
 )
@@ -45,7 +47,7 @@ from .factories import (
     PromoterSetSigFactory,
     RegulatorFactory,
 )
-from .utils.model_to_dict_select import model_to_dict_select
+from .utils import model_to_dict_select
 
 
 @pytest.mark.django_db
@@ -106,14 +108,14 @@ def test_gene_list(user: User, genomicfeature_chr1_genes: QuerySet, rf: RequestF
     assert response.data["locus_tag"] == "YAL031W-A"
 
 
-def test_bulk_genomicfeature_upload(user: User, chrmap: QuerySet, test_data_dict: dict):
+def test_bulk_genomicfeature_upload(auth_token: Token, chrmap: QuerySet, test_data_dict: dict):
     factory = APIRequestFactory()
     request = factory.get("/")
-    request.user = user
+    request.user = auth_token.user
 
-    token = Token.objects.get(user=user)
+    # token = Token.objects.get(user=user)
     client = APIClient()
-    client.credentials(HTTP_AUTHORIZATION="Token " + token.key)
+    client.credentials(HTTP_AUTHORIZATION="Token " + auth_token.key)
 
     genomicfeature_path = next(
         file for file in test_data_dict["genome"]["files"] if os.path.basename(file) == "chr1_genes.csv.gz"
@@ -134,90 +136,18 @@ def test_bulk_genomicfeature_upload(user: User, chrmap: QuerySet, test_data_dict
 
 @pytest.mark.django_db
 def test_single_binding_upload(
-    cc_datasource: DataSource,
+    auth_token: Token,
     regulator: Regulator,
+    cc_datasource: DataSource,
     chrmap: QuerySet,
-    test_data_dict: dict,
-    user: User,
+    mcisaac_hap5_expression: Expression,
+    yiming_promoterset: PromoterSet,
+    adh1_background: CallingCardsBackground,
     fileformat: QuerySet,
-    mcisaac_datasource: DataSource,
+    test_data_dict: dict,
 ):
-    factory = APIRequestFactory()
-    request = factory.get("/")
-    request.user = user
-
-    token = Token.objects.get(user=user)
     client = APIClient()
-    client.credentials(HTTP_AUTHORIZATION="Token " + token.key)
-
-    expression_path = next(
-        file
-        for file in test_data_dict["expression"]["mcisaac"]["files"]
-        if os.path.basename(file) == "hap5_15min_mcisaac_chr1.csv.gz"
-    )
-    assert os.path.exists(expression_path), f"path: {expression_path}"
-
-    # Open the file and read its content
-    with open(expression_path, "rb") as file_obj:
-        file_content = file_obj.read()
-        # Create a SimpleUploadedFile instance
-        upload_file = SimpleUploadedFile("28366_chrI.csv.gz", file_content, content_type="application/gzip")
-        data = model_to_dict_select(
-            ExpressionFactory.build(source=mcisaac_datasource, regulator=regulator, file=upload_file)
-        )
-        expression_serializer = ExpressionSerializer(data=data, context={"request": request})
-        assert expression_serializer.is_valid() is True, expression_serializer.errors
-        expression_serializer.save()
-
-    # set path to test data and check that it exists
-    promoterset_path = next(
-        file
-        for file in test_data_dict["promoters"]["files"]
-        if os.path.basename(file) == "yiming_promoters_chrI.bed.gz"
-    )
-    assert os.path.exists(promoterset_path), f"path: {promoterset_path}"
-
-    # Open the file and read its content
-    with open(promoterset_path, "rb") as file_obj:
-        file_content = file_obj.read()
-        # Create a SimpleUploadedFile instance
-        upload_file = SimpleUploadedFile("yiming_promoters_chrI.bed.gz", file_content, content_type="application/gzip")
-        data = model_to_dict_select(PromoterSetFactory.build(name="yiming", file=upload_file))
-        serializer = PromoterSetSerializer(data=data, context={"request": request})
-        assert serializer.is_valid() is True, serializer.errors
-        serializer.save()
-
-    background_path = next(
-        file
-        for file in test_data_dict["background"]["files"]
-        if os.path.basename(file) == "adh1_background_chrI.qbed.gz"
-    )
-    assert os.path.exists(background_path), f"path: {background_path}"
-
-    # Open the file and read its content
-    with open(background_path, "rb") as file_obj:
-        file_content = file_obj.read()
-        # Create a SimpleUploadedFile instance
-        upload_file = SimpleUploadedFile("adh1_background_chrI.qbed.gz", file_content, content_type="application/gzip")
-        data = model_to_dict_select(
-            CallingCardsBackgroundFactory.build(
-                name="adh1", fileformat=fileformat.get(fileformat="qbed"), file=upload_file
-            )
-        )
-        # Define your query parameters
-        background_query_params = {"testing": "True"}
-
-        # Create the URL for the request
-        background_url = reverse("api:callingcardsbackground-list")
-
-        # Add the query parameters to the URL
-        background_url += "?" + urlencode(background_query_params)
-
-        background_res = client.post(background_url, data, format="multipart")
-
-        assert background_res.status_code == 201, background_res.data
-        background_adh1 = CallingCardsBackground.objects.filter(name="adh1").first()
-        assert background_adh1.genomic_inserts == 1622, background_adh1.genomic_inserts
+    client.credentials(HTTP_AUTHORIZATION="Token " + auth_token.key)
 
     binding_path = next(
         file
@@ -261,11 +191,6 @@ def test_single_binding_upload(
         # assert that there exists a promotersetsig with this binding instance id
         assert PromoterSetSig.objects.count() == 1, PromoterSetSig.objects.count()
         assert PromoterSetSig.objects.filter(binding=Binding.objects.get()).exists(), PromoterSetSig.objects.all()
-        # assert that there is a rankresponse with the promotersetsig instance id
-        # assert RankResponse.objects.count() == 1, RankResponse.objects.count()
-        # assert RankResponse.objects.filter(
-        #     promotersetsig=PromoterSetSig.objects.get()
-        # ).exists(), RankResponse.objects.all()
 
     # add another background to test automatic promoterset sig processing
     dsir4_background_path = next(
@@ -284,6 +209,14 @@ def test_single_binding_upload(
                 name="dsir4", fileformat=fileformat.get(fileformat="qbed"), file=upload_file
             )
         )
+
+        # Create the URL for the request
+        background_url = reverse("api:callingcardsbackground-list")
+        # Define your query parameters
+        background_query_params = {"testing": "True"}
+        # Add the query parameters to the URL
+        background_url += "?" + urlencode(background_query_params)
+
         CELERY_TASK_ALWAYS_EAGER = True
         background_res = client.post(background_url, data, format="multipart")
 
@@ -291,27 +224,62 @@ def test_single_binding_upload(
         disr4_background = CallingCardsBackground.objects.filter(name="dsir4").first()
         assert disr4_background.genomic_inserts == 1641, disr4_background.genomic_inserts
 
+        assert PromoterSetSig.objects.count() == 2, PromoterSetSig.objects.count()
         promotersetsig_dsir4 = PromoterSetSig.objects.filter(background__name="dsir4").first()
         assert promotersetsig_dsir4 is not None, PromoterSetSig.objects.all()
 
 
+os.environ["DJANGO_ALLOW_ASYNC_UNSAFE"] = "True"
+
+
+@pytest.mark.django_db
+def test_cc_rankresponse(
+    auth_token: Token,
+    mcisaac_hap5_expression: Expression,
+    hap5_cc_promotersetsig: PromoterSetSig,
+):
+    client = APIClient()
+    client.credentials(HTTP_AUTHORIZATION="Token " + auth_token.key)
+
+    settings.CELERY_TASK_ALWAYS_EAGER = True
+    response = client.get(reverse("api:promotersetsig-rankresponse"), {"promotersetsig_id": hap5_cc_promotersetsig.id})
+
+    assert response.status_code == 200
+
+
+@pytest.mark.django_db
+def test_chipexo_rankresponse(
+    auth_token: Token,
+    mcisaac_hap5_expression: Expression,
+    hap5_chipexo_promotersetsig: PromoterSetSig,
+):
+    client = APIClient()
+    client.credentials(HTTP_AUTHORIZATION="Token " + auth_token.key)
+
+    settings.CELERY_TASK_ALWAYS_EAGER = True
+    response = client.get(
+        reverse("api:promotersetsig-rankresponse"), {"promotersetsig_id": hap5_chipexo_promotersetsig.id}
+    )
+
+    assert response.status_code == 200
+
+
 @pytest.mark.django_db
 def test_single_binding_harbison_upload(
+    auth_token: Token,
     harbison_datasource: DataSource,
     regulator: Regulator,
     chrmap: QuerySet,
     test_data_dict: dict,
-    user: User,
     fileformat: QuerySet,
     mcisaac_datasource: DataSource,
 ):
     factory = APIRequestFactory()
     request = factory.get("/")
-    request.user = user
+    request.user = auth_token.user
 
-    token = Token.objects.get(user=user)
     client = APIClient()
-    client.credentials(HTTP_AUTHORIZATION="Token " + token.key)
+    client.credentials(HTTP_AUTHORIZATION="Token " + auth_token.key)
 
     genomicfeature_instance = GenomicFeatureFactory.create(symbol="RTG3")
     rtg3_regulator = RegulatorFactory.create(genomicfeature=genomicfeature_instance)
@@ -426,10 +394,10 @@ def test_single_binding_harbison_upload(
 
 @pytest.mark.django_db
 def test_single_binding_upload_with_promotersetsig_and_combinedfile(
+    auth_token: Token,
     harbison_datasource: DataSource,
     mcisaac_datasource: DataSource,
     regulator: Regulator,
-    user: User,
     test_data_dict: dict,
 ):
     """some uploads to the binding table remove the `file` from the binding instance. `file`
@@ -439,16 +407,15 @@ def test_single_binding_upload_with_promotersetsig_and_combinedfile(
     """
     factory = APIRequestFactory()
     request = factory.get("/")
-    request.user = user
+    request.user = auth_token.user
 
-    token = Token.objects.get(user=user)
     client = APIClient()
-    client.credentials(HTTP_AUTHORIZATION="Token " + token.key)
+    client.credentials(HTTP_AUTHORIZATION="Token " + auth_token.key)
 
     expression_path = next(
         file
         for file in test_data_dict["expression"]["mcisaac"]["files"]
-        if os.path.basename(file) == "hap5_15min_mcisaac_chr1.csv.gz"
+        if os.path.basename(file) == "hap5_15_mcisc_chr1.csv.gz"
     )
     assert os.path.exists(expression_path), f"path: {expression_path}"
 
@@ -536,22 +503,21 @@ def test_single_binding_upload_with_promotersetsig_and_combinedfile(
 
 @pytest.mark.django_db
 def test_bulk_binding_upload(
+    auth_token: Token,
     chipexo_datasource: DataSource,
     cc_datasource: DataSource,
     kemmeren_datasource: DataSource,
     regulator: Regulator,
     chrmap: QuerySet,
     fileformat: QueryDict,
-    user: User,
     test_data_dict: dict,
 ):
     factory = APIRequestFactory()
     request = factory.get("/")
-    request.user = user
+    request.user = auth_token.user
 
-    token = Token.objects.get(user=user)
     client = APIClient()
-    client.credentials(HTTP_AUTHORIZATION="Token " + token.key)
+    client.credentials(HTTP_AUTHORIZATION="Token " + auth_token.key)
 
     expression_path = next(
         file
@@ -717,15 +683,14 @@ def test_bulk_binding_upload(
 
 @pytest.mark.django_db()
 def test_expression_task_upload(
-    hu_datasource: DataSource, chrmap: QuerySet, fileformat: QueryDict, test_data_dict: dict, user: User
+    auth_token: Token, hu_datasource: DataSource, chrmap: QuerySet, fileformat: QueryDict, test_data_dict: dict
 ):
     factory = APIRequestFactory()
     request = factory.get("/")
-    request.user = user
+    request.user = auth_token.user
 
-    token = Token.objects.get(user=user)
     client = APIClient()
-    client.credentials(HTTP_AUTHORIZATION="Token " + token.key)
+    client.credentials(HTTP_AUTHORIZATION="Token " + auth_token.key)
 
     genomicfeature_instance = GenomicFeatureFactory.create(symbol="RTG3")
     rtg3_regulator = RegulatorFactory.create(genomicfeature=genomicfeature_instance)
@@ -814,11 +779,14 @@ def test_expression_task_upload(
 
 @pytest.mark.django_db
 def test_expression_bulk_upload_and_combinedfile(
-    chrmap: QuerySet, hu_datasource: DataSource, mcisaac_datasource: DataSource, user: User, test_data_dict: dict
+    auth_token: Token,
+    chrmap: QuerySet,
+    hu_datasource: DataSource,
+    mcisaac_datasource: DataSource,
+    test_data_dict: dict,
 ):
-    token = Token.objects.get(user=user)
     client = APIClient()
-    client.credentials(HTTP_AUTHORIZATION="Token " + token.key)
+    client.credentials(HTTP_AUTHORIZATION="Token " + auth_token.key)
 
     GenomicFeatureFactory.create(symbol="HAP5")
 
@@ -831,7 +799,7 @@ def test_expression_bulk_upload_and_combinedfile(
     expression_filepath1 = next(
         file
         for file in test_data_dict["expression"]["mcisaac"]["files"]
-        if os.path.basename(file) == "hap5_15min_mcisaac_chr1.csv.gz"
+        if os.path.basename(file) == "hap5_15_mcisc_chr1.csv.gz"
     )
     assert os.path.exists(expression_filepath1), f"path: {expression_filepath1}"
 
@@ -912,7 +880,7 @@ def test_expression_bulk_upload_and_combinedfile(
 #     expression_path = next(
 #         file
 #         for file in test_data_dict["expression"]["mcisaac"]["files"]
-#         if os.path.basename(file) == "hap5_15min_mcisaac_chr1.csv.gz"
+#         if os.path.basename(file) == "hap5_15_mcisc_chr1.csv.gz"
 #     )
 #     assert os.path.exists(expression_path), f"path: {expression_path}"
 

@@ -109,7 +109,7 @@ def test_promoter_significance_task(
 #     expression_path = next(
 #         file
 #         for file in test_data_dict["expression"]["mcisaac"]["files"]
-#         if os.path.basename(file) == "hap5_15min_mcisaac_chr1.csv.gz"
+#         if os.path.basename(file) == "hap5_15_mcisc_chr1.csv.gz"
 #     )
 #     assert os.path.exists(expression_path), f"path: {expression_path}"
 
@@ -181,7 +181,7 @@ def test_promotersetsig_rankedresponse_chained(
     expression_path = next(
         file
         for file in test_data_dict["expression"]["mcisaac"]["files"]
-        if os.path.basename(file) == "hap5_15min_mcisaac_chr1.csv.gz"
+        if os.path.basename(file) == "hap5_15_mcisc_chr1.csv.gz"
     )
     assert os.path.exists(expression_path), f"path: {expression_path}"
 

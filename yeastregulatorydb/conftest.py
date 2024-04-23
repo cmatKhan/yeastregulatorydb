@@ -1,7 +1,9 @@
 import os
+import shutil
 
 import pandas as pd
 import pytest
+from django.core.files import File
 from django.db.models.query import QuerySet
 from rest_framework.authtoken.models import Token
 
@@ -33,6 +35,7 @@ from yeastregulatorydb.regulatory_data.tests.factories import (
     RankResponseFactory,
     RegulatorFactory,
 )
+from yeastregulatorydb.regulatory_data.tests.utils import attach_file_to_instance
 from yeastregulatorydb.users.models import User
 from yeastregulatorydb.users.tests.factories import UserFactory
 
@@ -47,8 +50,13 @@ def media_storage(settings, tmpdir):
 @pytest.fixture
 def user(db) -> User:
     user_instance = UserFactory()
-    Token.objects.create(user=user_instance)
     return user_instance
+
+
+@pytest.fixture
+def auth_token(user):
+    token, created = Token.objects.get_or_create(user=user)
+    return token
 
 
 @pytest.fixture
@@ -455,3 +463,151 @@ def test_data_dict() -> dict:
             # Add the file to the innermost dictionary
             current_dict.setdefault("files", []).append(path)
     return file_dict
+
+
+@pytest.fixture
+def mcisaac_hap5_expression(db, tmp_path, regulator, mcisaac_datasource, test_data_dict) -> Expression:
+    # Create a new Expression instance
+    expression_path = next(
+        file
+        for file in test_data_dict["expression"]["mcisaac"]["files"]
+        if os.path.basename(file) == "hap5_15_mcisc_chr1.csv.gz"
+    )
+
+    # Create a temporary path within the allowed temp directory
+    temp_file_path = tmp_path / os.path.basename(expression_path)
+
+    # Copy the file to the temporary path
+    shutil.copy(expression_path, temp_file_path)
+
+    # Create the Expression instance using the temporary file
+    expression = ExpressionFactory(regulator=regulator, source=mcisaac_datasource, file=str(temp_file_path))
+
+    return expression
+
+
+@pytest.fixture
+def yiming_promoterset(db, tmp_path, test_data_dict) -> PromoterSet:
+    promoterset_path = next(
+        file
+        for file in test_data_dict["promoters"]["files"]
+        if os.path.basename(file) == "yiming_promoters_chrI.bed.gz"
+    )
+
+    # Create a temporary path within the allowed temp directory
+    temp_file_path = tmp_path / os.path.basename(promoterset_path)
+
+    # Copy the file to the temporary path
+    shutil.copy(promoterset_path, temp_file_path)
+
+    promoterset = PromoterSetFactory(name="yiming", file=str(temp_file_path))
+    return promoterset
+
+
+@pytest.fixture
+def adh1_background(db, tmp_path, fileformat, test_data_dict) -> CallingCardsBackground:
+    background_path = next(
+        file
+        for file in test_data_dict["background"]["files"]
+        if os.path.basename(file) == "adh1_background_chrI.qbed.gz"
+    )
+    temp_file_path = tmp_path / os.path.basename(background_path)
+
+    # Copy the file to the temporary path
+    shutil.copy(background_path, temp_file_path)
+
+    background = CallingCardsBackgroundFactory(
+        name="adh1", fileformat=fileformat.get(fileformat="qbed"), file=str(temp_file_path)
+    )
+    return background
+
+
+@pytest.fixture
+def dsir4_background(db, tmp_path, fileformat, test_data_dict) -> CallingCardsBackground:
+    background_path = next(
+        file
+        for file in test_data_dict["background"]["files"]
+        if os.path.basename(file) == "dsir4_qbed_background.csv.gz"
+    )
+
+    temp_file_path = tmp_path / os.path.basename(background_path)
+
+    # Copy the file to the temporary path
+    shutil.copy(background_path, temp_file_path)
+
+    background = CallingCardsBackgroundFactory(
+        name="dsir4", fileformat=fileformat.get(fileformat="qbed"), file=str(temp_file_path)
+    )
+    return background
+
+
+@pytest.fixture
+def hap5_callingcards(db, tmp_path, cc_datasource, test_data_dict, regulator) -> Binding:
+    binding_path = next(
+        file
+        for file in test_data_dict["binding"]["callingcards"]["files"]
+        if os.path.basename(file) == "hap5_expr17_chr1_ucsc.qbed.gz"
+    )
+
+    temp_file_path = tmp_path / os.path.basename(binding_path)
+
+    # Copy the file to the temporary path
+    shutil.copy(binding_path, temp_file_path)
+
+    binding = BindingFactory(regulator=regulator, source=cc_datasource, file=str(temp_file_path))
+    return binding
+
+
+@pytest.fixture
+def hap5_chipexo(db, tmp_path, chipexo_datasource, test_data_dict, regulator) -> Binding:
+
+    binding = BindingFactory(regulator=regulator, source=chipexo_datasource, file=None)
+    return binding
+
+
+@pytest.fixture
+def hap5_cc_promotersetsig(
+    db, tmp_path, test_data_dict, hap5_callingcards, adh1_background, yiming_promoterset, fileformat
+) -> PromoterSetSig:
+    promotersig_path = next(
+        file for file in test_data_dict["promotersetsig"]["files"] if os.path.basename(file) == "hap5_cc_adh1.csv.gz"
+    )
+
+    temp_file_path = tmp_path / os.path.basename(promotersig_path)
+
+    # Copy the file to the temporary path
+    shutil.copy(promotersig_path, temp_file_path)
+
+    promotersetsig = PromoterSetSigFactory(
+        binding=hap5_callingcards,
+        background=adh1_background,
+        promoter=yiming_promoterset,
+        fileformat=fileformat.get(fileformat="cc_promoter_sig"),
+        file=str(temp_file_path),
+    )
+    return promotersetsig
+
+
+@pytest.fixture
+def hap5_chipexo_promotersetsig(
+    db, tmp_path, test_data_dict, hap5_chipexo, adh1_background, yiming_promoterset, fileformat
+) -> PromoterSetSig:
+    promotersig_path = next(
+        file
+        for file in test_data_dict["promotersetsig"]["files"]
+        if os.path.basename(file) == "hap5_28366_yiming.csv.gz"
+    )
+
+    temp_file_path = tmp_path / os.path.basename(promotersig_path)
+
+    # Copy the file to the temporary path
+    shutil.copy(promotersig_path, temp_file_path)
+
+    promotersetsig = PromoterSetSigFactory(
+        binding=hap5_chipexo,
+        background=adh1_background,
+        promoter=yiming_promoterset,
+        fileformat=fileformat.get(fileformat="chipexo_promoter_sig"),
+        file=str(temp_file_path),
+    )
+    return promotersetsig
