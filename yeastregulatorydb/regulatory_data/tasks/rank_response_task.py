@@ -10,7 +10,7 @@ from yeastregulatorydb.regulatory_data.utils.extract_file_from_storage import ex
 logger = logging.getLogger(__name__)
 
 
-@celery_app.task(serializer="pickle")
+@celery_app.task(serializer="json")
 def rank_response_tasks(promotersetsig_ids: list, user_id: int, **kwargs) -> None:
     """
     Iterate over a list of PromoterSetSig object ids and call the
@@ -26,7 +26,7 @@ def rank_response_tasks(promotersetsig_ids: list, user_id: int, **kwargs) -> Non
         rank_response_task.delay(promotersetsig_id, user_id, **kwargs)
 
 
-@celery_app.task(serializer="pickle")
+@celery_app.task(serializer="json")
 def rank_response_task(
     promotersetsig_id: int,
     **kwargs,

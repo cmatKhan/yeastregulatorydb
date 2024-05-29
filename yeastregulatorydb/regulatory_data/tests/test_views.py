@@ -246,6 +246,50 @@ def test_cc_rankresponse(
 
     assert response.status_code == 200
 
+    # extract the data from the response and test that it can be read in as a
+    # pandas dataframe
+    # pandas dataframe
+    tar_content = io.BytesIO(response.content)
+
+    # Open the tarball
+    tar = tarfile.open(fileobj=tar_content)
+
+    # Loop over each file in the tarball
+    for member in tar.getmembers():
+        f = tar.extractfile(member)
+        if f is not None:
+            content = f.read()
+            df = pd.read_csv(io.BytesIO(content), compression="gzip")
+            assert (
+                df.columns
+                == [
+                    "rank_bin",
+                    "n_responsive_in_rank",
+                    "random",
+                    "n_successes",
+                    "response_ratio",
+                    "pvalue",
+                    "ci_lower",
+                    "ci_upper",
+                ]
+            ).all(), df.columns
+
+            # Expected first row
+            expected_first_row = pd.Series(
+                {
+                    "rank_bin": 5.000000,
+                    "n_responsive_in_rank": 0.000000,
+                    "random": 0.009901,
+                    "n_successes": 0.000000,
+                    "response_ratio": 0.000000,
+                    "pvalue": 1.000000,
+                    "ci_lower": 0.000000,
+                    "ci_upper": 0.521824,
+                }
+            )
+
+            pd.testing.assert_series_equal(df.iloc[0], expected_first_row, check_names=False)
+
 
 @pytest.mark.django_db
 def test_chipexo_rankresponse(
@@ -262,6 +306,34 @@ def test_chipexo_rankresponse(
     )
 
     assert response.status_code == 200
+
+    # extract the data from the response and test that it can be read in as a
+    # pandas dataframe
+    # pandas dataframe
+    tar_content = io.BytesIO(response.content)
+
+    # Open the tarball
+    tar = tarfile.open(fileobj=tar_content)
+
+    # Loop over each file in the tarball
+    for member in tar.getmembers():
+        f = tar.extractfile(member)
+        if f is not None:
+            content = f.read()
+            df = pd.read_csv(io.BytesIO(content), compression="gzip")
+            assert (
+                df.columns
+                == [
+                    "rank_bin",
+                    "n_responsive_in_rank",
+                    "random",
+                    "n_successes",
+                    "response_ratio",
+                    "pvalue",
+                    "ci_lower",
+                    "ci_upper",
+                ]
+            ).all(), df.columns
 
 
 @pytest.mark.django_db
@@ -385,11 +457,6 @@ def test_single_binding_harbison_upload(
         # assert that there exists a promotersetsig with this binding instance id
         assert PromoterSetSig.objects.count() == 1, PromoterSetSig.objects.count()
         assert PromoterSetSig.objects.filter(binding=Binding.objects.get()).exists(), PromoterSetSig.objects.all()
-        # assert that there is a rankresponse with the promotersetsig instance id
-        # assert RankResponse.objects.count() == 1, RankResponse.objects.count()
-        # assert RankResponse.objects.filter(
-        #     promotersetsig=PromoterSetSig.objects.get()
-        # ).exists(), RankResponse.objects.all()
 
 
 @pytest.mark.django_db
@@ -403,7 +470,6 @@ def test_single_binding_upload_with_promotersetsig_and_combinedfile(
     """some uploads to the binding table remove the `file` from the binding instance. `file`
     in this case is allowed to be NULL. Once the binding instance is created, that instance
     `id` and the originally uploaded `file` are used to create a promtersetsig instance.
-    the `rankresponse` task is also automatically submitted
     """
     factory = APIRequestFactory()
     request = factory.get("/")
@@ -477,7 +543,6 @@ def test_single_binding_upload_with_promotersetsig_and_combinedfile(
         assert (
             re.match(r"promotersetsig\/\d+\.csv\.gz$", PromoterSetSig.objects.get().file.name) is not None
         ), PromoterSetSig.objects.get().file.name
-        # assert RankResponse.objects.count() == 1, RankResponse.objects.count()
 
         # get the response from the expression-combined endpoint
         response = client.get(reverse("api:promotersetsig-combined"), {"regulator_symbol": "HAP5"})
@@ -774,7 +839,6 @@ def test_expression_task_upload(
         assert (
             re.match(r"expression\/hu_reimann_tfko\/\d+\.csv\.gz$", Expression.objects.get().file.name) is not None
         ), Expression.objects.get().file.name
-        # assert RankResponse.objects.count() == 1, RankResponse.objects.count()
 
 
 @pytest.mark.django_db
@@ -849,95 +913,3 @@ def test_expression_bulk_upload_and_combinedfile(
         assert "record_id" in df.columns, df.columns
         assert "effect" in df.columns, df.columns
         assert "pvalue" in df.columns, df.columns
-
-
-# @pytest.mark.django_db
-# def test_rank_response_summary(
-#     chrmap: QuerySet,
-#     fileformat: QuerySet,
-#     chipexo_datasource: DataSource,
-#     regulator: Regulator,
-#     user: User,
-#     test_data_dict: dict,
-#     mcisaac_datasource: DataSource,
-# ):
-#     factory = APIRequestFactory()
-#     request = factory.get("/")
-#     request.user = user
-
-#     token = Token.objects.get(user=user)
-#     client = APIClient()
-#     client.credentials(HTTP_AUTHORIZATION="Token " + token.key)
-
-#     # set path to test data and check that it exists
-#     promoterset_path = next(
-#         file
-#         for file in test_data_dict["promoters"]["files"]
-#         if os.path.basename(file) == "yiming_promoters_chrI.bed.gz"
-#     )
-#     assert os.path.exists(promoterset_path), f"path: {promoterset_path}"
-
-#     expression_path = next(
-#         file
-#         for file in test_data_dict["expression"]["mcisaac"]["files"]
-#         if os.path.basename(file) == "hap5_15_mcisc_chr1.csv.gz"
-#     )
-#     assert os.path.exists(expression_path), f"path: {expression_path}"
-
-#     # Open the file and read its content
-#     with open(promoterset_path, "rb") as file_obj:
-#         file_content = file_obj.read()
-#         # Create a SimpleUploadedFile instance
-#         upload_file = SimpleUploadedFile("yiming_promoters_chrI.bed.gz",
-#                                          file_content, content_type="application/gzip")
-#         data = model_to_dict_select(PromoterSetFactory.build(name="yiming", file=upload_file))
-#         serializer = PromoterSetSerializer(data=data, context={"request": request})
-#         assert serializer.is_valid() is True, serializer.errors
-#         serializer.save()
-
-#     # create the chipexo Binding record
-#     file_path = next(
-#         file for file in test_data_dict["binding"]["chipexo"]["files"] \
-#                   if os.path.basename(file) == "28366_chrI.csv.gz"
-#     )
-#     assert os.path.exists(file_path), f"path: {file_path}"
-
-#     # Open the file and read its content
-#     with open(expression_path, "rb") as file_obj:
-#         file_content = file_obj.read()
-#         # Create a SimpleUploadedFile instance
-#         upload_file = SimpleUploadedFile("28366_chrI.csv.gz", file_content, content_type="application/gzip")
-#         data = model_to_dict_select(
-#             ExpressionFactory.build(source=mcisaac_datasource, regulator=regulator, file=upload_file)
-#         )
-#         expression_serializer = ExpressionSerializer(data=data, context={"request": request})
-#         assert expression_serializer.is_valid() is True, serializer.errors
-#         expression_serializer.save()
-
-#     # Open the file and read its content
-#     with open(file_path, "rb") as file_obj:
-#         file_content = file_obj.read()
-#         # Create a SimpleUploadedFile instance
-#         upload_file = SimpleUploadedFile("28366_chrI.csv.gz", file_content, content_type="application/gzip")
-#         data = model_to_dict_select(
-#             BindingFactory.build(source=chipexo_datasource, regulator=regulator, file=upload_file)
-#         )
-#         # Define your query parameters
-#         query_params = {"testing": "True"}
-
-#         # Create the URL for the request
-#         url = reverse("api:binding-list")
-
-#         # Add the query parameters to the URL
-#         url += "?" + urlencode(query_params)
-
-#         settings.CELERY_TASK_ALWAYS_EAGER = True
-#         response = client.post(url, data, format="multipart")
-
-#         assert response.status_code == 201, response.data
-#         assert Binding.objects.count() == 1
-#         assert PromoterSetSig.objects.count() == 1
-#         assert RankResponse.objects.count() == 1
-
-#     response = client.get(reverse("api:rankresponse-summary"), {"rank_response_id": RankResponse.objects.first().id})
-#     assert response.status_code == 200, response.data
