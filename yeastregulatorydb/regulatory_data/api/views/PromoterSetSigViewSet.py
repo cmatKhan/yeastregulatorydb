@@ -1,7 +1,7 @@
 # pyright: reportMissingImports=false, reportMissingModuleSource=false
 import tempfile
 
-from asgiref.sync import sync_to_async
+import pandas as pd
 from django.db import IntegrityError
 from django.http import HttpResponse
 from django_filters.rest_framework import DjangoFilterBackend
@@ -116,8 +116,8 @@ class PromoterSetSigViewSet(
             # Write each DataFrame to a compressed CSV file
             for expression_id, result in results_dict.items():
                 csv_path = f"{tmpdir}/promoter_{promotersetsig_id}_expression_{expression_id}.csv.gz"
-                # Convert the synchronous to_csv call to be async
-                result.to_csv(csv_path, compression="gzip", index=False)
+                # the `result` is a dictionary. Convert to DataFrame and write to CSV
+                pd.DataFrame(result).to_csv(csv_path, compression="gzip", index=False)
 
             # Create a tarball of the directory
             tar_path = f"{tmpdir}/results.tar.gz"
