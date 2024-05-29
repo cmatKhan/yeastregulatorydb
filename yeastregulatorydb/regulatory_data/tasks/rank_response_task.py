@@ -88,6 +88,6 @@ def rank_response_task(
 
             rank_response_df = rank_response.create_rank_response_table(args)
 
-            results_dict[record.id] = rank_response_df
+            results_dict[record.id] = rank_response_df.to_dict()
 
     return results_dict
