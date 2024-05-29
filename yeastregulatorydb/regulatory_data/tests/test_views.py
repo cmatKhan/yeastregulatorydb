@@ -1,4 +1,5 @@
 import io
+import json
 import os
 import re
 import tarfile
@@ -254,41 +255,46 @@ def test_cc_rankresponse(
     # Open the tarball
     tar = tarfile.open(fileobj=tar_content)
 
-    # Loop over each file in the tarball
-    for member in tar.getmembers():
-        f = tar.extractfile(member)
-        if f is not None:
-            content = f.read()
-            df = pd.read_csv(io.BytesIO(content), compression="gzip")
-            assert (
-                df.columns
-                == [
-                    "rank_bin",
-                    "n_responsive_in_rank",
-                    "random",
-                    "n_successes",
-                    "response_ratio",
-                    "pvalue",
-                    "ci_lower",
-                    "ci_upper",
-                ]
-            ).all(), df.columns
+    # assert that there is a file called metadata.json in the tarball
+    assert "metadata.json" in tar.getnames(), tar.getnames()
 
-            # Expected first row
-            expected_first_row = pd.Series(
-                {
-                    "rank_bin": 5.000000,
-                    "n_responsive_in_rank": 0.000000,
-                    "random": 0.009901,
-                    "n_successes": 0.000000,
-                    "response_ratio": 0.000000,
-                    "pvalue": 1.000000,
-                    "ci_lower": 0.000000,
-                    "ci_upper": 0.521824,
-                }
-            )
+    metadata_dict = json.load(tar.extractfile(tar.getmember("metadata.json")))
 
-            pd.testing.assert_series_equal(df.iloc[0], expected_first_row, check_names=False)
+    for expression_id, rr_dict in metadata_dict.items():
+        assert rr_dict.get("n_responsive") == 1
+        assert rr_dict.get("total_expression_genes") == 101.0
+
+        content = tar.extractfile(tar.getmember(rr_dict["filename"])).read()
+        df = pd.read_csv(io.BytesIO(content), compression="gzip")
+        assert (
+            df.columns
+            == [
+                "rank_bin",
+                "n_responsive_in_rank",
+                "random",
+                "n_successes",
+                "response_ratio",
+                "pvalue",
+                "ci_lower",
+                "ci_upper",
+            ]
+        ).all(), df.columns
+
+        # Expected first row
+        expected_first_row = pd.Series(
+            {
+                "rank_bin": 5.000000,
+                "n_responsive_in_rank": 0.000000,
+                "random": 0.009901,
+                "n_successes": 0.000000,
+                "response_ratio": 0.000000,
+                "pvalue": 1.000000,
+                "ci_lower": 0.000000,
+                "ci_upper": 0.521824,
+            }
+        )
+
+        pd.testing.assert_series_equal(df.iloc[0], expected_first_row, check_names=False)
 
 
 @pytest.mark.django_db
@@ -315,25 +321,30 @@ def test_chipexo_rankresponse(
     # Open the tarball
     tar = tarfile.open(fileobj=tar_content)
 
-    # Loop over each file in the tarball
-    for member in tar.getmembers():
-        f = tar.extractfile(member)
-        if f is not None:
-            content = f.read()
-            df = pd.read_csv(io.BytesIO(content), compression="gzip")
-            assert (
-                df.columns
-                == [
-                    "rank_bin",
-                    "n_responsive_in_rank",
-                    "random",
-                    "n_successes",
-                    "response_ratio",
-                    "pvalue",
-                    "ci_lower",
-                    "ci_upper",
-                ]
-            ).all(), df.columns
+    # assert that the metadata.json exists in the tarball
+    assert "metadata.json" in tar.getnames(), tar.getnames()
+
+    metadata_dict = json.load(tar.extractfile(tar.getmember("metadata.json")))
+
+    for expression_id, rr_dict in metadata_dict.items():
+        assert rr_dict.get("n_responsive") == 0
+        assert rr_dict.get("total_expression_genes") == 101
+
+        content = tar.extractfile(tar.getmember(rr_dict["filename"])).read()
+        df = pd.read_csv(io.BytesIO(content), compression="gzip")
+        assert (
+            df.columns
+            == [
+                "rank_bin",
+                "n_responsive_in_rank",
+                "random",
+                "n_successes",
+                "response_ratio",
+                "pvalue",
+                "ci_lower",
+                "ci_upper",
+            ]
+        ).all(), df.columns
 
 
 @pytest.mark.django_db

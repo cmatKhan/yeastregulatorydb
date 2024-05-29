@@ -1,6 +1,7 @@
 import logging
 import tempfile
 
+import pandas as pd
 from callingcardstools.Analysis.yeast import rank_response
 
 from config import celery_app
@@ -87,7 +88,12 @@ def rank_response_task(
             args = rank_response.validate_config(config_dict)
 
             rank_response_df = rank_response.create_rank_response_table(args)
+            print("here")
 
-            results_dict[record.id] = rank_response_df.to_dict()
+            results_dict[record.id] = {
+                "data": rank_response_df.to_dict(),
+                "n_responsive": max(rank_response_df["n_successes"]),
+                "total_expression_genes": pd.read_csv(expression_filepath).shape[0],
+            }
 
     return results_dict

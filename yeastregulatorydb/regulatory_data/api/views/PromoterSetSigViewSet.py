@@ -1,4 +1,6 @@
 # pyright: reportMissingImports=false, reportMissingModuleSource=false
+import json
+import os
 import tempfile
 
 import pandas as pd
@@ -113,11 +115,30 @@ class PromoterSetSigViewSet(
         results_dict = celery_result.get()
 
         with tempfile.TemporaryDirectory() as tmpdir:
+            metadata = {}
             # Write each DataFrame to a compressed CSV file
-            for expression_id, result in results_dict.items():
+            for expression_id, rr_dict in results_dict.items():
                 csv_path = f"{tmpdir}/promoter_{promotersetsig_id}_expression_{expression_id}.csv.gz"
                 # the `result` is a dictionary. Convert to DataFrame and write to CSV
-                pd.DataFrame(result).to_csv(csv_path, compression="gzip", index=False)
+                try:
+                    data_path = rr_dict.pop("data")
+                except KeyError:
+                    raise ValidationError(
+                        "The rank response task did not return "
+                        "the expected data structure. "
+                        "Key `data` is missing for expression_id: ",
+                        expression_id,
+                    )
+                rr_dict["filename"] = os.path.basename(csv_path)
+                metadata[expression_id] = rr_dict
+
+                # write the csv to file
+                pd.DataFrame(data_path).to_csv(csv_path, compression="gzip", index=False)
+
+            # write the json metadata to file
+            metadata_path = f"{tmpdir}/metadata.json"
+            with open(metadata_path, "w") as f:
+                json.dump(metadata, f)
 
             # Create a tarball of the directory
             tar_path = f"{tmpdir}/results.tar.gz"
