@@ -1,6 +1,6 @@
 import logging
 import tempfile
-from math import ceiling
+from math import ceil as ceiling
 
 import pandas as pd
 from callingcardstools.Analysis.yeast import rank_response
