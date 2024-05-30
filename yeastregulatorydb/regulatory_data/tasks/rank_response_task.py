@@ -1,5 +1,6 @@
 import logging
 import tempfile
+from math import ceiling
 
 import pandas as pd
 from callingcardstools.Analysis.yeast import rank_response
@@ -88,12 +89,11 @@ def rank_response_task(
             args = rank_response.validate_config(config_dict)
 
             rank_response_df = rank_response.create_rank_response_table(args)
-            print("here")
-
+            total_expression_genes = pd.read_csv(expression_filepath).shape[0]
             results_dict[record.id] = {
                 "data": rank_response_df.to_dict(),
-                "n_responsive": max(rank_response_df["n_successes"]),
-                "total_expression_genes": pd.read_csv(expression_filepath).shape[0],
+                "n_responsive": ceiling(total_expression_genes * rank_response_df.random.unique()[0]),
+                "total_expression_genes": total_expression_genes,
             }
 
     return results_dict
