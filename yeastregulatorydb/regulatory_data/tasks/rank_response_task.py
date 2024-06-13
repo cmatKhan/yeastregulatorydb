@@ -91,6 +91,7 @@ def rank_response_task(
             rank_response_df = rank_response.create_rank_response_table(args)
             total_expression_genes = pd.read_csv(expression_filepath).shape[0]
             results_dict[record.id] = {
+                "promotersetsig_id": promotersetsig_id,
                 "data": rank_response_df.to_dict(),
                 "n_responsive": ceiling(total_expression_genes * rank_response_df.random.unique()[0]),
                 "total_expression_genes": total_expression_genes,
