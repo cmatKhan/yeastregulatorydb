@@ -20,7 +20,12 @@ from yeastregulatorydb.regulatory_data.utils.create_tarball import create_tarbal
 
 from ..filters.PromoterSetSigFilter import PromoterSetSigFilter
 from ..serializers.PromoterSetSigSerializer import PromoterSetSigSerializer
-from .mixins import ExportTableAsGzipFileMixin, GetCombinedGenomicFileMixin, UpdateModifiedMixin
+from .mixins import (
+    ExportTableAsGzipFileMixin,
+    GetCombinedGenomicFileMixin,
+    RetrieveRecordsAndFilesMixin,
+    UpdateModifiedMixin,
+)
 
 
 def get_expression_data_source(request: Request) -> DataSource:
@@ -58,6 +63,7 @@ class PromoterSetSigViewSet(
     UpdateModifiedMixin,
     ExportTableAsGzipFileMixin,
     GetCombinedGenomicFileMixin,
+    RetrieveRecordsAndFilesMixin,
     viewsets.ModelViewSet,
 ):
     """
@@ -94,6 +100,11 @@ class PromoterSetSigViewSet(
                     "Not sure why. Check logs and contact your admin"
                 }
             )
+
+    @action(detail=False, methods=["get"])
+    def record_table_and_files(self, request, *args, **kwargs):
+        queryset = self.get_queryset()
+        return self.retrieve_records_and_files(request, queryset)
 
     @action(detail=False, methods=["get"])
     def rankresponse(self, request, *args, **kwargs):
