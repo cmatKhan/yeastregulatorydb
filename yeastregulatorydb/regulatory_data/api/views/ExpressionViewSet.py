@@ -9,7 +9,13 @@ from rest_framework.serializers import ValidationError
 from ...models import Expression
 from ..filters import ExpressionFilter
 from ..serializers import ExpressionManualQCSerializer, ExpressionSerializer
-from .mixins import BulkUploadMixin, ExportTableAsGzipFileMixin, GetCombinedGenomicFileMixin, UpdateModifiedMixin
+from .mixins import (
+    BulkUploadMixin,
+    ExportTableAsGzipFileMixin,
+    GetCombinedGenomicFileMixin,
+    RetrieveRecordsAndFilesMixin,
+    UpdateModifiedMixin,
+)
 
 
 class ExpressionViewSet(
@@ -17,6 +23,7 @@ class ExpressionViewSet(
     UpdateModifiedMixin,
     ExportTableAsGzipFileMixin,
     GetCombinedGenomicFileMixin,
+    RetrieveRecordsAndFilesMixin,
     viewsets.ModelViewSet,
 ):
     """
