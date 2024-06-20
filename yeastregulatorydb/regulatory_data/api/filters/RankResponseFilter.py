@@ -5,7 +5,6 @@ from ...models import RankResponse
 
 class RankResponseFilter(django_filters.rest_framework.FilterSet):
     id = django_filters.NumberFilter()
-    pk = django_filters.NumberFilter()
     promotersetsig_id = django_filters.NumberFilter(field_name="promotersetsig__id")
     binding_source = django_filters.CharFilter(
         field_name="promotersetsig__binding__source__name", lookup_expr="iexact"
@@ -27,7 +26,6 @@ class RankResponseFilter(django_filters.rest_framework.FilterSet):
         model = RankResponse
         fields = [
             "id",
-            "pk",
             "promotersetsig_id",
             "binding_source",
             "expression_id",

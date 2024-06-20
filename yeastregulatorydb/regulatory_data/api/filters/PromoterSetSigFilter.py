@@ -6,7 +6,6 @@ from ...models.PromoterSetSig import PromoterSetSig
 
 class PromoterSetSigFilter(django_filters.rest_framework.FilterSet):
     id = django_filters.NumberFilter()
-    pk = django_filters.NumberFilter()
     binding = django_filters.NumberFilter()
     promoter = django_filters.NumberFilter()
     promoter_name = django_filters.CharFilter(field_name="promoter__name", lookup_expr="iexact")
@@ -33,7 +32,6 @@ class PromoterSetSigFilter(django_filters.rest_framework.FilterSet):
         model = PromoterSetSig
         fields = [
             "id",
-            "pk",
             "binding",
             "promoter_id",
             "background_id",

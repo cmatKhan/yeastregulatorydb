@@ -5,7 +5,6 @@ from ...models import ExpressionManualQC
 
 class ExpressionManualQCFilter(django_filters.rest_framework.FilterSet):
     id = django_filters.NumberFilter()
-    pk = django_filters.NumberFilter()
     expression = django_filters.NumberFilter()
     strain_verified = django_filters.ChoiceFilter(choices=[("yes", "yes"), ("no", "no"), ("unverified", "unverified")])
     regulator_locus_tag = django_filters.CharFilter(
@@ -30,7 +29,6 @@ class ExpressionManualQCFilter(django_filters.rest_framework.FilterSet):
         model = ExpressionManualQC
         fields = [
             "id",
-            "pk",
             "expression",
             "strain_verified",
             "regulator_locus_tag",

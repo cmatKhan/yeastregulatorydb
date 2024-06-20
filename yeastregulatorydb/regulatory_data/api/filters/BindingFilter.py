@@ -6,7 +6,6 @@ from ...models import Binding, BindingManualQC
 class BindingFilter(django_filters.rest_framework.FilterSet):
     # pylint: disable=R0801
     id = django_filters.NumberFilter()
-    pk = django_filters.NumberFilter()
     regulator = django_filters.NumberFilter()
     regulator_locus_tag = django_filters.CharFilter(
         field_name="regulator__genomicfeature__locus_tag", lookup_expr="iexact"
@@ -31,7 +30,6 @@ class BindingFilter(django_filters.rest_framework.FilterSet):
         model = Binding
         fields = [
             "id",
-            "pk",
             "regulator",
             "regulator_locus_tag",
             "regulator_symbol",

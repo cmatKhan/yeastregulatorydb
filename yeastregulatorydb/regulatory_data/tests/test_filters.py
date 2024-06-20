@@ -252,7 +252,6 @@ def test_expression_filter():
     # Define the filter parameters and their expected values
     filter_params = [
         {"id": 1},
-        {"pk": 1},
         {"regulator": regulator1.id},
         {"regulator_locus_tag": regulator1.genomicfeature.locus_tag},
         {"regulator_symbol": regulator1.genomicfeature.symbol},
@@ -317,7 +316,6 @@ def test_expression_manual_qc_filter():
     # Define the filter parameters and their expected values
     filter_params = [
         {"id": 1},
-        {"pk": 1},
         {"expression": expression1.id},
         {"strain_verified": manual_qc1.strain_verified},
         {"regulator_locus_tag": regulator1.genomicfeature.locus_tag},
@@ -447,7 +445,6 @@ def test_promoter_set_sig_filter():
     # Define the filter parameters and their expected values
     filter_params = [
         {"id": promoter_set_sig1.id},
-        {"pk": promoter_set_sig1.pk},
         {"binding": binding1.id},
         {"promoter": promoter1.id},
         {"promoter_name": "promoter1"},
@@ -524,7 +521,6 @@ def test_regulator_filter():
     # Define the filter parameters and their expected values
     filter_params = [
         {"id": 1},
-        {"pk": 1},
         {"regulator_locus_tag": "tag1"},
         {"regulator_symbol": "symbol1"},
         {"under_development": True},

@@ -5,6 +5,7 @@ from django.db.models import Q
 from django.db.models.query import QuerySet
 
 from ...models.Expression import Expression
+from .utils.ListCharFilter import ListCharFilter
 
 logger = logging.getLogger(__name__)
 
@@ -12,12 +13,9 @@ logger = logging.getLogger(__name__)
 class ExpressionFilter(django_filters.rest_framework.FilterSet):
     # pylint: disable=R0801
     id = django_filters.NumberFilter()
-    pk = django_filters.NumberFilter()
     regulator = django_filters.NumberFilter()
-    regulator_locus_tag = django_filters.CharFilter(
-        field_name="regulator__genomicfeature__locus_tag", lookup_expr="iexact"
-    )
-    regulator_symbol = django_filters.CharFilter(field_name="regulator__genomicfeature__symbol", lookup_expr="iexact")
+    regulator_locus_tag = ListCharFilter(field_name="regulator__genomicfeature__locus_tag", lookup_expr="iexact")
+    regulator_symbol = ListCharFilter(field_name="regulator__genomicfeature__symbol", lookup_expr="iexact")
     batch = django_filters.CharFilter(field_name="batch", lookup_expr="iexact")
     # pylint: enable=R0801
     replicate = django_filters.NumberFilter()
@@ -35,7 +33,6 @@ class ExpressionFilter(django_filters.rest_framework.FilterSet):
         model = Expression
         fields = [
             "id",
-            "pk",
             "regulator",
             "regulator_locus_tag",
             "regulator_symbol",
