@@ -9,7 +9,7 @@ from ...models.Expression import Expression
 logger = logging.getLogger(__name__)
 
 
-class ExpressionFilter(django_filters.FilterSet):
+class ExpressionFilter(django_filters.rest_framework.FilterSet):
     # pylint: disable=R0801
     id = django_filters.NumberFilter()
     pk = django_filters.NumberFilter()

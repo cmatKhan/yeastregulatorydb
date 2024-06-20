@@ -219,3 +219,8 @@ def my_tast(self, arg1, arg2):
     except Exception as exc:
         raise self.retry(exc=exc)
 ```
+
+- make sure to import the correct FilterSet in the FilterSet classes
+  https://github.com/carltongibson/django-filter/issues/845#issuecomment-351998546
+  eg class BindingFilter(django_filters.rest_framework.FilterSet) not 
+  class BindingFilter(django_filters.FilterSet):

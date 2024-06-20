@@ -3,7 +3,7 @@ import django_filters
 from ...models.GenomicFeature import GenomicFeature
 
 
-class GenomicFeatureFilter(django_filters.FilterSet):
+class GenomicFeatureFilter(django_filters.rest_framework.FilterSet):
     chr = django_filters.CharFilter(field_name="chr__ucsc")
     start = django_filters.NumberFilter()
     end = django_filters.NumberFilter()

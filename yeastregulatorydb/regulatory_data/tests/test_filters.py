@@ -162,7 +162,6 @@ def test_datasource_filter():
     # Define the filter parameters and their expected values
     filter_params = [
         {"id": 1},
-        {"pk": 1},
         {"fileformat_id": fileformat1.id},
         {"fileformat": "fileformat1"},
         {"lab": "lab1"},

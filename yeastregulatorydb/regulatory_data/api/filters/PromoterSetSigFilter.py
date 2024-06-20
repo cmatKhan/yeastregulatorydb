@@ -4,7 +4,7 @@ from ...models.BindingManualQC import BindingManualQC
 from ...models.PromoterSetSig import PromoterSetSig
 
 
-class PromoterSetSigFilter(django_filters.FilterSet):
+class PromoterSetSigFilter(django_filters.rest_framework.FilterSet):
     id = django_filters.NumberFilter()
     pk = django_filters.NumberFilter()
     binding = django_filters.NumberFilter()

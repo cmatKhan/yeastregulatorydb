@@ -3,7 +3,7 @@ import django_filters
 from ...models import RankResponse
 
 
-class RankResponseFilter(django_filters.FilterSet):
+class RankResponseFilter(django_filters.rest_framework.FilterSet):
     id = django_filters.NumberFilter()
     pk = django_filters.NumberFilter()
     promotersetsig_id = django_filters.NumberFilter(field_name="promotersetsig__id")

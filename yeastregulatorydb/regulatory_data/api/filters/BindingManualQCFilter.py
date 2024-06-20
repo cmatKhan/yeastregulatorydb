@@ -3,7 +3,7 @@ import django_filters
 from ...models.BindingManualQC import BindingManualQC
 
 
-class BindingManualQCFilter(django_filters.FilterSet):
+class BindingManualQCFilter(django_filters.rest_framework.FilterSet):
     id = django_filters.NumberFilter()
     binding = django_filters.NumberFilter()
     best_datatype = django_filters.ChoiceFilter(choices=BindingManualQC.MANUAL_QC_CHOICES)

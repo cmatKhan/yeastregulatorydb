@@ -3,7 +3,7 @@ import django_filters
 from ...models import ExpressionManualQC
 
 
-class ExpressionManualQCFilter(django_filters.FilterSet):
+class ExpressionManualQCFilter(django_filters.rest_framework.FilterSet):
     id = django_filters.NumberFilter()
     pk = django_filters.NumberFilter()
     expression = django_filters.NumberFilter()

@@ -3,7 +3,7 @@ import django_filters
 from ...models import Binding, BindingManualQC
 
 
-class BindingFilter(django_filters.FilterSet):
+class BindingFilter(django_filters.rest_framework.FilterSet):
     # pylint: disable=R0801
     id = django_filters.NumberFilter()
     pk = django_filters.NumberFilter()

@@ -4,7 +4,7 @@ from ...models.Regulator import Regulator
 from .utils.ListCharFilter import ListCharFilter
 
 
-class RegulatorFilter(django_filters.FilterSet):
+class RegulatorFilter(django_filters.rest_framework.FilterSet):
     id = django_filters.NumberFilter(field_name="id")
     pk = django_filters.NumberFilter(field_name="pk")
     regulator_locus_tag = django_filters.CharFilter(field_name="genomicfeature__locus_tag", lookup_expr="iexact")
