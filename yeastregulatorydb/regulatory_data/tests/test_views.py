@@ -950,3 +950,29 @@ def test_expression_bulk_upload_and_combinedfile(
         assert "record_id" in df.columns, df.columns
         assert "effect" in df.columns, df.columns
         assert "pvalue" in df.columns, df.columns
+
+    # test that the promotersetsig objects can be retrieved in bulk in a tarfile
+    response = client.get(reverse("api:expression-record-table-and-files"), {"regulator_symbol": "HAP5"})
+    assert response.status_code == 200, response.data
+
+    # Save the tarfile content to a temporary file for extraction
+    with tempfile.NamedTemporaryFile() as tmpfile:
+        tmpfile.write(response.content)
+        tmpfile.flush()
+
+        with tarfile.open(tmpfile.name, "r:gz") as tar:
+            # Verify that metadata.csv is in the tarfile
+            metadata_file = tar.extractfile("metadata.csv")
+            assert metadata_file is not None, "metadata.csv not found in the tarfile"
+
+            # Load metadata into a DataFrame for further checks
+            metadata_df = pd.read_csv(metadata_file)
+            assert not metadata_df.empty, "metadata.csv is empty"
+
+            # Verify that the expected files are in the tarfile
+            for id in metadata_df["id"]:
+                file_in_tar = f"{id}.csv.gz"
+                file_member = tar.getmember(file_in_tar)
+                assert file_member is not None, f"{file_in_tar} not found in the tarfile"
+                file_content = tar.extractfile(file_in_tar).read()
+                assert file_content, f"{file_in_tar} is empty"

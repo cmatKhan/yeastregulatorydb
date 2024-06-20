@@ -3,6 +3,7 @@ from django.db import IntegrityError, transaction
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import viewsets
 from rest_framework.authentication import SessionAuthentication, TokenAuthentication
+from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.serializers import ValidationError
 
@@ -42,6 +43,11 @@ class ExpressionViewSet(
     serializer_class = ExpressionSerializer
     filter_backends = [DjangoFilterBackend]
     filterset_class = ExpressionFilter
+
+    @action(detail=False, methods=["get"])
+    def record_table_and_files(self, request, *args, **kwargs):
+        queryset = self.get_queryset()
+        return self.retrieve_records_and_files(request, queryset)
 
     @transaction.atomic
     def perform_create(self, serializer):
