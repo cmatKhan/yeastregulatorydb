@@ -4,6 +4,7 @@ from ...models.GenomicFeature import GenomicFeature
 
 
 class GenomicFeatureFilter(django_filters.rest_framework.FilterSet):
+    id = django_filters.NumberFilter()
     chr = django_filters.CharFilter(field_name="chr__ucsc")
     start = django_filters.NumberFilter()
     end = django_filters.NumberFilter()
@@ -18,6 +19,7 @@ class GenomicFeatureFilter(django_filters.rest_framework.FilterSet):
     class Meta:
         model = GenomicFeature
         fields = [
+            "id",
             "chr",
             "start",
             "end",
