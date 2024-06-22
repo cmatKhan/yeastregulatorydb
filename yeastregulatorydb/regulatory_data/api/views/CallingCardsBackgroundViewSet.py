@@ -11,10 +11,12 @@ from yeastregulatorydb.regulatory_data.tasks import promoter_significance_task
 from ...models import Binding, CallingCardsBackground
 from ..filters import CallingCardsBackgroundFilter
 from ..serializers import CallingCardsBackgroundSerializer
-from .mixins.UpdateModifiedMixin import UpdateModifiedMixin
+from .mixins import ExportTableAsGzipFileMixin, RetrieveRecordsAndFilesMixin, UpdateModifiedMixin
 
 
-class CallingCardsBackgroundViewSet(UpdateModifiedMixin, viewsets.ModelViewSet):
+class CallingCardsBackgroundViewSet(
+    UpdateModifiedMixin, ExportTableAsGzipFileMixin, RetrieveRecordsAndFilesMixin, viewsets.ModelViewSet
+):
     """
     A viewset for viewing and editing CallingCardsBackground instances.
     """

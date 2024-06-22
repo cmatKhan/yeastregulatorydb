@@ -129,7 +129,7 @@ class PromoterSetSigViewSet(
             metadata = {}
             # Write each DataFrame to a compressed CSV file
             for expression_id, rr_dict in results_dict.items():
-                csv_path = f"{tmpdir}/promoter_{promotersetsig_id}_expression_{expression_id}.csv.gz"
+                csv_path = f"{tmpdir}/{promotersetsig_id}_{expression_id}.csv.gz"
                 # the `result` is a dictionary. Convert to DataFrame and write to CSV
                 try:
                     data_path = rr_dict.pop("data")

@@ -12,10 +12,12 @@ from ...models import Binding, PromoterSet
 from ...tasks import promotersetsig_rankedresponse_chained
 from ..filters.PromoterSetFilter import PromoterSetFilter
 from ..serializers.PromoterSetSerializer import PromoterSetSerializer
-from .mixins.UpdateModifiedMixin import UpdateModifiedMixin
+from .mixins import ExportTableAsGzipFileMixin, RetrieveRecordsAndFilesMixin, UpdateModifiedMixin
 
 
-class PromoterSetViewSet(UpdateModifiedMixin, viewsets.ModelViewSet):
+class PromoterSetViewSet(
+    UpdateModifiedMixin, ExportTableAsGzipFileMixin, RetrieveRecordsAndFilesMixin, viewsets.ModelViewSet
+):
     """
     A viewset for viewing and editing PromoterSet instances.
     """
@@ -69,6 +71,3 @@ def perform_create(self, serializer):
                         )
         finally:
             release_lock()
-
-
-

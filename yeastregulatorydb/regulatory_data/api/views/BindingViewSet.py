@@ -12,10 +12,16 @@ from ...models import Binding
 from ...tasks import promotersetsig_rankedresponse_chained
 from ..filters import BindingFilter
 from ..serializers import BindingManualQCSerializer, BindingSerializer, PromoterSetSigSerializer
-from .mixins import BulkUploadMixin, ExportTableAsGzipFileMixin, UpdateModifiedMixin
+from .mixins import BulkUploadMixin, ExportTableAsGzipFileMixin, RetrieveRecordsAndFilesMixin, UpdateModifiedMixin
 
 
-class BindingViewSet(BulkUploadMixin, UpdateModifiedMixin, ExportTableAsGzipFileMixin, viewsets.ModelViewSet):
+class BindingViewSet(
+    BulkUploadMixin,
+    UpdateModifiedMixin,
+    ExportTableAsGzipFileMixin,
+    RetrieveRecordsAndFilesMixin,
+    viewsets.ModelViewSet,
+):
     """
     A viewset for viewing and editing Binding instances.
     """

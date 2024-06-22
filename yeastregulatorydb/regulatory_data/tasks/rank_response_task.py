@@ -89,8 +89,12 @@ def rank_response_task(
             args = rank_response.validate_config(config_dict)
 
             rank_response_df = rank_response.create_rank_response_table(args)
+            # just the total number of genes in the expression data
             total_expression_genes = pd.read_csv(expression_filepath).shape[0]
+            # note that the `id` needs to be like this in order for the return to be
+            # consistent with the RetrieveRecordsAndFilesMixin
             results_dict[record.id] = {
+                "id": str(promotersetsig_id) + "_" + str(record.id),
                 "promotersetsig_id": promotersetsig_id,
                 "data": rank_response_df.to_dict(),
                 "n_responsive": ceiling(total_expression_genes * rank_response_df.random.unique()[0]),

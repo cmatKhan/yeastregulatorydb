@@ -6,4 +6,4 @@ from ...models.PromoterSet import PromoterSet
 class PromoterSetFilter(django_filters.rest_framework.FilterSet):
     class Meta:
         model = PromoterSet
-        fields = {"name": ["exact"]}
+        fields = {"id": ["exact"], "name": ["exact"]}
