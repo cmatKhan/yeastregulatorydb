@@ -757,7 +757,10 @@ def test_bulk_binding_upload(
         PromoterSetSig.objects.count() == 5, PromoterSetSig.objects.count()
 
     # test that the promotersetsig objects can be retrieved in bulk in a tarfile
-    response = client.get(reverse("api:promotersetsig-record-table-and-files"), {"regulator_symbol": "HAP5"})
+    response = client.get(
+        reverse("api:promotersetsig-record-table-and-files"),
+        {"regulator_symbol": "HAP5"},
+    )
     assert response.status_code == 200, response.data
 
     # Save the tarfile content to a temporary file for extraction
@@ -780,6 +783,10 @@ def test_bulk_binding_upload(
                 file_member = tar.getmember(file_in_tar)
                 assert file_member is not None, f"{file_in_tar} not found in the tarfile"
                 file_content = tar.extractfile(file_in_tar).read()
+                # read in file_content as a pandas dataframe
+                df = pd.read_csv(io.BytesIO(file_content), compression="gzip")
+                # assert that the dataframe has the expected columns
+                assert "regulator_id" in df.columns, df.columns
                 assert file_content, f"{file_in_tar} is empty"
 
 

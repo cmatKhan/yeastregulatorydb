@@ -41,7 +41,11 @@ class BindingViewSet(
     @action(detail=False, methods=["get"])
     def record_table_and_files(self, request, *args, **kwargs):
         queryset = self.get_queryset()
-        return self.retrieve_records_and_files(request, queryset)
+        # if 'add_genomicfeature_to_file' is passed in the request, that value, which
+        # must be 'true' or 'false' will be used preferentially to the default value,
+        # which is true. This will return a file with the regulator_id, symbol and
+        # locus_tag columns
+        return self.retrieve_records_and_files(request, queryset, add_genomicfeature_to_file="true")
 
     # note that the hop info are added in the FileFormatMixin in the serializers
     @transaction.atomic

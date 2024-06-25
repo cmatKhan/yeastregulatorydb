@@ -29,45 +29,56 @@ class PromoterSetViewSet(
     filter_backends = [DjangoFilterBackend]
     filterset_class = PromoterSetFilter
 
+    @action(detail=False, methods=["get"])
+    def record_table_and_files(self, request, *args, **kwargs):
+        queryset = self.get_queryset()
+        return self.retrieve_records_and_files(request, queryset)
 
-@transaction.atomic
-def perform_create(self, serializer):
-    try:
-        instance = serializer.save()
-    except IntegrityError as e:
-        raise ValidationError({"promoterset": str(e)})
-    if instance is None:
-        raise ValidationError(
-            {"promoterset": "Could not save PromoterSet instance. " "Not sure why. Check logs and contact your admin"}
-        )
-
-    instance.promotersetsig_processing = False
-    lock_id = "add_data_lock"
-    acquire_lock = lambda: cache.add(lock_id, True, timeout=60 * 60)
-    release_lock = lambda: cache.delete(lock_id)
-
-    if acquire_lock():
+    @transaction.atomic
+    def perform_create(self, serializer):
         try:
-            for binding_obj in Binding.objects.all():
-                # TODO there is repeated code here and in BindingViewSet
-                task_type = None
-                if binding_obj.source.assay == "chipexo":
-                    if binding_obj.source.name == "chipexo_pugh_allevents":
-                        task_type = settings.CHIPEXO_PROMOTER_SIG_FORMAT
-                elif binding_obj.source.assay == "callingcards":
-                    task_type = settings.CALLINGCARDS_PROMOTER_SIG_FORMAT
+            instance = serializer.save()
+        except IntegrityError as e:
+            raise ValidationError({"promoterset": str(e)})
+        if instance is None:
+            raise ValidationError(
+                {
+                    "promoterset": "Could not save PromoterSet instance. "
+                    "Not sure why. Check logs and contact your admin"
+                }
+            )
 
-                if task_type:
-                    instance.promotersetsig_processing = True
-                    if self.request.query_params.get("test"):
-                        promotersetsig_rankedresponse_chained(
-                            binding_obj.id, self.request.user.id, task_type, promoterset_id=instance.id, testing=True
-                        )
-                    else:
-                        transaction.on_commit(
-                            lambda: promotersetsig_rankedresponse_chained(
-                                binding_obj.id, self.request.user.id, task_type, promoterset_id=instance.id
+        instance.promotersetsig_processing = True
+        lock_id = "add_data_lock"
+        acquire_lock = lambda: cache.add(lock_id, True, timeout=60 * 60)
+        release_lock = lambda: cache.delete(lock_id)
+
+        if acquire_lock():
+            try:
+                for binding_obj in Binding.objects.all():
+                    # TODO there is repeated code here and in BindingViewSet
+                    task_type = None
+                    if binding_obj.source.assay == "chipexo":
+                        if binding_obj.source.name == "chipexo_pugh_allevents":
+                            task_type = settings.CHIPEXO_PROMOTER_SIG_FORMAT
+                    elif binding_obj.source.assay == "callingcards":
+                        task_type = settings.CALLINGCARDS_PROMOTER_SIG_FORMAT
+
+                    if task_type:
+                        instance.promotersetsig_processing = True
+                        if self.request.query_params.get("test"):
+                            promotersetsig_rankedresponse_chained(
+                                binding_obj.id,
+                                self.request.user.id,
+                                task_type,
+                                promoterset_id=instance.id,
+                                testing=True,
                             )
-                        )
-        finally:
-            release_lock()
+                        else:
+                            transaction.on_commit(
+                                lambda: promotersetsig_rankedresponse_chained(
+                                    binding_obj.id, self.request.user.id, task_type, promoterset_id=instance.id
+                                )
+                            )
+            finally:
+                release_lock()
