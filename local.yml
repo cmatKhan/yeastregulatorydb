@@ -1,5 +1,6 @@
-version: '3'
-
+# note that this is updated to the compose V2
+# format. I have not yet updated the production.yml
+# 20240627
 volumes:
   yeastregulatorydb_local_postgres_data: {}
   yeastregulatorydb_local_postgres_data_backups: {}

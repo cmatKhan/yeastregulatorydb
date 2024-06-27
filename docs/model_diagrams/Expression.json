@@ -57,11 +57,6 @@
       "type": "UnknownRelation"
     },
     {
-      "name": "rankresponse",
-      "related_model": "RankResponse",
-      "type": "UnknownRelation"
-    },
-    {
       "name": "uploader",
       "related_model": "User",
       "type": "ForeignKey"

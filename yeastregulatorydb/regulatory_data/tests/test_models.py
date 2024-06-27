@@ -1,3 +1,5 @@
+import pytest
+from django.core.exceptions import ValidationError
 from django.db.models.query import QuerySet
 from django.urls import reverse
 
@@ -13,14 +15,49 @@ from yeastregulatorydb.regulatory_data.models import (
     GenomicFeature,
     PromoterSet,
     PromoterSetSig,
-    RankResponse,
     Regulator,
+)
+from yeastregulatorydb.regulatory_data.tests.factories import (
+    BindingConcatenatedFactory,
+    BindingFactory,
+    DataSourceFactory,
+    RegulatorFactory,
 )
 
 
 def test_binding_get_absolute_url(binding: Binding):
     assert reverse("api:binding-list") == "/api/binding/"
     assert reverse("api:binding-detail", args=[str(binding.id)]) == f"/api/binding/{binding.id}/"
+
+    import pytest
+
+
+@pytest.mark.django_db(transaction=True)
+def test_binding_concatenated_regulator_source_constraint():
+    regulator = RegulatorFactory()
+    source = DataSourceFactory()
+    binding1 = BindingFactory(regulator=regulator, source=source)
+    binding2 = BindingFactory(regulator=regulator, source=source)
+    binding3 = BindingFactory(regulator=regulator, source=source)
+
+    # Valid case: all bindings have the same regulator and source
+    composite_binding = BindingConcatenatedFactory()
+    composite_binding.bindings.set([binding1, binding2])
+    composite_binding.save()
+
+    # Invalid case: different regulator
+    different_regulator = RegulatorFactory()
+    binding_with_different_regulator = BindingFactory(regulator=different_regulator, source=source)
+
+    with pytest.raises(ValidationError, match="All bindings must have the same regulator."):
+        composite_binding.bindings.add(binding_with_different_regulator)
+
+    # Invalid case: different source
+    different_source = DataSourceFactory()
+    binding_with_different_source = BindingFactory(regulator=regulator, source=different_source)
+
+    with pytest.raises(ValidationError, match="All bindings must have the same source."):
+        composite_binding.bindings.add(binding_with_different_source)
 
 
 def test_bindingmanualqc_get_absolute_url(bindingmanualqc: BindingManualQC):
@@ -93,9 +130,3 @@ def test_promotersetsig_get_absolute_url(promotersetsig: PromoterSetSig):
 def test_regulator_get_absolute_url(regulator: Regulator):
     assert reverse("api:regulator-list") == "/api/regulator/"
     assert reverse("api:regulator-detail", args=[str(regulator.id)]) == f"/api/regulator/{regulator.id}/"
-
-
-def test_rank_response_absolute_url(rankresponse: RankResponse):
-    assert reverse("api:rankresponse-list") == "/api/rankresponse/"
-    assert reverse("api:rankresponse-detail", args=[str(rankresponse.id)]) == f"/api/rankresponse/{rankresponse.id}/"
-    assert reverse("api:rankresponse-summary") == "/api/rankresponse/summary/"

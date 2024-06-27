@@ -3,6 +3,7 @@ from django.contrib import admin
 # Register your models here.
 from .models import (
     Binding,
+    BindingConcatenated,
     BindingManualQC,
     CallingCardsBackground,
     ChrMap,
@@ -13,11 +14,11 @@ from .models import (
     GenomicFeature,
     PromoterSet,
     PromoterSetSig,
-    RankResponse,
     Regulator,
 )
 
 admin.site.register(Binding)
+admin.site.register(BindingConcatenated)
 admin.site.register(BindingManualQC)
 admin.site.register(DataSource)
 admin.site.register(CallingCardsBackground)
@@ -28,5 +29,4 @@ admin.site.register(FileFormat)
 admin.site.register(GenomicFeature)
 admin.site.register(PromoterSet)
 admin.site.register(PromoterSetSig)
-admin.site.register(RankResponse)
 admin.site.register(Regulator)

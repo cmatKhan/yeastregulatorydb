@@ -32,7 +32,6 @@ from yeastregulatorydb.regulatory_data.tests.factories import (
     GenomicFeatureFactory,
     PromoterSetFactory,
     PromoterSetSigFactory,
-    RankResponseFactory,
     RegulatorFactory,
 )
 from yeastregulatorydb.regulatory_data.tests.utils import attach_file_to_instance
@@ -433,14 +432,6 @@ def promotersetsig(db) -> PromoterSetSig:
 def regulator(db) -> Regulator:
     hap5_genomic_feature = GenomicFeatureFactory(locus_tag="YOR358W", symbol="HAP5")
     return RegulatorFactory(id=1, genomicfeature=hap5_genomic_feature)
-
-
-@pytest.fixture
-def rankresponse(db, regulator: Regulator) -> QuerySet:
-    binding = BindingFactory(regulator=regulator)
-    expression = ExpressionFactory(regulator=regulator)
-    promotersetsig = PromoterSetSigFactory(binding=binding)
-    return RankResponseFactory(promotersetsig=promotersetsig, expression=expression)
 
 
 @pytest.fixture

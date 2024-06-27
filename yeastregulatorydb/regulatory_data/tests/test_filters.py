@@ -1,6 +1,7 @@
 import pytest
 
 from yeastregulatorydb.regulatory_data.api.filters import (
+    BindingConcatenatedFilter,
     BindingFilter,
     BindingManualQCFilter,
     CallingCardsBackgroundFilter,
@@ -11,11 +12,11 @@ from yeastregulatorydb.regulatory_data.api.filters import (
     GenomicFeatureFilter,
     PromoterSetFilter,
     PromoterSetSigFilter,
-    RankResponseFilter,
     RegulatorFilter,
 )
 from yeastregulatorydb.regulatory_data.models import (
     Binding,
+    BindingConcatenated,
     BindingManualQC,
     CallingCardsBackground,
     DataSource,
@@ -25,11 +26,11 @@ from yeastregulatorydb.regulatory_data.models import (
     GenomicFeature,
     PromoterSet,
     PromoterSetSig,
-    RankResponse,
     Regulator,
 )
 
 from .factories import (
+    BindingConcatenatedFactory,
     BindingFactory,
     BindingManualQCFactory,
     CallingCardsBackgroundFactory,
@@ -41,7 +42,7 @@ from .factories import (
     GenomicFeatureFactory,
     PromoterSetFactory,
     PromoterSetSigFactory,
-    RankResponseFactory,
+    PromoterSetSigWithCompositeBindingFactory,
     RegulatorFactory,
 )
 
@@ -96,6 +97,54 @@ def test_binding_filter():
         f = BindingFilter(params, queryset=Binding.objects.all())
         assert binding1 in f.qs, params
         assert binding2 not in f.qs, params
+
+
+@pytest.mark.django_db
+def test_binding_concatenated_filter():
+    # Create regulators and data sources
+    regulator1 = RegulatorFactory()
+    regulator2 = RegulatorFactory()
+    source1 = DataSourceFactory()
+    source2 = DataSourceFactory()
+
+    # Create bindings
+    binding1 = BindingFactory(regulator=regulator1, source=source1)
+    binding2 = BindingFactory(regulator=regulator1, source=source1)
+    binding3 = BindingFactory(regulator=regulator2, source=source2)
+    binding4 = BindingFactory(regulator=regulator2, source=source2)
+
+    # Create BindingConcatenated instances
+    concatenated1 = BindingConcatenatedFactory()
+    concatenated1.bindings.set([binding1, binding2])
+
+    concatenated2 = BindingConcatenatedFactory()
+    concatenated2.bindings.set([binding3, binding4])
+
+    # Define filter parameters
+    filter_params = {
+        "regulator": regulator1.id,
+    }
+
+    # Apply the filter
+    filter_set = BindingConcatenatedFilter(filter_params, queryset=BindingConcatenated.objects.all())
+    filtered_qs = filter_set.qs
+
+    # Assertions
+    assert concatenated1 in filtered_qs
+    assert concatenated2 not in filtered_qs
+
+    # Define filter parameters for source
+    filter_params = {
+        "source": source1.id,
+    }
+
+    # Apply the filter
+    filter_set = BindingConcatenatedFilter(filter_params, queryset=BindingConcatenated.objects.all())
+    filtered_qs = filter_set.qs
+
+    # Assertions
+    assert concatenated1 in filtered_qs
+    assert concatenated2 not in filtered_qs
 
 
 @pytest.mark.django_db
@@ -438,14 +487,29 @@ def test_promoter_set_sig_filter():
     datasource1 = DataSourceFactory(lab="lab1", assay="assay1", workflow="workflow1")
     datasource2 = DataSourceFactory(lab="lab2", assay="assay2", workflow="workflow2")
     binding1 = BindingFactory(regulator=regulator1, batch="batch1", replicate=1, source=datasource1)
-    binding2 = BindingFactory(regulator=regulator2, batch="batch2", replicate=2, source=datasource2)
-    promoter_set_sig1 = PromoterSetSigFactory(id=1, binding=binding1, promoter=promoter1, background=background1)
-    promoter_set_sig2 = PromoterSetSigFactory(id=2, binding=binding2, promoter=promoter2, background=background2)
+    binding2 = BindingFactory(regulator=regulator1, batch="batch2", replicate=2, source=datasource1)
+
+    # Use the updated factory for single binding
+    promoter_set_sig1 = PromoterSetSigFactory(
+        id=1, single_binding=binding1, promoter=promoter1, background=background1
+    )
+    promoter_set_sig2 = PromoterSetSigFactory(
+        id=2, single_binding=binding2, promoter=promoter2, background=background2
+    )
+
+    # Test composite binding case
+    binding3 = BindingFactory(regulator=regulator2, batch="batch3", replicate=1, source=datasource2)
+    binding4 = BindingFactory(regulator=regulator2, batch="batch4", replicate=2, source=datasource2)
+    composite_binding = BindingConcatenatedFactory(bindings=[binding3, binding4])
+
+    promoter_set_sig3 = PromoterSetSigWithCompositeBindingFactory(
+        id=3, composite_binding=composite_binding, promoter=promoter1, background=background1
+    )
 
     # Define the filter parameters and their expected values
     filter_params = [
         {"id": promoter_set_sig1.id},
-        {"binding": binding1.id},
+        {"single_binding": binding1.id},
         {"promoter": promoter1.id},
         {"promoter_name": "promoter1"},
         {"background": background1.id},
@@ -465,47 +529,7 @@ def test_promoter_set_sig_filter():
         f = PromoterSetSigFilter(params, queryset=PromoterSetSig.objects.all())
         assert promoter_set_sig1 in f.qs
         assert promoter_set_sig2 not in f.qs
-
-
-@pytest.mark.django_db
-def test_rankresponse_filter():
-    # Create some RankResponse instances using the factory
-    genomicfeature1 = GenomicFeatureFactory(locus_tag="tag1", symbol="symbol1")
-    genomicfeature2 = GenomicFeatureFactory(locus_tag="tag2", symbol="symbol2")
-    regulator1 = RegulatorFactory(genomicfeature=genomicfeature1)
-    regulator2 = RegulatorFactory(genomicfeature=genomicfeature2)
-    binding1 = BindingFactory(regulator=regulator1)
-    binding2 = BindingFactory(regulator=regulator2)
-    promotersetsig1 = PromoterSetSigFactory(binding=binding1)
-    promotersetsig2 = PromoterSetSigFactory(binding=binding2)
-    expression1 = ExpressionFactory(regulator=regulator1)
-    expression2 = ExpressionFactory(regulator=regulator2)
-
-    rankresponse1 = RankResponseFactory(
-        id=1,
-        promotersetsig=promotersetsig1,
-        expression=expression1,
-    )
-    rankresponse2 = RankResponseFactory(
-        id=2,
-        promotersetsig=promotersetsig2,
-        expression=expression2,
-    )
-
-    # Define the filter parameters and their expected values
-    filter_params = [
-        {"id": 1},
-        {"regulator_locus_tag": promotersetsig1.binding.regulator.genomicfeature.locus_tag},
-        {"regulator_symbol": promotersetsig1.binding.regulator.genomicfeature.symbol},
-        {"binding_source": promotersetsig1.binding.source.name},
-        {"expression_source": expression1.source.name},
-    ]
-
-    # Apply each filter and check if it returns the expected RankResponse instances
-    for params in filter_params:
-        f = RankResponseFilter(params, queryset=RankResponse.objects.all())
-        assert rankresponse1 in f.qs
-        assert rankresponse2 not in f.qs
+        assert promoter_set_sig3 not in f.qs  # Ensure the composite binding case is not included here
 
 
 @pytest.mark.django_db

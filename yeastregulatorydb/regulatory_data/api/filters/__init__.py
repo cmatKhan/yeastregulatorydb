@@ -1,3 +1,4 @@
+from .BindingConcatenatedFilter import BindingConcatenatedFilter
 from .BindingFilter import BindingFilter
 from .BindingManualQCFilter import BindingManualQCFilter
 from .CallingCardsBackgroundFilter import CallingCardsBackgroundFilter
@@ -8,11 +9,11 @@ from .FileFormatFilter import FileFormatFilter
 from .GenomicFeatureFilter import GenomicFeatureFilter
 from .PromoterSetFilter import PromoterSetFilter
 from .PromoterSetSigFilter import PromoterSetSigFilter
-from .RankResponseFilter import RankResponseFilter
 from .RegulatorFilter import RegulatorFilter
 
 __all__ = [
     "BindingFilter",
+    "BindingConcatenatedFilter",
     "BindingManualQCFilter",
     "CallingCardsBackgroundFilter",
     "DataSourceFilter",
@@ -22,6 +23,5 @@ __all__ = [
     "GenomicFeatureFilter",
     "PromoterSetFilter",
     "PromoterSetSigFilter",
-    "RankResponseFilter",
     "RegulatorFilter",
 ]

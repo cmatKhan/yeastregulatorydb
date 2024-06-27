@@ -14,7 +14,22 @@ class PromoterSetSig(BaseModel, GzipFileUploadWithIdMixin):
     Store PromoterSetSig data
     """
 
-    binding = models.ForeignKey("Binding", on_delete=models.CASCADE, help_text="foreign key to the 'Binding' table")
+    single_binding = models.ForeignKey(
+        "Binding",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="promoter_set_sigs",
+        help_text="Foreign key to the 'Binding' table",
+    )
+    composite_binding = models.ForeignKey(
+        "BindingConcatenated",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="promoter_set_sigs",
+        help_text="Foreign key to the 'BindingConcatenated' table",
+    )
     promoter = models.ForeignKey(
         "PromoterSet", on_delete=models.CASCADE, help_text="foreign key to the 'promoter' table", blank=True, null=True
     )
@@ -37,6 +52,12 @@ class PromoterSetSig(BaseModel, GzipFileUploadWithIdMixin):
 
     class Meta:
         db_table = "promotersetsig"
+        constraints = [
+            models.CheckConstraint(
+                check=(models.Q(single_binding__isnull=False) | models.Q(composite_binding__isnull=False)),
+                name="single_or_composite_binding_not_null",
+            )
+        ]
 
     # pylint:disable=R0801
     def save(self, *args, **kwargs):

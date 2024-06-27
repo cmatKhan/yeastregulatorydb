@@ -15,7 +15,6 @@ from ..api.serializers import (
     FileFormatSerializer,
     GenomicFeatureSerializer,
     PromoterSetSerializer,
-    RankResponseSerializer,
 )
 from .factories import (
     BindingFactory,
@@ -24,7 +23,6 @@ from .factories import (
     FileFormatFactory,
     GenomicFeatureFactory,
     PromoterSetFactory,
-    RankResponseFactory,
 )
 from .utils.model_to_dict_select import model_to_dict_select
 
@@ -316,40 +314,5 @@ def test_promoterset_serializer(tmpdir, user: User, chrmap: QuerySet, test_data_
         data = model_to_dict_select(PromoterSetFactory.build(**fields_dict))
 
         serializer1 = PromoterSetSerializer(data=data, context={"request": request})
-
-        assert serializer1.is_valid() is True, serializer1.errors
-
-
-@pytest.mark.django_db
-def test_rankresponse_serializer(
-    tmpdir, user: User, promotersetsig: PromoterSetSig, expression: Expression, fileformat: QuerySet
-):
-    # Create a request instance
-    factory = APIRequestFactory()
-    request = factory.get("/")
-    # Authenticate the request
-    request.user = user
-
-    # set path to test data and check that it exists
-    file_path = os.path.join(os.path.dirname(__file__), "test_data", "rankresponse/rank_response.csv.gz")
-    assert os.path.exists(file_path), f"path: {file_path}"
-
-    rankresponse_fileformat = fileformat.get(fileformat="rankresponse")
-
-    # Open the file and read its content
-    with open(file_path, "rb") as file_obj:
-        file_content = file_obj.read()
-        # Create a SimpleUploadedFile instance
-        uploaded_file = SimpleUploadedFile("rank_response.csv.gz", file_content, content_type="application/gzip")
-
-        fields_dict = {
-            "file": uploaded_file,
-            "promotersetsig": promotersetsig,
-            "expression": expression,
-            "fileformat": rankresponse_fileformat,
-        }
-        data = model_to_dict_select(RankResponseFactory.build(**fields_dict))
-
-        serializer1 = RankResponseSerializer(data=data, context={"request": request})
 
         assert serializer1.is_valid() is True, serializer1.errors

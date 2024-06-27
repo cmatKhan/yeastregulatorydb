@@ -1,3 +1,4 @@
+from .BindingConcatenatedSerializer import BindingConcatenatedSerializer
 from .BindingManualQCSerializer import BindingManualQCSerializer
 from .BindingSerializer import BindingSerializer
 from .BulkFileUploadSerializer import BulkFileUploadSerializer
@@ -11,10 +12,10 @@ from .FileFormatSerializer import FileFormatSerializer
 from .GenomicFeatureSerializer import GenomicFeatureSerializer
 from .PromoterSetSerializer import PromoterSetSerializer
 from .PromoterSetSigSerializer import PromoterSetSigSerializer
-from .RankResponseSerializer import RankResponseSerializer
 from .RegulatorSerializer import RegulatorSerializer
 
 __all__ = [
+    "BindingConcatenatedSerializer",
     "BindingManualQCSerializer",
     "BindingSerializer",
     "BulkFileUploadSerializer",
@@ -28,6 +29,5 @@ __all__ = [
     "GenomicFeatureSerializer",
     "PromoterSetSerializer",
     "PromoterSetSigSerializer",
-    "RankResponseSerializer",
     "RegulatorSerializer",
 ]

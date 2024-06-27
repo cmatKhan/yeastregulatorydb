@@ -16,6 +16,7 @@ from yeastregulatorydb.users.tests.factories import UserFactory
 
 from ..models import (
     Binding,
+    BindingConcatenated,
     BindingManualQC,
     CallingCardsBackground,
     ChrMap,
@@ -26,7 +27,6 @@ from ..models import (
     GenomicFeature,
     PromoterSet,
     PromoterSetSig,
-    RankResponse,
     Regulator,
 )
 from .utils.model_to_dict_select import model_to_dict_select
@@ -211,6 +211,27 @@ class BindingFactory(DjangoModelFactory):
         django_get_or_create = ["regulator", "batch", "replicate", "source"]
 
 
+class BindingConcatenatedFactory(DjangoModelFactory):
+    genomic_inserts = 0
+    mito_inserts = 0
+    plasmid_inserts = 0
+    notes = "none"
+
+    class Meta:
+        model = BindingConcatenated
+
+    @post_generation
+    def bindings(self, create, extracted, **kwargs):
+        if not create:
+            # Simple build, do nothing.
+            return
+
+        if extracted:
+            # A list of bindings were passed in, use them
+            for binding in extracted:
+                self.bindings.add(binding)
+
+
 class BindingManualQCFactory(DjangoModelFactory):
     uploader = SubFactory(UserFactory)
     modifier = SubFactory(UserFactory)
@@ -240,7 +261,7 @@ class PromoterSetFactory(DjangoModelFactory):
 class PromoterSetSigFactory(DjangoModelFactory):
     uploader = SubFactory(UserFactory)
     modifier = SubFactory(UserFactory)
-    binding = SubFactory(BindingFactory)
+    single_binding = SubFactory(BindingFactory)
     promoter = SubFactory(PromoterSetFactory)
     background = SubFactory(CallingCardsBackgroundFactory)
     fileformat = SubFactory(FileFormatFactory)
@@ -248,24 +269,21 @@ class PromoterSetSigFactory(DjangoModelFactory):
 
     class Meta:
         model = PromoterSetSig
-        django_get_or_create = ["binding", "promoter", "background"]
+        django_get_or_create = ["single_binding", "promoter", "background"]
 
 
-class RankResponseFactory(DjangoModelFactory):
+class PromoterSetSigWithCompositeBindingFactory(DjangoModelFactory):
     uploader = SubFactory(UserFactory)
     modifier = SubFactory(UserFactory)
-    promotersetsig = SubFactory(PromoterSetSigFactory)
-    expression = SubFactory(ExpressionFactory)
-    expression_effect_threshold = 0.0
-    expression_pvalue_threshold = 1.0
+    composite_binding = SubFactory(BindingConcatenatedFactory)
+    promoter = SubFactory(PromoterSetFactory)
+    background = SubFactory(CallingCardsBackgroundFactory)
     fileformat = SubFactory(FileFormatFactory)
-    normalized = False
-    file = FileField(filename="rankresponse.csv.gz")
-    significant_response = Faker("pybool")
+    file = FileField(filename="testfile.csv.gz")
 
     class Meta:
-        model = RankResponse
-        django_get_or_create = ["promotersetsig", "expression"]
+        model = PromoterSetSig
+        django_get_or_create = ["composite_binding", "promoter", "background"]
 
 
 @pytest.fixture

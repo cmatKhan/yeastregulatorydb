@@ -9,7 +9,6 @@ from .FileFormatViewSet import FileFormatViewSet
 from .GenomicFeatureViewSet import GenomicFeatureViewSet
 from .PromoterSetSigViewSet import PromoterSetSigViewSet
 from .PromoterSetViewSet import PromoterSetViewSet
-from .RankResponseViewSet import RankResponseViewSet
 from .RegulatorViewSet import RegulatorViewSet
 
 __all__ = [
@@ -24,6 +23,5 @@ __all__ = [
     "GenomicFeatureViewSet",
     "PromoterSetSigViewSet",
     "PromoterSetViewSet",
-    "RankResponseViewSet",
     "RegulatorViewSet",
 ]
