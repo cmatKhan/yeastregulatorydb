@@ -1,3 +1,4 @@
+from .BindingConcatenatedViewSet import BindingConcatenatedViewSet
 from .BindingManualQCViewSet import BindingManualQCViewSet
 from .BindingViewSet import BindingViewSet
 from .CallingCardsBackgroundViewSet import CallingCardsBackgroundViewSet

@@ -75,7 +75,7 @@ class BindingViewSet(
             if instance.source.name in settings.NULL_BINDING_FILE_DATASOURCES:
                 promotersetsig_serializer = PromoterSetSigSerializer(
                     data={
-                        "binding": instance.id,
+                        "single_binding": instance.id,
                         "fileformat": instance.source.fileformat.id,
                         "file": self.request.data.get("file"),
                     },

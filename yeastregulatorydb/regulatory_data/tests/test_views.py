@@ -52,7 +52,7 @@ from .utils import model_to_dict_select
 
 
 @pytest.mark.django_db
-def test_create_chrmap(user: User, rf: RequestFactory):
+def test_create_chrmap(user: User, rf: RequestFactory, clean_test_database):
     # Create a request
     data = {
         "refseq": "NC_001133.9",
@@ -86,7 +86,7 @@ def test_create_chrmap(user: User, rf: RequestFactory):
     assert ChrMap.objects.get().refseq == "NC_001133.9"
 
 
-def test_list_chrmap(user: User, chrmap: QuerySet, rf: RequestFactory):
+def test_list_chrmap(clean_test_database, user: User, chrmap: QuerySet, rf: RequestFactory):
     # Create a request
     request = rf.get(f"/api/chrmap/{chrmap.first().id}/")
     force_authenticate(request, user=user)
@@ -97,7 +97,7 @@ def test_list_chrmap(user: User, chrmap: QuerySet, rf: RequestFactory):
     assert response.status_code == 200
 
 
-def test_gene_list(user: User, genomicfeature_chr1_genes: QuerySet, rf: RequestFactory):
+def test_gene_list(clean_test_database, user: User, genomicfeature_chr1_genes: QuerySet, rf: RequestFactory):
     # Create a request
     request = rf.get("/api/genomicfeature/50/")
     force_authenticate(request, user=user)
@@ -109,7 +109,7 @@ def test_gene_list(user: User, genomicfeature_chr1_genes: QuerySet, rf: RequestF
     assert response.data["locus_tag"] == "YAL031W-A"
 
 
-def test_bulk_genomicfeature_upload(auth_token: Token, chrmap: QuerySet, test_data_dict: dict):
+def test_bulk_genomicfeature_upload(clean_test_database, auth_token: Token, chrmap: QuerySet, test_data_dict: dict):
     factory = APIRequestFactory()
     request = factory.get("/")
     request.user = auth_token.user
@@ -137,6 +137,7 @@ def test_bulk_genomicfeature_upload(auth_token: Token, chrmap: QuerySet, test_da
 
 @pytest.mark.django_db
 def test_single_binding_upload(
+    clean_test_database,
     auth_token: Token,
     regulator: Regulator,
     cc_datasource: DataSource,
@@ -191,7 +192,9 @@ def test_single_binding_upload(
         ), Binding.objects.get().file.name
         # assert that there exists a promotersetsig with this binding instance id
         assert PromoterSetSig.objects.count() == 1, PromoterSetSig.objects.count()
-        assert PromoterSetSig.objects.filter(binding=Binding.objects.get()).exists(), PromoterSetSig.objects.all()
+        assert PromoterSetSig.objects.filter(
+            single_binding=Binding.objects.get()
+        ).exists(), PromoterSetSig.objects.all()
 
     # add another background to test automatic promoterset sig processing
     dsir4_background_path = next(
@@ -235,6 +238,7 @@ os.environ["DJANGO_ALLOW_ASYNC_UNSAFE"] = "True"
 
 @pytest.mark.django_db
 def test_cc_rankresponse(
+    clean_test_database,
     auth_token: Token,
     mcisaac_hap5_expression: Expression,
     hap5_cc_promotersetsig: PromoterSetSig,
@@ -299,6 +303,7 @@ def test_cc_rankresponse(
 
 @pytest.mark.django_db
 def test_chipexo_rankresponse(
+    clean_test_database,
     auth_token: Token,
     mcisaac_hap5_expression: Expression,
     hap5_chipexo_promotersetsig: PromoterSetSig,
@@ -349,6 +354,7 @@ def test_chipexo_rankresponse(
 
 @pytest.mark.django_db
 def test_single_binding_harbison_upload(
+    clean_test_database,
     auth_token: Token,
     harbison_datasource: DataSource,
     regulator: Regulator,
@@ -467,11 +473,14 @@ def test_single_binding_harbison_upload(
         assert Binding.objects.get().file.name == "", Binding.objects.get().file.name
         # assert that there exists a promotersetsig with this binding instance id
         assert PromoterSetSig.objects.count() == 1, PromoterSetSig.objects.count()
-        assert PromoterSetSig.objects.filter(binding=Binding.objects.get()).exists(), PromoterSetSig.objects.all()
+        assert PromoterSetSig.objects.filter(
+            single_binding=Binding.objects.get()
+        ).exists(), PromoterSetSig.objects.all()
 
 
 @pytest.mark.django_db
 def test_single_binding_upload_with_promotersetsig_and_combinedfile(
+    clean_test_database,
     auth_token: Token,
     harbison_datasource: DataSource,
     mcisaac_datasource: DataSource,
@@ -548,7 +557,9 @@ def test_single_binding_upload_with_promotersetsig_and_combinedfile(
         assert Binding.objects.get().file.name == ""
         # assert PromoterSetSig with the Binding instance `id` exists
         assert PromoterSetSig.objects.count() == 1, PromoterSetSig.objects.count()
-        assert PromoterSetSig.objects.filter(binding=Binding.objects.get()).exists(), PromoterSetSig.objects.all()
+        assert PromoterSetSig.objects.filter(
+            single_binding=Binding.objects.get()
+        ).exists(), PromoterSetSig.objects.all()
         # assert the `file` field of the PromoterSetSig instance is not null
         assert PromoterSetSig.objects.get().file.name != ""
         assert (
@@ -579,6 +590,7 @@ def test_single_binding_upload_with_promotersetsig_and_combinedfile(
 
 @pytest.mark.django_db
 def test_bulk_binding_upload(
+    clean_test_database,
     auth_token: Token,
     chipexo_datasource: DataSource,
     cc_datasource: DataSource,
@@ -792,7 +804,12 @@ def test_bulk_binding_upload(
 
 @pytest.mark.django_db()
 def test_expression_task_upload(
-    auth_token: Token, hu_datasource: DataSource, chrmap: QuerySet, fileformat: QueryDict, test_data_dict: dict
+    clean_test_database,
+    auth_token: Token,
+    hu_datasource: DataSource,
+    chrmap: QuerySet,
+    fileformat: QueryDict,
+    test_data_dict: dict,
 ):
     factory = APIRequestFactory()
     request = factory.get("/")
@@ -842,7 +859,7 @@ def test_expression_task_upload(
         upload_file = SimpleUploadedFile("RTG3_harbison.csv.gz", file_content, content_type="application/gzip")
         data = model_to_dict_select(PromoterSetSigFactory.build())
         data["file"] = upload_file
-        data["binding"] = binding_instance.id
+        data["single_binding"] = binding_instance.id
         data["fileformat"] = fileformat.get(fileformat="array").id
         promotersetsig_serializer = PromoterSetSigSerializer(data=data, context={"request": request})
         assert promotersetsig_serializer.is_valid() is True, promotersetsig_serializer.errors
@@ -887,6 +904,7 @@ def test_expression_task_upload(
 
 @pytest.mark.django_db
 def test_expression_bulk_upload_and_combinedfile(
+    clean_test_database,
     auth_token: Token,
     chrmap: QuerySet,
     hu_datasource: DataSource,

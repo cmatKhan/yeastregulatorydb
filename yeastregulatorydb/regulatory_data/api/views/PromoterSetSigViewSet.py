@@ -73,12 +73,16 @@ class PromoterSetSigViewSet(
     queryset = (
         PromoterSetSig.objects.select_related(
             "uploader",
-            "binding",
+            "single_binding",
+            "composite_binding",
             "promoter",
             "background",
             "fileformat",
         )
-        .prefetch_related("binding__bindingmanualqc")
+        .prefetch_related(
+            "single_binding__bindingmanualqc",
+            "composite_binding__bindingmanualqc",
+        )
         .all()
         .order_by("id")
     )
@@ -108,7 +112,9 @@ class PromoterSetSigViewSet(
         # must be 'true' or 'false' will be used preferentially to the default value,
         # which is true. This will return a file with the regulator_id, symbol and
         # locus_tag columns
-        return self.retrieve_records_and_files(request, queryset, add_genomicfeature_to_file="true")
+        return self.retrieve_records_and_files(
+            request, queryset, add_genomicfeature_to_file="true", rename_metric_cols=False, return_cols=["all"]
+        )
 
     @action(detail=False, methods=["get"])
     def rankresponse(self, request, *args, **kwargs):

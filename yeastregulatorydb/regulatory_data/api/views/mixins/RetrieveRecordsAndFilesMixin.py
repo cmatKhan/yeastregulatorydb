@@ -45,7 +45,9 @@ class RetrieveRecordsAndFilesMixin:
                     if os.path.exists(file_path):
                         dest_file_path = os.path.join(tmpdir, f"{record.id}.csv.gz")
                         if add_genomicfeature_to_file_flag:
-                            df = add_genomicfeature_to_file(record, tmpdir)
+                            df = add_genomicfeature_to_file(
+                                record, tmpdir, kwargs.get("rename_metric_cols", True), kwargs.get("return_cols", None)
+                            )
                             df.to_csv(dest_file_path, compression="gzip", index=False)
                         else:
                             with open(file_path, "rb") as src_file:

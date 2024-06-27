@@ -43,11 +43,11 @@ def rank_response_task(
 
         # either get the expression object using the expression_id, or get
         # an iterator over all expression objects with the same regulator
-        # as the promotersetsig.binding.regulator
+        # as the promotersetsig regulator
         expression_objects_iterator = (
             Expression.objects.filter(id=kwargs.get("expression_id")).iterator()
             if "expression_id" in kwargs
-            else Expression.objects.filter(regulator=promotersetsig_record.binding.regulator).iterator()
+            else Expression.objects.filter(regulator=promotersetsig_record.get_genomicfeature()).iterator()
         )
 
         results_dict = {}
@@ -65,7 +65,7 @@ def rank_response_task(
 
             config_dict = {
                 "binding_data_path": promotersetsig_filepath,
-                "binding_source": promotersetsig_record.binding.source.name,
+                "binding_source": promotersetsig_record.get_source_name().name,
                 "binding_identifier_col": promotersetsig_record.fileformat.feature_identifier_col,
                 "binding_effect_col": promotersetsig_record.fileformat.effect_col,
                 "binding_pvalue_col": promotersetsig_record.fileformat.pval_col,

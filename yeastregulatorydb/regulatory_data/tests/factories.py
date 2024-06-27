@@ -1,5 +1,7 @@
+import logging
 import os
 import random
+import uuid
 
 import faker
 import pytest
@@ -33,6 +35,8 @@ from .utils.model_to_dict_select import model_to_dict_select
 
 fake = faker.Faker()
 
+logger = logging.getLogger(__name__)
+
 
 def sentence_with_max_chars(max_chars=100):
     sentence = fake.sentence(nb_words=10)
@@ -44,19 +48,25 @@ def sentence_with_max_chars(max_chars=100):
 class ChrMapFactory(DjangoModelFactory):
     uploader = SubFactory(UserFactory)
     modifier = SubFactory(UserFactory)
-    refseq = Faker("pystr", max_chars=12)
-    igenomes = Faker("pystr", max_chars=12)
-    ensembl = Faker("pystr", max_chars=12)
-    ucsc = Faker("pystr", max_chars=12)
-    mitra = Faker("pystr", max_chars=15)
-    numbered = Faker("pystr", max_chars=12)
-    chr = Faker("pystr", max_chars=12)
+    refseq = LazyFunction(lambda: f"NC_{uuid.uuid4().hex[:8]}")
+    igenomes = LazyFunction(lambda: f"IG_{uuid.uuid4().hex[:8]}")
+    ensembl = LazyFunction(lambda: f"EN_{uuid.uuid4().hex[:8]}")
+    ucsc = LazyFunction(lambda: f"chr{uuid.uuid4().hex[:8]}")
+    mitra = LazyFunction(lambda: f"NC_{uuid.uuid4().hex[:8]}")
+    numbered = LazyFunction(lambda: str(uuid.uuid4().int)[:12])
+    chr = LazyFunction(lambda: f"chr{uuid.uuid4().hex[:8]}")
     seqlength = Faker("random_int", min=2001, max=10000)
-    type = fake.random_element(elements=["genomic", "mito", "plasmid"])
+    type = LazyFunction(lambda: random.choice(["genomic", "mito", "plasmid"]))
 
     class Meta:
         model = ChrMap
         django_get_or_create = ["chr"]
+
+    @classmethod
+    def _create(cls, model_class, *args, **kwargs):
+        instance = super()._create(model_class, *args, **kwargs)
+        logger.debug(f"Created ChrMap instance: {instance}")
+        return instance
 
 
 class GenomicFeatureFactory(DjangoModelFactory):

@@ -491,10 +491,10 @@ def test_promoter_set_sig_filter():
 
     # Use the updated factory for single binding
     promoter_set_sig1 = PromoterSetSigFactory(
-        id=1, single_binding=binding1, promoter=promoter1, background=background1
+        id=1, single_binding=binding1, promoter=promoter1, background=background2
     )
     promoter_set_sig2 = PromoterSetSigFactory(
-        id=2, single_binding=binding2, promoter=promoter2, background=background2
+        id=2, single_binding=binding2, promoter=promoter2, background=background1
     )
 
     # Test composite binding case
@@ -506,30 +506,91 @@ def test_promoter_set_sig_filter():
         id=3, composite_binding=composite_binding, promoter=promoter1, background=background1
     )
 
-    # Define the filter parameters and their expected values
-    filter_params = [
-        {"id": promoter_set_sig1.id},
-        {"single_binding": binding1.id},
-        {"promoter": promoter1.id},
-        {"promoter_name": "promoter1"},
-        {"background": background1.id},
-        {"background_name": background1.name},
-        {"regulator_locus_tag": regulator1.genomicfeature.locus_tag},
-        {"regulator_symbol": regulator1.genomicfeature.symbol},
-        {"batch": "batch1"},
-        {"replicate": 1},
-        {"source": datasource1.id},
-        {"lab": "lab1"},
-        {"assay": "assay1"},
-        {"workflow": "workflow1"},
+    # Define the filter parameters and their expected results
+    filter_tests = [
+        {
+            "params": {"id": promoter_set_sig1.id},
+            "expected": [promoter_set_sig1],
+            "unexpected": [promoter_set_sig2, promoter_set_sig3],
+        },
+        {
+            "params": {"single_binding": binding1.id},
+            "expected": [promoter_set_sig1],
+            "unexpected": [promoter_set_sig2, promoter_set_sig3],
+        },
+        {
+            "params": {"promoter": promoter1.id},
+            "expected": [promoter_set_sig1, promoter_set_sig3],
+            "unexpected": [promoter_set_sig2],
+        },
+        {
+            "params": {"promoter_name": "promoter1"},
+            "expected": [promoter_set_sig1, promoter_set_sig3],
+            "unexpected": [promoter_set_sig2],
+        },
+        {
+            "params": {"background": background1.id},
+            "expected": [promoter_set_sig2, promoter_set_sig3],
+            "unexpected": [promoter_set_sig1],
+        },
+        {
+            "params": {"background_name": "bg1"},
+            "expected": [promoter_set_sig2, promoter_set_sig3],
+            "unexpected": [promoter_set_sig1],
+        },
+        {
+            "params": {"regulator_locus_tag": regulator1.genomicfeature.locus_tag},
+            "expected": [promoter_set_sig1, promoter_set_sig2],
+            "unexpected": [promoter_set_sig3],
+        },
+        {
+            "params": {"regulator_symbol": regulator1.genomicfeature.symbol},
+            "expected": [promoter_set_sig1, promoter_set_sig2],
+            "unexpected": [promoter_set_sig3],
+        },
+        {
+            "params": {"batch": "batch1"},
+            "expected": [promoter_set_sig1],
+            "unexpected": [promoter_set_sig2, promoter_set_sig3],
+        },
+        {
+            "params": {"replicate": 1},
+            "expected": [promoter_set_sig1],
+            "unexpected": [promoter_set_sig2, promoter_set_sig3],
+        },
+        {
+            "params": {"source": datasource1.id},
+            "expected": [promoter_set_sig1, promoter_set_sig2],
+            "unexpected": [promoter_set_sig3],
+        },
+        {
+            "params": {"lab": "lab1"},
+            "expected": [promoter_set_sig1, promoter_set_sig2],
+            "unexpected": [promoter_set_sig3],
+        },
+        {
+            "params": {"assay": "assay1"},
+            "expected": [promoter_set_sig1, promoter_set_sig2],
+            "unexpected": [promoter_set_sig3],
+        },
+        {
+            "params": {"workflow": "workflow1"},
+            "expected": [promoter_set_sig1, promoter_set_sig2],
+            "unexpected": [promoter_set_sig3],
+        },
     ]
 
-    # Apply each filter and check if it returns the expected PromoterSetSig instances
-    for params in filter_params:
+    for test in filter_tests:
+        params = test["params"]
         f = PromoterSetSigFilter(params, queryset=PromoterSetSig.objects.all())
-        assert promoter_set_sig1 in f.qs
-        assert promoter_set_sig2 not in f.qs
-        assert promoter_set_sig3 not in f.qs  # Ensure the composite binding case is not included here
+        for expected_instance in test["expected"]:
+            assert (
+                expected_instance in f.qs
+            ), f"Expected instance {expected_instance} not found for filter params: {params}"
+        for unexpected_instance in test["unexpected"]:
+            assert (
+                unexpected_instance not in f.qs
+            ), f"Unexpected instance {unexpected_instance} found for filter params: {params}"
 
 
 @pytest.mark.django_db

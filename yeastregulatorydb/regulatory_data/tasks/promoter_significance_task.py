@@ -164,7 +164,7 @@ def promoter_significance_task(self, binding_id: int, user_id: int, output_filef
             mock_request = SimpleNamespace(user=user)
 
             upload_data = {
-                "binding": binding_record.id,
+                "single_binding": binding_record.id,
                 "promoter": promoter_record.id,
                 "fileformat": fileformat_record.id,
                 "file": django_file,

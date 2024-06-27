@@ -28,7 +28,9 @@ from .utils.model_to_dict_select import model_to_dict_select
 
 
 @pytest.mark.django_db
-def test_BindingSerializerCC(user: User, chrmap: QuerySet, regulator: Regulator, cc_datasource: DataSource):
+def test_BindingSerializerCC(
+    clean_test_database, user: User, chrmap: QuerySet, regulator: Regulator, cc_datasource: DataSource
+):
     """
     Test that the BindingSerializer is able to accurately check a qBed or
     other binding data upload
@@ -60,7 +62,9 @@ def test_BindingSerializerCC(user: User, chrmap: QuerySet, regulator: Regulator,
 
 
 @pytest.mark.django_db
-def test_BindingSerializerChipExo(user: User, chrmap: QuerySet, regulator: Regulator, chipexo_datasource: DataSource):
+def test_BindingSerializerChipExo(
+    clean_test_database, user: User, chrmap: QuerySet, regulator: Regulator, chipexo_datasource: DataSource
+):
     """
     test that the BindingSerializer is able to accurately check a chipexo data upload
     """
@@ -94,7 +98,7 @@ def test_BindingSerializerChipExo(user: User, chrmap: QuerySet, regulator: Regul
 
 @pytest.mark.django_db
 def test_BindingSerializerHarbison(
-    user: User, chrmap: QuerySet, regulator: Regulator, harbison_datasource: DataSource
+    clean_test_database, user: User, chrmap: QuerySet, regulator: Regulator, harbison_datasource: DataSource
 ):
     """
     Test that the BindingSerializer can upload harbison data
@@ -125,7 +129,7 @@ def test_BindingSerializerHarbison(
 
 @pytest.mark.django_db
 def test_ExpressionSerializerKemmeren(
-    user: User, chrmap: QuerySet, regulator: Regulator, kemmeren_datasource: DataSource
+    clean_test_database, user: User, chrmap: QuerySet, regulator: Regulator, kemmeren_datasource: DataSource
 ):
     """
     Test that the BindingSerializer can upload harbison data
@@ -155,7 +159,9 @@ def test_ExpressionSerializerKemmeren(
 
 
 @pytest.mark.django_db
-def test_ExpressionSerializerHu(user: User, chrmap: QuerySet, regulator: Regulator, hu_datasource: DataSource):
+def test_ExpressionSerializerHu(
+    clean_test_database, user: User, chrmap: QuerySet, regulator: Regulator, hu_datasource: DataSource
+):
     """
     Test that the BindingSerializer can upload harbison data
     """
@@ -184,7 +190,9 @@ def test_ExpressionSerializerHu(user: User, chrmap: QuerySet, regulator: Regulat
 
 
 @pytest.mark.django_db
-def test_ExpressionSerializerMcIsaac(user: User, chrmap: QuerySet, regulator: Regulator, hu_datasource: DataSource):
+def test_ExpressionSerializerMcIsaac(
+    clean_test_database, user: User, chrmap: QuerySet, regulator: Regulator, hu_datasource: DataSource
+):
     """
     Test that the BindingSerializer can upload harbison data
     """
@@ -213,7 +221,7 @@ def test_ExpressionSerializerMcIsaac(user: User, chrmap: QuerySet, regulator: Re
 
 
 @pytest.mark.django_db
-def test_fileformat_serializer(user: User):
+def test_fileformat_serializer(clean_test_database, user: User):
     # Create a request instance
     factory = APIRequestFactory()
     request = factory.get("/")
@@ -243,7 +251,7 @@ def test_fileformat_serializer(user: User):
 
 
 @pytest.mark.django_db
-def test_genomic_feature_serializer(user: User):
+def test_genomic_feature_serializer(clean_test_database, user: User):
     # Create a request instance
     factory = APIRequestFactory()
     request = factory.get("/")
@@ -287,7 +295,7 @@ def test_genomic_feature_serializer(user: User):
 
 
 @pytest.mark.django_db
-def test_promoterset_serializer(tmpdir, user: User, chrmap: QuerySet, test_data_dict: dict):
+def test_promoterset_serializer(clean_test_database, tmpdir, user: User, chrmap: QuerySet, test_data_dict: dict):
     # Create a request instance
     factory = APIRequestFactory()
     request = factory.get("/")

@@ -41,6 +41,12 @@ from yeastregulatorydb.users.tests.factories import UserFactory
 TEST_DATA_ROOT = os.path.join(os.path.dirname(__file__), "regulatory_data/tests/test_data")
 
 
+@pytest.fixture
+def clean_test_database(db):
+    Regulator.objects.all().delete()
+    ChrMap.objects.all().delete()
+
+
 @pytest.fixture(autouse=True)
 def media_storage(settings, tmpdir):
     settings.MEDIA_ROOT = tmpdir.strpath
@@ -570,7 +576,7 @@ def hap5_cc_promotersetsig(
     shutil.copy(promotersig_path, temp_file_path)
 
     promotersetsig = PromoterSetSigFactory(
-        binding=hap5_callingcards,
+        single_binding=hap5_callingcards,
         background=adh1_background,
         promoter=yiming_promoterset,
         fileformat=fileformat.get(fileformat="cc_promoter_sig"),
@@ -595,7 +601,7 @@ def hap5_chipexo_promotersetsig(
     shutil.copy(promotersig_path, temp_file_path)
 
     promotersetsig = PromoterSetSigFactory(
-        binding=hap5_chipexo,
+        single_binding=hap5_chipexo,
         background=adh1_background,
         promoter=yiming_promoterset,
         fileformat=fileformat.get(fileformat="chipexo_promoter_sig"),

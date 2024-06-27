@@ -23,6 +23,7 @@ pytestmark = pytest.mark.django_db
 
 @pytest.mark.django_db
 def test_promoter_significance_task(
+    clean_test_database,
     settings,
     chrmap: QuerySet,
     fileformat: QuerySet,
@@ -155,6 +156,7 @@ def test_promoter_significance_task(
 
 
 def test_promotersetsig_rankedresponse_chained(
+    clean_test_database,
     settings,
     chrmap: QuerySet,
     fileformat: QuerySet,

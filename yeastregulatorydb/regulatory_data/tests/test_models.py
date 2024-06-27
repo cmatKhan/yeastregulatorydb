@@ -81,7 +81,7 @@ def test_callingcardsbackground_get_absolute_url(callingcardsbackground: Calling
     )
 
 
-def test_chrmap_get_absolute_url(chrmap: QuerySet):
+def test_chrmap_get_absolute_url(clean_test_database, chrmap: QuerySet):
     assert reverse("api:chrmap-list") == "/api/chrmap/"
     chrmap_instance = ChrMap.objects.first()
     assert reverse("api:chrmap-detail", args=[str(chrmap_instance.id)]) == f"/api/chrmap/{chrmap_instance.id}/"

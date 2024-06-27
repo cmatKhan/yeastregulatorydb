@@ -8,7 +8,8 @@ from yeastregulatorydb.regulatory_data.utils.count_hops import count_hops
 
 
 @pytest.mark.django_db
-def test_count_hops(chrmap: QuerySet):
+def test_count_hops(clean_test_database, chrmap: QuerySet):
+
     input_data_path = os.path.join(
         os.path.dirname(__file__), "test_data/binding/callingcards/ccexperiment_511.qbed.gz"
     )
