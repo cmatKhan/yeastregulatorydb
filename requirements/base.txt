@@ -31,3 +31,4 @@ callingcardstools==1.6.0 # https://github.com/cmatkhan/callingcardstools
 # for interactive python shell
 ipython==8.18.1 # https://ipython.org
 notebook==7.0.6 # https://jupyter.org/
+boto3==1.34.136 # https://boto3.amazonaws.com/v1/documentation/api/latest/index.html

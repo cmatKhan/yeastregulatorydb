@@ -113,7 +113,12 @@ class PromoterSetSigViewSet(
         # which is true. This will return a file with the regulator_id, symbol and
         # locus_tag columns
         return self.retrieve_records_and_files(
-            request, queryset, add_genomicfeature_to_file="true", rename_metric_cols=False, return_cols=["all"]
+            request,
+            queryset,
+            add_genomicfeature_to_file="true",
+            target_id_colname="name",
+            rename_metric_cols=False,
+            return_cols=["all"],
         )
 
     @action(detail=False, methods=["get"])

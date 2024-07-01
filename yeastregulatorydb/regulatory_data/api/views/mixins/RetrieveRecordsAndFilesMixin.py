@@ -4,7 +4,7 @@ import tempfile
 import pandas as pd
 from django.http import HttpResponse
 
-from yeastregulatorydb.regulatory_data.utils.create_tarball import create_tarball
+from yeastregulatorydb.regulatory_data.utils import create_tarball, extract_file_from_storage
 
 from .add_genomicfeature_to_file import add_genomicfeature_to_file
 
@@ -41,18 +41,26 @@ class RetrieveRecordsAndFilesMixin:
 
             for record in queryset:
                 if record.file:
-                    file_path = record.file.path
-                    if os.path.exists(file_path):
+                    try:
                         dest_file_path = os.path.join(tmpdir, f"{record.id}.csv.gz")
                         if add_genomicfeature_to_file_flag:
                             df = add_genomicfeature_to_file(
-                                record, tmpdir, kwargs.get("rename_metric_cols", True), kwargs.get("return_cols", None)
+                                record,
+                                tmpdir,
+                                kwargs.get("rename_metric_cols", True),
+                                kwargs.get("target_id_colname", "target_id"),
+                                kwargs.get("return_cols", None),
                             )
                             df.to_csv(dest_file_path, compression="gzip", index=False)
                         else:
+                            file_path = extract_file_from_storage(record.file, tmpdir)
                             with open(file_path, "rb") as src_file:
                                 with open(dest_file_path, "wb") as dest_file:
                                     dest_file.write(src_file.read())
+                    except FileExistsError as exc:
+                        raise FileExistsError(f"Error extracting file from storage: {record.file.name}. {str(exc)}")
+                    except FileNotFoundError as exc:
+                        raise FileNotFoundError(f"Error extracting file from storage: {record.file.name}. {str(exc)}")
 
             tar_path = os.path.join(tmpdir, "results.tar.gz")
             create_tarball(tmpdir, tar_path)

@@ -1,7 +1,12 @@
 from rest_framework import serializers
 
 from ...models.Expression import Expression
-from .mixins import CustomValidateMixin, FileValidationMixin, GetDataSourceMixin, GetOrCreateRegulatorMixin
+from .mixins import (
+    CustomValidateMixin,
+    FileValidationMixin,
+    GetDataSourceMixin,
+    GetOrCreateRegulatorMixin,
+)
 
 
 class ExpressionSerializer(

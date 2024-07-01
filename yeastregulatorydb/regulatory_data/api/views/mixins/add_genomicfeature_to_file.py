@@ -5,7 +5,9 @@ from yeastregulatorydb.regulatory_data.models import GenomicFeature
 from yeastregulatorydb.regulatory_data.utils import extract_file_from_storage
 
 
-def add_genomicfeature_to_file(record, tmpdir, rename_metric_columns: bool = True, return_cols: list = None):
+def add_genomicfeature_to_file(
+    record, tmpdir, rename_metric_columns: bool = True, target_id_colname: str = "target_id", return_cols: list = None
+):
     """
     Add genomic feature information to a file. Optionally (default) standardize
     the metric columns and return a standard set of columns.
@@ -17,6 +19,10 @@ def add_genomicfeature_to_file(record, tmpdir, rename_metric_columns: bool = Tru
     :param rename_metric_columns: Whether to rename the metric columns to 'effect' and 'pvalue'.
         Defaults to True.
     :type rename_metric_columns: bool, optional
+    :param target_id_colname: The column to use as the target_id. Default is 'target_id'. If
+        the column is not present, leave this as 'target_id' and a value of 'none' will
+        be set in the values.
+    :type target_id: str, optional
     :param return_cols: The columns to return. Default is None, which sets the following:
         ['regulator_id', 'regulator_locus_tag',
         'regulator_symbol', 'target_id', 'target_locus_tag', 'target_symbol',
@@ -51,20 +57,24 @@ def add_genomicfeature_to_file(record, tmpdir, rename_metric_columns: bool = Tru
         if "pvalue" not in df.columns:
             df["pvalue"] = float("NaN")
 
+    # If the target_id column is not present, add a dummy column
     if "target_id" not in df.columns:
         df["target_id"] = "none"
-    else:
-        genomicfeature_records = GenomicFeature.objects.annotate(
-            target_id=models.F("id"),
-            target_locus_tag=models.F("locus_tag"),
-            target_symbol=models.F("symbol"),
-        ).values("target_id", "target_locus_tag", "target_symbol")
+    df["target_id"] = df[target_id_colname]
+    # Merge the genomic feature information
+    genomicfeature_records = GenomicFeature.objects.annotate(
+        target_id=models.F("id"),
+        target_locus_tag=models.F("locus_tag"),
+        target_symbol=models.F("symbol"),
+    ).values("target_id", "target_locus_tag", "target_symbol")
 
-        genomicfeature_df = pd.DataFrame.from_records(genomicfeature_records)
-        df = df.merge(genomicfeature_df, on="target_id", how="left")
+    genomicfeature_df = pd.DataFrame.from_records(genomicfeature_records)
+    df = df.merge(genomicfeature_df, on="target_id", how="left")
 
+    # Add the record id
     df["record_id"] = record.id
 
+    # Add the regulator information
     try:
         regulator = record.get_genomicfeature()
     except AttributeError as exc:

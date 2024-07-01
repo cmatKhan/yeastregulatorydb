@@ -1,0 +1,85 @@
+# note that this is updated to the compose V2
+# format. I have not yet updated the production.yml
+# 20240627
+volumes:
+  yeastregulatorydb_htcf_postgres_data: {}
+  yeastregulatorydb_htcf_postgres_data_backups: {}
+
+services:
+  django: &django
+    build:
+      context: .
+      dockerfile: ./compose/htcf/django/Dockerfile
+    image: yeastregulatorydb_htcf_django
+    container_name: yeastregulatorydb_htcf_django
+    depends_on:
+      - postgres
+      - redis
+    env_file:
+      - ./.envs/.htcf/.django
+      - ./.envs/.htcf/.postgres
+      - ./.envs/.htcf/.regulatory_data
+    ports:
+      - '8000:8000'
+    entrypoint: /entrypoint
+    command: /start
+
+  postgres:
+    build:
+      context: .
+      dockerfile: ./compose/production/postgres/Dockerfile
+    image: yeastregulatorydb_production_postgres
+    container_name: yeastregulatorydb_htcf_postgres
+    volumes:
+      - yeastregulatorydb_htcf_postgres_data:/var/lib/postgresql/data
+      - yeastregulatorydb_htcf_postgres_data_backups:/backups
+    env_file:
+      - ./.envs/.htcf/.postgres
+
+  docs:
+    image: yeastregulatorydb_htcf_docs
+    container_name: yeastregulatorydb_htcf_docs
+    build:
+      context: .
+      dockerfile: ./compose/local/docs/Dockerfile
+    env_file:
+      - ./.envs/.htcf/.django
+    volumes:
+      - ./docs:/docs:z
+      - ./config:/app/config:z
+      - ./yeastregulatorydb:/app/yeastregulatorydb:z
+    ports:
+      - '9000:9000'
+    command: /start-docs
+
+  redis:
+    image: redis:6
+    container_name: yeastregulatorydb_htcf_redis
+
+  celeryworker:
+    <<: *django
+    image: yeastregulatorydb_htcf_celeryworker
+    container_name: yeastregulatorydb_htcf_celeryworker
+    depends_on:
+      - redis
+      - postgres
+    ports: []
+    command: /start-celeryworker
+
+  celerybeat:
+    <<: *django
+    image: yeastregulatorydb_htcf_celerybeat
+    container_name: yeastregulatorydb_htcf_celerybeat
+    depends_on:
+      - redis
+      - postgres
+    ports: []
+    command: /start-celerybeat
+
+  flower:
+    <<: *django
+    image: yeastregulatorydb_htcf_flower
+    container_name: yeastregulatorydb_htcf_flower
+    ports:
+      - '5555:5555'
+    command: /start-flower
