@@ -121,12 +121,12 @@ start_service() {
     esac
 
     # if $1 is not postgres or redis, check that the APP_CODEBASE exists
-    if [ "$1" != "postgres" ] && [ "$1" != "redis" ]; then
-        if [ ! -d "$APP_CODEBASE" ]; then
-            echo "Application codebase does not exist: $APP_CODEBASE"
-            exit 1
-        fi
-    fi
+    # if [ "$1" != "postgres" ] && [ "$1" != "redis" ]; then
+    #    if [ ! -d "$APP_CODEBASE" ]; then
+    #        echo "Application codebase does not exist: $APP_CODEBASE"
+    #        exit 1
+    #    fi
+    # fi
 
     # launch the service and check that it is running
     case $1 in
@@ -153,7 +153,7 @@ start_service() {
         django)
             # if $POSTGRES_HOST, $POSTGRES_PORT, $REDIS_HOST, or $REDIS_PORT are not
             # empty strings, then pass them as --env variables to singularity
-            cmd="singularity exec --bind $APP_CODEBASE:/app \
+            cmd="singularity exec \
                              --env-file $CONCAT_ENV_FILE \
                              $env_vars \
                              $sif_path bash -c 'cd /app && /entrypoint /start' &> django_log.txt &"
@@ -164,7 +164,7 @@ start_service() {
             service_pids[$1]=$pid
             ;;
         docs)
-            cmd="singularity exec --bind $APP_CODEBASE:/app \
+            cmd="singularity exec \
                              --env-file $CONCAT_ENV_FILE \
                              $sif_path /start-docs &>docs_log.txt &"
             echo "executing cmd: $cmd"
@@ -174,7 +174,7 @@ start_service() {
             service_pids[$1]=$pid
             ;;
         celeryworker)
-            cmd="singularity exec --bind $APP_CODEBASE:/app \
+            cmd="singularity exec \
                              --env-file $CONCAT_ENV_FILE \
                              $env_vars \
                              $sif_path bash -c 'cd /app && /entrypoint /start-celeryworker' &> celeryworker_log.txt &"
@@ -185,7 +185,7 @@ start_service() {
             service_pids[$1]=$pid
             ;;
         celerybeat)
-            cmd="singularity exec --bind $APP_CODEBASE:/app \
+            cmd="singularity exec \
                              --env-file $CONCAT_ENV_FILE \
                              $env_vars \
                              $sif_path bash -c 'cd /app && /entrypoint /start-celerybeat' &> celerybeat_log.txt &"
@@ -196,7 +196,7 @@ start_service() {
             service_pids[$1]=$pid
             ;;
         celeryflower)
-            cmd="singularity exec --bind $APP_CODEBASE:/app \
+            cmd="singularity exec \
                              --env-file $CONCAT_ENV_FILE \
                              $env_vars \
                              $sif_path bash -c 'cd /app && /entrypoint /start-flower' &> celeryflower_log.txt &"
