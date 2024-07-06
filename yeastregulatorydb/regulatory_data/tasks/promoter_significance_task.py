@@ -131,7 +131,7 @@ def promoter_significance_task(self, binding_id: int, user_id: int, output_filef
                     background_filepath = extract_file_from_storage(background_record.file, tmpdir)
 
                     result = callingcards_promoter_sig(
-                        experiment_data_path=binding_filepath,
+                        experiment_data_paths=[binding_filepath],
                         experiment_orig_chr_convention=settings.CHR_FORMAT,
                         promoter_data_path=promoter_filepath,
                         promoter_orig_chr_convention=settings.CHR_FORMAT,

@@ -74,18 +74,25 @@ class PromoterSetSigViewSet(
         PromoterSetSig.objects.select_related(
             "uploader",
             "single_binding",
-            "composite_binding",
+            "single_binding__regulator",
+            "single_binding__regulator__genomicfeature",
+            "single_binding__source",
+            "composite_binding__regulator",
+            "composite_binding__regulator__genomicfeature",
+            "composite_binding__source",
             "promoter",
             "background",
             "fileformat",
         )
         .prefetch_related(
-            "single_binding__bindingmanualqc",
-            "composite_binding__bindingmanualqc",
+            "composite_binding__bindings",
+            "single_binding__bindingmanualqc_set",
+            "composite_binding__bindings__bindingmanualqc_set",
         )
         .all()
         .order_by("id")
     )
+
     authentication_classes = [SessionAuthentication, TokenAuthentication]
     permission_classes = [IsAuthenticated]
     serializer_class = PromoterSetSigSerializer
@@ -116,7 +123,6 @@ class PromoterSetSigViewSet(
             request,
             queryset,
             add_genomicfeature_to_file="true",
-            target_id_colname="name",
             rename_metric_cols=False,
             return_cols=["all"],
         )

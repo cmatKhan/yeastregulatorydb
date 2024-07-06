@@ -38,10 +38,9 @@ def test_binding_concatenated_regulator_source_constraint():
     source = DataSourceFactory()
     binding1 = BindingFactory(regulator=regulator, source=source)
     binding2 = BindingFactory(regulator=regulator, source=source)
-    binding3 = BindingFactory(regulator=regulator, source=source)
 
     # Valid case: all bindings have the same regulator and source
-    composite_binding = BindingConcatenatedFactory()
+    composite_binding = BindingConcatenatedFactory(regulator=regulator, source=source)
     composite_binding.bindings.set([binding1, binding2])
     composite_binding.save()
 

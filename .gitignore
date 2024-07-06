@@ -1,3 +1,4 @@
+tmp/
 .ruff.toml
 .vscode/
 ### Python template

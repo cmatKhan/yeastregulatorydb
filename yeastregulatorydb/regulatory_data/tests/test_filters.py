@@ -114,11 +114,9 @@ def test_binding_concatenated_filter():
     binding4 = BindingFactory(regulator=regulator2, source=source2)
 
     # Create BindingConcatenated instances
-    concatenated1 = BindingConcatenatedFactory()
-    concatenated1.bindings.set([binding1, binding2])
+    concatenated1 = BindingConcatenatedFactory(regulator=regulator1, source=source1, bindings=[binding1, binding2])
 
-    concatenated2 = BindingConcatenatedFactory()
-    concatenated2.bindings.set([binding3, binding4])
+    concatenated2 = BindingConcatenatedFactory(regulator=regulator2, source=source2, bindings=[binding3, binding4])
 
     # Define filter parameters
     filter_params = {
@@ -157,14 +155,14 @@ def test_binding_manual_qc_filter():
     datasource2 = DataSourceFactory()
     binding2 = BindingFactory(regulator=regulator2, id=2, batch="batch2", source=datasource2)
     binding_manual_qc1 = BindingManualQCFactory(
-        binding=binding1,
+        single_binding=binding1,
         id=1,
         best_datatype="pass",
         data_usable="pass",
         passing_replicate="pass",
     )
     binding_manual_qc2 = BindingManualQCFactory(
-        binding=binding2,
+        single_binding=binding2,
         id=2,
         best_datatype="fail",
         data_usable="unreviewed",
@@ -174,7 +172,7 @@ def test_binding_manual_qc_filter():
     # Define the filter parameters and their expected values
     filter_params = [
         {"id": 1},
-        {"binding": binding1.id},
+        {"single_binding": binding1.id},
         {"best_datatype": "pass"},
         {"data_usable": "pass"},
         {"passing_replicate": "pass"},
@@ -500,7 +498,9 @@ def test_promoter_set_sig_filter():
     # Test composite binding case
     binding3 = BindingFactory(regulator=regulator2, batch="batch3", replicate=1, source=datasource2)
     binding4 = BindingFactory(regulator=regulator2, batch="batch4", replicate=2, source=datasource2)
-    composite_binding = BindingConcatenatedFactory(bindings=[binding3, binding4])
+    composite_binding = BindingConcatenatedFactory(
+        regulator=regulator2, source=datasource2, bindings=[binding3, binding4]
+    )
 
     promoter_set_sig3 = PromoterSetSigWithCompositeBindingFactory(
         id=3, composite_binding=composite_binding, promoter=promoter1, background=background1

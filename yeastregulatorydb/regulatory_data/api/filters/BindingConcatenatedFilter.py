@@ -28,9 +28,6 @@ class BindingConcatenatedFilter(django_filters.rest_framework.FilterSet):
     lab = django_filters.CharFilter(field_name="bindings__source__lab", lookup_expr="iexact")
     assay = django_filters.CharFilter(field_name="bindings__source__assay", lookup_expr="iexact")
     workflow = django_filters.CharFilter(field_name="bindings__source__workflow", lookup_expr="iexact")
-    data_usable = django_filters.ChoiceFilter(
-        field_name="bindings__bindingmanualqc__data_usable", choices=BindingManualQC.MANUAL_QC_CHOICES
-    )
 
     class Meta:
         model = BindingConcatenated
@@ -52,5 +49,4 @@ class BindingConcatenatedFilter(django_filters.rest_framework.FilterSet):
             "lab",
             "assay",
             "workflow",
-            "data_usable",
         ]

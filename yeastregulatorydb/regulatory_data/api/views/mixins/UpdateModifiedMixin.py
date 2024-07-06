@@ -25,6 +25,7 @@ This will ensure that the `modifier` field is updated with the current user
 and the `modified` field is updated with the current date and time whenever
 an update operation is performed on a YourModel instance.
 """
+
 from django.utils import timezone
 from rest_framework import mixins
 
@@ -51,9 +52,14 @@ class UpdateModifiedMixin(mixins.UpdateModelMixin):
     """
 
     def update(self, request, *args, **kwargs):
-        instance = self.get_object()  # type: ignore[attr-defined]
-        instance.modifier = self.request.user  # type: ignore[attr-defined]
-        instance.modified = timezone.now()
-        instance.save()
+        # note that the below code was originally used. but, it is already in the
+        # CustomValidateMixin in the Serializer. Commented out in case there was
+        # a reason for this that I don't remember. If it has been some time since
+        # 20240705, then it should be removed b/c it isn't needed
+        #
+        # instance = self.get_object()  # type: ignore[attr-defined]
+        # instance.modifier = self.request.user  # type: ignore[attr-defined]
+        # instance.modified = timezone.now()
+        # instance.save()
 
         return super().update(request, *args, **kwargs)

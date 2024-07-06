@@ -10,7 +10,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.serializers import ValidationError
 
 from ...models import Binding
-from ...tasks import promotersetsig_rankedresponse_chained
+from ...tasks import promoter_significance_task
 from ..filters import BindingFilter
 from ..serializers import BindingManualQCSerializer, BindingSerializer, PromoterSetSigSerializer
 from .mixins import BulkUploadMixin, ExportTableAsGzipFileMixin, RetrieveRecordsAndFilesMixin, UpdateModifiedMixin
@@ -61,7 +61,7 @@ class BindingViewSet(
                 )
             # create a BindingManualQC instance and save to the DB
             bindingmanualqc_data = self.request.data.copy()
-            bindingmanualqc_data["binding"] = instance.id
+            bindingmanualqc_data["single_binding"] = instance.id
             bindingmanualqc_data["notes"] = bindingmanualqc_data.pop("qc_notes", "none")
             bindingmanualqc_serializer = BindingManualQCSerializer(
                 data=bindingmanualqc_data, context={"request": self.request}
@@ -109,12 +109,10 @@ class BindingViewSet(
                 if acquire_lock():
                     try:
                         if self.request.data.get("testing", False) or self.request.query_params.get("testing", False):
-                            promotersetsig_rankedresponse_chained(
-                                instance.id, self.request.user.id, promotersetsig_format
-                            )
+                            promoter_significance_task.delay(instance.id, self.request.user.id, promotersetsig_format)
                         else:
                             transaction.on_commit(
-                                lambda: promotersetsig_rankedresponse_chained(
+                                lambda: promoter_significance_task(
                                     instance.id, self.request.user.id, promotersetsig_format
                                 )
                             )

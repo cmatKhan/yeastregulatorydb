@@ -12,13 +12,12 @@ from django.conf import settings
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.db.models.query import QuerySet
 from django.http import QueryDict
-from django.test import AsyncClient, RequestFactory
+from django.test import RequestFactory
 from django.urls import reverse
 from rest_framework.authtoken.models import Token
 from rest_framework.test import APIClient, APIRequestFactory, force_authenticate
 
 from yeastregulatorydb.users.models import User
-from yeastregulatorydb.users.tests.factories import UserFactory
 
 from ..api.serializers import (
     BindingSerializer,
@@ -30,6 +29,7 @@ from ..api.serializers import (
 from ..api.views import ChrMapViewSet, GenomicFeatureViewSet
 from ..models import (
     Binding,
+    BindingConcatenated,
     BindingManualQC,
     CallingCardsBackground,
     ChrMap,
@@ -600,6 +600,20 @@ def test_bulk_binding_upload(
     fileformat: QueryDict,
     test_data_dict: dict,
 ):
+    """
+    Test endpoints related to uploading multiple binding files
+
+    This tests the following endpoints:
+    - binding-bulk-file-upload
+    - bindingmanualqc-bulk-update
+        - this also tests the promoter_significance_combined_task instigated by
+        updating the data_usable field of the BindingManualQC instances
+    - promotersetsig-record-table-and-files
+    - bindingmanualqc
+        - changing a single record's data_usable in a replicate set of
+        callingcards experiments to `passing` should instigate a
+        promoter_significance_combined_task
+    """
     factory = APIRequestFactory()
     request = factory.get("/")
     request.user = auth_token.user
@@ -754,7 +768,7 @@ def test_bulk_binding_upload(
         csv_handle.close()
         tar_handle.close()
 
-        qbed_qc_records = BindingManualQC.objects.filter(binding__source__fileformat__fileformat="qbed")
+        qbed_qc_records = BindingManualQC.objects.filter(single_binding__source__fileformat__fileformat="qbed")
 
         # test the BindingManualQC bulk-file-upload endpoint by updating the data_usable
         # field to 'passing' for the BindingManualQC instances foreign keyed to the
@@ -764,9 +778,142 @@ def test_bulk_binding_upload(
             reverse("api:bindingmanualqc-bulk-update"), {"data": data, "testing": True}, format="json"
         )
 
-        assert response.status_code == 204, response.data
-        Binding.objects.count() == 5, Binding.objects.count()
-        PromoterSetSig.objects.count() == 5, PromoterSetSig.objects.count()
+    assert response.status_code == 204, response.data
+    assert BindingConcatenated.objects.count() == 1, BindingConcatenated.objects.count()
+    # assert that there is 1 PromoterSetSig record with a not null
+    # composite_binding field
+    assert PromoterSetSig.objects.filter(composite_binding__isnull=False).count() == 1, PromoterSetSig.objects.all()
+    assert BindingManualQC.objects.count() == 5, BindingManualQC.objects.all()
+    # assert that there is 1 BindingManualQC with a not null composite_binding field
+    assert BindingManualQC.objects.filter(composite_binding__isnull=False).count() == 1, BindingManualQC.objects.all()
+
+    # get one of the callingcards BindingManualQC instances and change the data_usable
+    # field to 'failing' to test the promoter_significance_combined_task
+    cc_qc_records = BindingManualQC.objects.filter(single_binding__source__assay="callingcards")
+    assert len(cc_qc_records) == 2, cc_qc_records
+
+    first_record_id = cc_qc_records.first().id
+
+    # in order to test the BindingManualQC composite (aggregating passing callingcards
+    # experiments) behavior, set one of the 2 replicates to fail. This should cause
+    # the BindingConcatenated record to be deleted, and so everything related to it
+    response = client.patch(
+        reverse("api:bindingmanualqc-detail", args=[first_record_id]),
+        {"data_usable": "fail", "testing": True},
+        format="json",
+    )
+
+    assert response.status_code == 200, response.data
+
+    # test that the promoter_significance_combined_task was instigated
+    assert BindingConcatenated.objects.count() == 0, BindingConcatenated.objects.count()
+    assert PromoterSetSig.objects.filter(composite_binding__isnull=False).count() == 0, PromoterSetSig.objects.all()
+    assert BindingManualQC.objects.filter(composite_binding__isnull=False).count() == 0, BindingManualQC.objects.all()
+
+    # add a third calling cards replicate
+    cc_filepath3 = next(
+        file
+        for file in test_data_dict["binding"]["callingcards"]["files"]
+        if os.path.basename(file) == "ccexperiment_302_hap5_chrI.csv.gz"
+    )
+    assert os.path.exists(cc_filepath1), f"path: {cc_filepath1}"
+
+    # Open the file and read its content
+    with open(cc_filepath3, "rb") as file_obj:
+        file_content = file_obj.read()
+        # Create a SimpleUploadedFile instance
+        upload_file = SimpleUploadedFile("hap5_expr17_chrI.qbed.gz", file_content, content_type="application/gzip")
+        data = model_to_dict_select(BindingFactory.build())
+        # set path to test data and check that it exists
+        data["file"] = upload_file
+        # note: test passing the regulator_locus_tag and source_name
+        # instead of the regulator and source ids works
+        data.pop("source")
+        data["source_name"] = cc_datasource.name
+        data.pop("regulator")
+        data["regulator_locus_tag"] = regulator.genomicfeature.locus_tag
+
+        # Define your query parameters
+        query_params = {"testing": "True"}
+
+        # Create the URL for the request
+        url = reverse("api:binding-list")
+
+        # Add the query parameters to the URL
+        url += "?" + urlencode(query_params)
+
+        settings.CELERY_TASK_ALWAYS_EAGER = True
+        response = client.post(url, data, format="multipart")
+
+    assert response.status_code == 201, response.data
+
+    # since by default the Bidning instance is added with data_usable 'unreviewed',
+    # the concatenated records should remain empty (same as before)
+    assert BindingConcatenated.objects.count() == 0, BindingConcatenated.objects.count()
+    assert PromoterSetSig.objects.filter(composite_binding__isnull=False).count() == 0, PromoterSetSig.objects.all()
+    assert BindingManualQC.objects.filter(composite_binding__isnull=False).count() == 0, BindingManualQC.objects.all()
+
+    # setting the data_usable field of the first record to 'pass' should instigate the
+    # the database to aggregate the two passing callingcards experiments and create
+    # a BindingConcatenated record and associated BindingManualQC and PromoterSetSig
+    cc_file3_qc_id = BindingManualQC.objects.filter(single_binding=json.loads(response.content).get("id")).first().id
+    response = client.patch(
+        reverse("api:bindingmanualqc-detail", args=[cc_file3_qc_id]),
+        {"data_usable": "pass", "testing": True},
+        format="json",
+    )
+
+    assert response.status_code == 200, response.data
+    assert BindingConcatenated.objects.count() == 1, BindingConcatenated.objects.count()
+    binding_concatenated_id = BindingConcatenated.objects.first().id
+    assert PromoterSetSig.objects.filter(composite_binding__isnull=False).count() == 1, PromoterSetSig.objects.filter(
+        composite_binding__isnull=False
+    )
+    promotersetsig_composite_id = PromoterSetSig.objects.filter(composite_binding__isnull=False).first().id
+    assert (
+        PromoterSetSig.objects.filter(composite_binding__isnull=False).first().composite_binding.bindings.count() == 2
+    )
+    assert BindingManualQC.objects.filter(composite_binding__isnull=False).count() == 1, BindingManualQC.objects.all()
+    bindingmanualqc_id = BindingManualQC.objects.filter(composite_binding__isnull=False).first().id
+
+    # setting the data_usable field of the first record to 'pass' should instigate the
+    # the database to aggregate all three records now. The BindingConcatenated record
+    # id should not change, though the bindings should be updated. The PromoterSetSig
+    # record should be a new ID. BindingManualQC should not be
+    response = client.patch(
+        reverse("api:bindingmanualqc-detail", args=[first_record_id]),
+        {"data_usable": "pass", "testing": True},
+        format="json",
+    )
+
+    assert response.status_code == 200, response.data
+
+    assert BindingConcatenated.objects.count() == 1, BindingConcatenated.objects.count()
+    assert BindingConcatenated.objects.first().id == binding_concatenated_id
+    assert BindingManualQC.objects.filter(composite_binding__isnull=False).first().id == bindingmanualqc_id
+    assert PromoterSetSig.objects.filter(composite_binding__isnull=False).count() == 1, PromoterSetSig.objects.filter(
+        composite_binding__isnull=False
+    )
+    assert PromoterSetSig.objects.filter(composite_binding__isnull=False).first().id != promotersetsig_composite_id
+    PromoterSetSig.objects.filter(composite_binding__isnull=False).first().composite_binding.bindings.count() == 3
+
+    response = client.patch(
+        reverse("api:bindingmanualqc-detail", args=[first_record_id]),
+        {"data_usable": "fail", "testing": True},
+        format="json",
+    )
+
+    assert response.status_code == 200, response.data
+
+    assert BindingConcatenated.objects.count() == 1, BindingConcatenated.objects.count()
+    assert BindingConcatenated.objects.first().id == binding_concatenated_id
+    assert BindingManualQC.objects.filter(composite_binding__isnull=False).first().id == bindingmanualqc_id
+    assert PromoterSetSig.objects.filter(composite_binding__isnull=False).count() == 1, PromoterSetSig.objects.filter(
+        composite_binding__isnull=False
+    )
+    assert (
+        PromoterSetSig.objects.filter(composite_binding__isnull=False).first().composite_binding.bindings.count() == 2
+    )
 
     # test that the promotersetsig objects can be retrieved in bulk in a tarfile
     response = client.get(

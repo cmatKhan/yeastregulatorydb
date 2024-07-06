@@ -1,3 +1,5 @@
+import logging
+
 from django.conf import settings
 from django.core.cache import cache
 from django.db import IntegrityError, transaction
@@ -9,10 +11,12 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.serializers import ValidationError
 
 from ...models import Binding, PromoterSet
-from ...tasks import promotersetsig_rankedresponse_chained
+from ...tasks import promoter_significance_task
 from ..filters.PromoterSetFilter import PromoterSetFilter
 from ..serializers.PromoterSetSerializer import PromoterSetSerializer
 from .mixins import ExportTableAsGzipFileMixin, RetrieveRecordsAndFilesMixin, UpdateModifiedMixin
+
+logger = logging.getLogger(__name__)
 
 
 class PromoterSetViewSet(
@@ -55,6 +59,12 @@ class PromoterSetViewSet(
 
         if acquire_lock():
             try:
+                # Check for the "testing" parameter in request data or query parameters
+                is_testing = (
+                    self.request.data.get("testing", "false").lower() == "true"
+                    or self.request.query_params.get("testing", "false").lower() == "true"
+                )
+
                 for binding_obj in Binding.objects.all():
                     # TODO there is repeated code here and in BindingViewSet
                     task_type = None
@@ -65,20 +75,17 @@ class PromoterSetViewSet(
                         task_type = settings.CALLINGCARDS_PROMOTER_SIG_FORMAT
 
                     if task_type:
-                        instance.promotersetsig_processing = True
-                        if self.request.query_params.get("test"):
-                            promotersetsig_rankedresponse_chained(
-                                binding_obj.id,
-                                self.request.user.id,
-                                task_type,
-                                promoterset_id=instance.id,
-                                testing=True,
+                        logger.debug(f"Starting promoter significance task for {binding_obj}")
+                        if is_testing:
+                            promoter_significance_task.delay(
+                                binding_obj.id, self.request.user.id, task_type, promoterset_id=instance.id
                             )
                         else:
                             transaction.on_commit(
-                                lambda: promotersetsig_rankedresponse_chained(
-                                    binding_obj.id, self.request.user.id, task_type, promoterset_id=instance.id
+                                lambda binding_obj_id=binding_obj.id, user_id=self.request.user.id, task_type=task_type, instance_id=instance.id: promoter_significance_task.delay(
+                                    binding_obj_id, user_id, task_type, promoterset_id=instance_id
                                 )
                             )
+
             finally:
                 release_lock()
