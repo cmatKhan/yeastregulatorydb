@@ -1,5 +1,6 @@
 import logging
 
+from django.conf import settings
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.db import transaction
 from django_filters.rest_framework import DjangoFilterBackend
@@ -10,10 +11,7 @@ from rest_framework.exceptions import ValidationError as DRFValidationError
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
-from yeastregulatorydb.regulatory_data.tasks import (
-    combine_cc_passing_replicates_promotersig_chained,
-    combine_cc_passing_replicates_task,
-)
+from yeastregulatorydb.regulatory_data.tasks import promoter_significance_combined_task
 
 from ...models import BindingManualQC
 from ..filters.BindingManualQCFilter import BindingManualQCFilter
@@ -32,16 +30,20 @@ class BindingManualQCViewSet(UpdateModifiedMixin, ExportTableAsGzipFileMixin, vi
         BindingManualQC.objects.select_related(
             "uploader",
             "modifier",
-            "binding",
-            "binding__regulator",
-            "binding__regulator__genomicfeature",
-            "binding__source",
-            "binding__source__fileformat",
+            "single_binding",
+            "single_binding__regulator",
+            "single_binding__regulator__genomicfeature",
+            "single_binding__source",
+            "single_binding__source__fileformat",
+            "composite_binding",
+            "composite_binding__regulator",
+            "composite_binding__regulator__genomicfeature",
+            "composite_binding__source",
+            "composite_binding__source__fileformat",
         )
         .all()
         .order_by("-id")
     )
-
     authentication_classes = [SessionAuthentication, TokenAuthentication]
     permission_classes = [IsAuthenticated]
     serializer_class = BindingManualQCSerializer
@@ -51,27 +53,51 @@ class BindingManualQCViewSet(UpdateModifiedMixin, ExportTableAsGzipFileMixin, vi
     def perform_update(self, serializer):
         """
         Modify the default `perform_update` method such that
+
+        Note that the user can choose how to aggregate the data from the request
+        with "aggregation_criteria". Right now defaults to `pass` -- only aggregate
+        the passing replicates.
         """
-        updated_fields = serializer.validated_data.keys()
+
         instance = serializer.save()
-        if (
-            "data_usable" in updated_fields
-            and instance.binding.source.assay == "callingcards"
-            and instance.data_usable
-        ):
-            combine_cc_passing_replicates_task.delay(instance.binding.regulator.id, self.request.user.id)
+        updated_fields = serializer.validated_data.keys()
+        data_usable_updated = "data_usable" in updated_fields and instance.data_usable
+
+        if instance.single_binding and instance.single_binding.source.assay == "callingcards" and data_usable_updated:
+            promoter_significance_combined_task.delay(
+                user_id=self.request.user.id,
+                regulator_id=instance.single_binding.regulator.id,
+                datasource_name=instance.single_binding.source.name,
+                output_fileformat=settings.CALLINGCARDS_PROMOTER_SIG_FORMAT,
+                data_usable=self.request.data.get("aggregation_criteria", "pass"),
+            )
+
+        return instance
 
     @action(detail=False, methods=["post"], url_path="bulk-update")
+    @transaction.atomic
     def bulk_update(self, request, *args, **kwargs):
         data = request.data.get("data")
+        # collect errors and updated records to report as a Response after all
+        # items have been processed
         updated_records = []
         errors = []
+        # Create a set to store the regulator_id, source_name, and data_usable for callingcards data
+        # data_usable is set to "pass" by default to only aggregate the passing replicates.
+        # This is parameterized through the request.data, though, so the option is
+        # exposed to the user
         update_cc_combined_set = set()
 
         for item in data:
             instance = BindingManualQC.objects.get(id=item["id"])
-            if instance.binding.source.assay == "callingcards" and item.get("data_usable"):
-                update_cc_combined_set.add(instance.binding.regulator.id)
+            if instance.single_binding.source.assay == "callingcards" and item.get("data_usable"):
+                update_cc_combined_set.add(
+                    (
+                        instance.single_binding.regulator.id,
+                        instance.single_binding.source.name,
+                        item.get("data_usable", "pass"),
+                    )
+                )
             try:
                 for attr, value in item.items():
                     setattr(instance, attr, value)
@@ -90,13 +116,23 @@ class BindingManualQCViewSet(UpdateModifiedMixin, ExportTableAsGzipFileMixin, vi
             raise DRFValidationError({"errors": errors})
 
         # After all records are updated, perform your operation on the set
-        for regulator_id in update_cc_combined_set:
+        for regulator_id, source_name, data_usable in update_cc_combined_set:
             if self.request.data.get("testing", False):
-                combine_cc_passing_replicates_promotersig_chained(self.request.user.id, regulator_id=regulator_id)
+                promoter_significance_combined_task.delay(
+                    user_id=self.request.user.id,
+                    regulator_id=regulator_id,
+                    datasource_name=source_name,
+                    output_fileformat=settings.CALLINGCARDS_PROMOTER_SIG_FORMAT,
+                    data_usable=data_usable,
+                )
             else:
                 transaction.on_commit(
-                    lambda: combine_cc_passing_replicates_promotersig_chained(
-                        self.request.user.id, regulator_id=regulator_id
+                    lambda: promoter_significance_combined_task(
+                        user_id=self.request.user.id,
+                        regulator_id=regulator_id,
+                        datasource_name=source_name,
+                        output_fileformat=settings.CALLINGCARDS_PROMOTER_SIG_FORMAT,
+                        data_usable=data.get("data_usable", "pass"),
                     )
                 )
 

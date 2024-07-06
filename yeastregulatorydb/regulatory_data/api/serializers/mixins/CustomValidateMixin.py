@@ -37,7 +37,7 @@ class CustomValidateMixin:  # pylint: disable=too-few-public-methods
 
         # these fields are expected to be overwritten in `create` and `update`
         data["uploader"] = request.user
-        data["upload_date"] = timezone.now()
+        data["upload_date"] = timezone.now().date()
         data["modifier"] = request.user
         data["modified_date"] = timezone.now()
 

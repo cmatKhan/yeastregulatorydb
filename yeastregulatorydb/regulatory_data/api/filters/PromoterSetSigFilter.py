@@ -25,6 +25,9 @@ class PromoterSetSigFilter(django_filters.rest_framework.FilterSet):
     lab = django_filters.CharFilter(field_name="single_binding__source__lab", lookup_expr="iexact")
     assay = django_filters.CharFilter(field_name="single_binding__source__assay", lookup_expr="iexact")
     workflow = django_filters.CharFilter(field_name="single_binding__source__workflow", lookup_expr="iexact")
+    data_usable = django_filters.ChoiceFilter(
+        field_name="single_binding__bindingmanualqc__data_usable", choices=BindingManualQC.MANUAL_QC_CHOICES
+    )
 
     # pylint: disable=R0801
     class Meta:

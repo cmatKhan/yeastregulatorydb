@@ -1,11 +1,13 @@
-from .chained_tasks import combine_cc_passing_replicates_promotersig_chained, promotersetsig_rankedresponse_chained
-from .combine_cc_passing_replicates_task import combine_cc_passing_replicates_task
+from .promoter_significance_combined_task import (
+    _admin_promoter_significance_combined_task,
+    promoter_significance_combined_task,
+)
 from .promoter_significance_task import promoter_significance_task
 from .rank_response_task import rank_response_task
 
 __all__ = [
+    "_admin_promoter_significance_combined_task",
     "promoter_significance_task",
-    "promotersetsig_rankedresponse_chained",
-    "combine_cc_passing_replicates_task",
-    "combine_cc_passing_replicates_promotersig_chained",
+    "promoter_significance_combined_task",
+    "rank_response_task",
 ]

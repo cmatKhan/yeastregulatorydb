@@ -42,6 +42,7 @@ class BindingFilter(django_filters.rest_framework.FilterSet):
             "lab",
             "assay",
             "workflow",
+            "data_usable",
         ]
 
     # pylint: enable=R0801

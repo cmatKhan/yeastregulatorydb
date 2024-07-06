@@ -1,27 +1,8 @@
 from rest_framework import serializers
 
-from ...models import PromoterSetSig, Binding, BindingConcatenated
-from .BindingConcatenatedSerializer import BindingConcatenatedSerializer
+from ...models import Binding, BindingConcatenated, CallingCardsBackground, FileFormat, PromoterSetSig
 from .mixins.CustomValidateMixin import CustomValidateMixin
 from .mixins.FileValidationMixin import FileValidationMixin
-
-
-# class PromoterSetSigSerializer(CustomValidateMixin, FileValidationMixin, serializers.ModelSerializer):
-#     uploader = serializers.ReadOnlyField(source="uploader.username")
-#     modifier = serializers.CharField(source="uploader.username", required=False)
-
-#     class Meta:
-#         model = PromoterSetSig
-#         fields = "__all__"
-
-#     def get_background_id(self, obj):
-#         return obj.background.id if obj.background else "undefined"
-
-#     def to_representation(self, instance):
-#         ret = super().to_representation(instance)
-#         # Add the custom attribute to the serialized data
-#         ret["rankresponse_processing"] = getattr(instance, "rankresponse_processing", False)
-#         return ret
 
 
 class PromoterSetSigSerializer(CustomValidateMixin, FileValidationMixin, serializers.ModelSerializer):
@@ -30,61 +11,72 @@ class PromoterSetSigSerializer(CustomValidateMixin, FileValidationMixin, seriali
     single_binding = serializers.PrimaryKeyRelatedField(
         queryset=Binding.objects.all(), required=False, allow_null=True
     )
-    composite_binding = BindingConcatenatedSerializer(required=False, allow_null=True)
+    composite_binding = serializers.PrimaryKeyRelatedField(
+        queryset=BindingConcatenated.objects.all(), required=False, allow_null=True
+    )
+    fileformat = serializers.PrimaryKeyRelatedField(queryset=FileFormat.objects.all(), required=True)
+    background = serializers.PrimaryKeyRelatedField(
+        queryset=CallingCardsBackground.objects.all(), required=False, allow_null=True
+    )
 
     class Meta:
         model = PromoterSetSig
         fields = "__all__"
 
-    def get_background_id(self, obj):
-        return obj.background.id if obj.background else "undefined"
+    def validate(self, data):
+        # Validate (before getting to the DB) that either single_binding
+        # or composite_binding is set, but not both
+        single_binding = data.get("single_binding")
+        composite_binding = data.get("composite_binding")
+
+        if not single_binding and not composite_binding:
+            raise serializers.ValidationError("Either single_binding or composite_binding must be set.")
+        if single_binding and composite_binding:
+            raise serializers.ValidationError("Only one of single_binding or composite_binding can be set.")
+
+        return super().validate(data)
 
     def to_representation(self, instance):
         ret = super().to_representation(instance)
-        # Add the custom attribute to the serialized data
-        ret["rankresponse_processing"] = getattr(instance, "rankresponse_processing", False)
+        ret["source"] = self.get_source(instance)
+        ret["regulator_symbol"] = self.get_regulator_symbol(instance)
+        ret["regulator_locus_tag"] = self.get_regulator_locus_tag(instance)
+        ret["background_name"] = instance.background.name if instance.background else None
+        ret["rank_recall"] = self.get_rank_recall(instance)
+        ret["data_usable"] = self.get_data_usable(instance)
         return ret
 
-    def create(self, validated_data):
-        composite_binding_data = validated_data.pop("composite_binding", None)
-        if composite_binding_data:
-            composite_binding = BindingConcatenated.objects.create(
-                genomic_inserts=composite_binding_data.get("genomic_inserts", 0),
-                mito_inserts=composite_binding_data.get("mito_inserts", 0),
-                plasmid_inserts=composite_binding_data.get("plasmid_inserts", 0),
-                notes=composite_binding_data.get("notes", "none"),
-            )
-            composite_binding.bindings.set(composite_binding_data["bindings"])
-            validated_data["composite_binding"] = composite_binding
+    def get_source(self, instance):
+        if instance.single_binding:
+            return instance.single_binding.source.name
+        elif instance.composite_binding and instance.composite_binding.bindings.exists():
+            return instance.composite_binding.bindings.first().source.name
+        return None
 
-        return super().create(validated_data)
+    def get_regulator_symbol(self, instance):
+        if instance.single_binding:
+            return instance.single_binding.regulator.genomicfeature.symbol
+        elif instance.composite_binding and instance.composite_binding.bindings.exists():
+            return instance.composite_binding.bindings.first().regulator.genomicfeature.symbol
+        return None
 
-    def update(self, instance, validated_data):
-        composite_binding_data = validated_data.pop("composite_binding", None)
-        if composite_binding_data:
-            if instance.composite_binding:
-                instance.composite_binding.bindings.set(composite_binding_data["bindings"])
-                instance.composite_binding.genomic_inserts = composite_binding_data.get(
-                    "genomic_inserts", instance.composite_binding.genomic_inserts
-                )
-                instance.composite_binding.mito_inserts = composite_binding_data.get(
-                    "mito_inserts", instance.composite_binding.mito_inserts
-                )
-                instance.composite_binding.plasmid_inserts = composite_binding_data.get(
-                    "plasmid_inserts", instance.composite_binding.plasmid_inserts
-                )
-                instance.composite_binding.notes = composite_binding_data.get(
-                    "notes", instance.composite_binding.notes
-                )
-                instance.composite_binding.save()
-            else:
-                composite_binding = BindingConcatenated.objects.create(
-                    genomic_inserts=composite_binding_data.get("genomic_inserts", 0),
-                    mito_inserts=composite_binding_data.get("mito_inserts", 0),
-                    plasmid_inserts=composite_binding_data.get("plasmid_inserts", 0),
-                    notes=composite_binding_data.get("notes", "none"),
-                )
-                composite_binding.bindings.set(composite_binding_data["bindings"])
-                instance.composite_binding = composite_binding
+    def get_regulator_locus_tag(self, instance):
+        if instance.single_binding:
+            return instance.single_binding.regulator.genomicfeature.locus_tag
+        elif instance.composite_binding and instance.composite_binding.bindings.exists():
+            return instance.composite_binding.bindings.first().regulator.genomicfeature.locus_tag
+        return None
 
-        return super().update(instance, validated_data)
+    def get_rank_recall(self, instance):
+        if instance.single_binding:
+            return instance.single_binding.bindingmanualqc_set.first().rank_recall
+        elif instance.composite_binding and instance.composite_binding.bindingmanualqc_set.exists():
+            return instance.composite_binding.bindingmanualqc_set.first().rank_recall
+        return None
+
+    def get_data_usable(self, instance):
+        if instance.single_binding:
+            return instance.single_binding.bindingmanualqc_set.first().data_usable
+        elif instance.composite_binding and instance.composite_binding.bindingmanualqc_set.exists():
+            return instance.composite_binding.bindingmanualqc_set.first().data_usable
+        return None

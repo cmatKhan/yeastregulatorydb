@@ -2,9 +2,15 @@ from django.core.exceptions import ValidationError
 from django.db import models
 from django.db.models.signals import m2m_changed
 
+from .BaseModel import BaseModel
 
-class BindingConcatenated(models.Model):
-    bindings = models.ManyToManyField("Binding")
+
+class BindingConcatenated(BaseModel):
+    bindings = models.ManyToManyField("Binding", help_text="Many to many relationship with the Binding table")
+    regulator = models.ForeignKey(
+        "Regulator", on_delete=models.CASCADE, help_text="Foreign key to the Regulator table"
+    )
+    source = models.ForeignKey("DataSource", on_delete=models.CASCADE, help_text="Foreign key to the DataSource table")
     genomic_inserts = models.PositiveIntegerField(
         default=0,
         help_text="The number of inserts which map to chromosomes labelled as `genomic` in the ChrMap table",
@@ -26,14 +32,18 @@ class BindingConcatenated(models.Model):
 
     class Meta:
         db_table = "bindingconcatenated"
+        # the regulator and source must be unique together -- currently, this table
+        # stores the aggregation fo passing calligncards replicates
+        constraints = [
+            models.UniqueConstraint(fields=["regulator", "source"], name="unique_regulator_source_bindingconcatenated")
+        ]
 
 
 def validate_bindings(sender, instance, action, **kwargs):
-    if action == "post_add" or action == "post_remove" or action == "post_clear":
+    if action in ["post_add", "post_remove", "post_clear"]:
         if instance.bindings.exists():
-            first_binding = instance.bindings.first()
-            regulator_id = first_binding.regulator_id
-            source_id = first_binding.source_id
+            regulator_id = instance.regulator.id
+            source_id = instance.source.id
 
             for binding in instance.bindings.all():
                 if binding.regulator_id != regulator_id:

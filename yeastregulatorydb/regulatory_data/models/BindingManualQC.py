@@ -14,7 +14,20 @@ class BindingManualQC(BaseModel):
 
     MANUAL_QC_CHOICES = [("unreviewed", "unreviewed"), ("pass", "pass"), ("fail", "fail"), ("note", "note")]
 
-    binding = models.OneToOneField("Binding", on_delete=models.CASCADE, help_text="Foreign key to the Binding table")
+    single_binding = models.ForeignKey(
+        "Binding",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        help_text="Foreign key to the 'Binding' table",
+    )
+    composite_binding = models.ForeignKey(
+        "BindingConcatenated",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        help_text="Foreign key to the 'BindingConcatenated' table",
+    )
     best_datatype = models.CharField(
         default="unreviewed",
         choices=MANUAL_QC_CHOICES,
@@ -49,3 +62,15 @@ class BindingManualQC(BaseModel):
 
     class Meta:
         db_table = "bindingmanualqc"
+        constraints = [
+            models.CheckConstraint(
+                check=(models.Q(single_binding__isnull=False) | models.Q(composite_binding__isnull=False)),
+                name="single_or_composite_binding_not_null_bindingmanualqc",
+            ),
+            # null values are not considered equal in postgres, SQLite, or MySQL.
+            # From the postgres 16 docs:
+            # "By default, two null values are not considered equal in this comparison"
+            # https://www.postgresql.org/docs/16/ddl-constraints.html#DDL-CONSTRAINTS-UNIQUE-CONSTRAINTS
+            models.UniqueConstraint(fields=["single_binding"], name="unique_single_binding_bindingmanualqc"),
+            models.UniqueConstraint(fields=["composite_binding"], name="unique_composite_binding_bindingmanualqc"),
+        ]

@@ -222,13 +222,18 @@ class BindingFactory(DjangoModelFactory):
 
 
 class BindingConcatenatedFactory(DjangoModelFactory):
-    genomic_inserts = 0
-    mito_inserts = 0
-    plasmid_inserts = 0
+    uploader = SubFactory(UserFactory)
+    modifier = SubFactory(UserFactory)
+    source = SubFactory(DataSourceFactory)
+    regulator = SubFactory(RegulatorFactory)
+    genomic_inserts = 100
+    mito_inserts = 100
+    plasmid_inserts = 100
     notes = "none"
 
     class Meta:
         model = BindingConcatenated
+        django_get_or_create = ["regulator", "source"]
 
     @post_generation
     def bindings(self, create, extracted, **kwargs):
@@ -245,7 +250,7 @@ class BindingConcatenatedFactory(DjangoModelFactory):
 class BindingManualQCFactory(DjangoModelFactory):
     uploader = SubFactory(UserFactory)
     modifier = SubFactory(UserFactory)
-    binding = SubFactory(BindingFactory)
+    single_binding = SubFactory(BindingFactory)
     best_datatype = Faker("pybool")
     data_usable = Faker("pybool")
     passing_replicate = Faker("pybool")
@@ -253,7 +258,7 @@ class BindingManualQCFactory(DjangoModelFactory):
 
     class Meta:
         model = BindingManualQC
-        django_get_or_create = ["binding"]
+        django_get_or_create = ["single_binding"]
 
 
 class PromoterSetFactory(DjangoModelFactory):

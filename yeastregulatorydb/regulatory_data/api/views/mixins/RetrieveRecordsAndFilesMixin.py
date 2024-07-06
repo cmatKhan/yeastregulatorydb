@@ -48,7 +48,6 @@ class RetrieveRecordsAndFilesMixin:
                                 record,
                                 tmpdir,
                                 kwargs.get("rename_metric_cols", True),
-                                kwargs.get("target_id_colname", "target_id"),
                                 kwargs.get("return_cols", None),
                             )
                             df.to_csv(dest_file_path, compression="gzip", index=False)

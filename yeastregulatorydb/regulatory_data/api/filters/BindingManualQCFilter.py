@@ -5,7 +5,8 @@ from ...models.BindingManualQC import BindingManualQC
 
 class BindingManualQCFilter(django_filters.rest_framework.FilterSet):
     id = django_filters.NumberFilter()
-    binding = django_filters.NumberFilter()
+    single_binding = django_filters.NumberFilter()
+    composite_binding = django_filters.NumberFilter()
     best_datatype = django_filters.ChoiceFilter(choices=BindingManualQC.MANUAL_QC_CHOICES)
     data_usable = django_filters.ChoiceFilter(choices=BindingManualQC.MANUAL_QC_CHOICES)
     passing_replicate = django_filters.ChoiceFilter(choices=BindingManualQC.MANUAL_QC_CHOICES)
@@ -24,7 +25,8 @@ class BindingManualQCFilter(django_filters.rest_framework.FilterSet):
         model = BindingManualQC
         fields = [
             "id",
-            "binding",
+            "single_binding",
+            "composite_binding",
             "best_datatype",
             "data_usable",
             "passing_replicate",
