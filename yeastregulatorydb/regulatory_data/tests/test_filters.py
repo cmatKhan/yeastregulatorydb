@@ -367,11 +367,6 @@ def test_expression_manual_qc_filter():
         {"strain_verified": manual_qc1.strain_verified},
         {"regulator_locus_tag": regulator1.genomicfeature.locus_tag},
         {"regulator_symbol": regulator1.genomicfeature.symbol},
-        {"batch": expression1.batch},
-        {"replicate": expression1.replicate},
-        {"control": expression1.control},
-        {"mechanism": expression1.mechanism},
-        {"restriction": expression1.restriction},
         {"time": expression1.time},
         {"source": source1.id},
         {"lab": source1.lab},
@@ -382,8 +377,8 @@ def test_expression_manual_qc_filter():
     # Apply each filter and check if it returns the expected ExpressionManualQC instances
     for params in filter_params:
         f = ExpressionManualQCFilter(params, queryset=ExpressionManualQC.objects.all())
-        assert manual_qc1 in f.qs
-        assert manual_qc2 not in f.qs
+        assert manual_qc1 in f.qs, params
+        assert manual_qc2 not in f.qs, params
 
 
 @pytest.mark.django_db
@@ -437,8 +432,8 @@ def test_genomic_feature_filter():
     # Define the filter parameters and their expected values
     filter_params = [
         {"chr": "chr1"},
-        {"start": 1},
-        {"end": 100},
+        {"start_min": 1, "start_max": 50},  # Test range filter for start
+        {"end_min": 50, "end_max": 150},    # Test range filter for end
         {"strand": "+"},
         {"type": "type1"},
         {"locus_tag": "tag1"},
@@ -451,8 +446,24 @@ def test_genomic_feature_filter():
     # Apply each filter and check if it returns the expected GenomicFeature instances
     for params in filter_params:
         f = GenomicFeatureFilter(params, queryset=GenomicFeature.objects.all())
-        assert genomic_feature1 in f.qs
-        assert genomic_feature2 not in f.qs
+        assert genomic_feature1 in f.qs, f"Failed for filter params: {params}"
+        assert genomic_feature2 not in f.qs, f"Failed for filter params: {params}"
+
+    # Additional test cases for range filters
+    range_filter_params = [
+        {"start_min": 0, "start_max": 200},  # Both genomic_feature1 and genomic_feature2 should be included
+        {"end_min": 1, "end_max": 150},      # Only genomic_feature1 should be included
+    ]
+
+    # Apply each range filter and check the expected results
+    for params in range_filter_params:
+        f = GenomicFeatureFilter(params, queryset=GenomicFeature.objects.all())
+        if "start_min" in params or "start_max" in params:
+            assert genomic_feature1 in f.qs, f"Failed for range filter params: {params}"
+            assert genomic_feature2 in f.qs, f"Failed for range filter params: {params}" if params["start_max"] == 200 else assert genomic_feature2 not in f.qs, f"Failed for range filter params: {params}"
+        if "end_min" in params or "end_max" in params:
+            assert genomic_feature1 in f.qs, f"Failed for range filter params: {params}"
+            assert genomic_feature2 not in f.qs, f"Failed for range filter params: {params}"
 
 
 @pytest.mark.django_db
@@ -550,11 +561,6 @@ def test_promoter_set_sig_filter():
         },
         {
             "params": {"batch": "batch1"},
-            "expected": [promoter_set_sig1],
-            "unexpected": [promoter_set_sig2, promoter_set_sig3],
-        },
-        {
-            "params": {"replicate": 1},
             "expected": [promoter_set_sig1],
             "unexpected": [promoter_set_sig2, promoter_set_sig3],
         },

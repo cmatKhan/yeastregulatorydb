@@ -77,6 +77,7 @@ class PromoterSetSigViewSet(
             "single_binding__regulator",
             "single_binding__regulator__genomicfeature",
             "single_binding__source",
+            "composite_binding",
             "composite_binding__regulator",
             "composite_binding__regulator__genomicfeature",
             "composite_binding__source",
@@ -85,9 +86,12 @@ class PromoterSetSigViewSet(
             "fileformat",
         )
         .prefetch_related(
-            "composite_binding__bindings",
             "single_binding__bindingmanualqc_set",
+            "composite_binding__bindings",
             "composite_binding__bindings__bindingmanualqc_set",
+            "composite_binding__bindings__source",
+            "composite_binding__bindings__regulator",
+            "composite_binding__bindings__regulator__genomicfeature",
         )
         .all()
         .order_by("id")

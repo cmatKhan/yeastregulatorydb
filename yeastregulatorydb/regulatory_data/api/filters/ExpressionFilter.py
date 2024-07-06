@@ -13,21 +13,47 @@ logger = logging.getLogger(__name__)
 class ExpressionFilter(django_filters.rest_framework.FilterSet):
     # pylint: disable=R0801
     id = django_filters.NumberFilter()
-    regulator = django_filters.NumberFilter()
-    regulator_locus_tag = ListCharFilter(field_name="regulator__genomicfeature__locus_tag", lookup_expr="iexact")
-    regulator_symbol = ListCharFilter(field_name="regulator__genomicfeature__symbol", lookup_expr="iexact")
-    batch = django_filters.CharFilter(field_name="batch", lookup_expr="iexact")
+    regulator = django_filters.NumberFilter(help_text="Regulator Record ID")
+    regulator_locus_tag = ListCharFilter(
+        field_name="regulator__genomicfeature__locus_tag",
+        lookup_expr="iexact",
+        label="Regulator Locus Tag",
+        help_text="Comma separated list of locus tags",
+    )
+    regulator_symbol = ListCharFilter(
+        field_name="regulator__genomicfeature__symbol",
+        lookup_expr="iexact",
+        label="Regulator Symbol",
+        help_text="Comma separated list of symbols",
+    )
+    batch = django_filters.CharFilter(field_name="batch", lookup_expr="iexact", help_text="Expression Batch string")
     # pylint: enable=R0801
-    replicate = django_filters.NumberFilter()
-    control = django_filters.CharFilter(lookup_expr="iexact")
-    mechanism = django_filters.CharFilter(lookup_expr="iexact")
-    restriction = django_filters.CharFilter(lookup_expr="iexact")
-    time = django_filters.NumberFilter(field_name="time")
-    source = django_filters.NumberFilter()
-    source_time = django_filters.CharFilter(method="filter_source_time")
-    lab = django_filters.CharFilter(field_name="source__lab", lookup_expr="iexact")
-    assay = django_filters.CharFilter(field_name="source__assay", lookup_expr="iexact")
-    workflow = django_filters.CharFilter(field_name="source__workflow", lookup_expr="iexact")
+    replicate = django_filters.NumberFilter(label="Replicate Number", help_text="Replicate number")
+    control = django_filters.CharFilter(
+        lookup_expr="iexact", label="Experiment control condition", help_text="Control condition"
+    )
+    mechanism = django_filters.CharFilter(
+        lookup_expr="iexact", label="Regulatory Mechanism", help_text="Regulatory Mechanism (McIsaac only)"
+    )
+    restriction = django_filters.CharFilter(
+        lookup_expr="iexact", label="Restriction enzyme", help_text="Regulatory enzyme (McIsaac only)"
+    )
+    time = django_filters.NumberFilter(field_name="time", label="Time Point", help_text="Time point (McIsaac only)")
+    source = django_filters.NumberFilter(label="Source Record ID", help_text="Source Record ID")
+    source_time = django_filters.CharFilter(
+        method="filter_source_time",
+        label="Source/Time",
+        help_text="Comma separated tuples of source/time pairs separated by semi-colons",
+    )
+    lab = django_filters.CharFilter(
+        field_name="source__lab", lookup_expr="iexact", label="Lab Name", help_text="Lab Name"
+    )
+    assay = django_filters.CharFilter(
+        field_name="source__assay", lookup_expr="iexact", label="Assay Name", help_text="Assay Name"
+    )
+    workflow = django_filters.CharFilter(
+        field_name="source__workflow", lookup_expr="iexact", label="Workflow Name", help_text="Workflow Name"
+    )
 
     class Meta:
         model = Expression

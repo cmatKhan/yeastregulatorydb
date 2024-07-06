@@ -38,12 +38,41 @@ class PromoterSetSigSerializer(CustomValidateMixin, FileValidationMixin, seriali
 
     def to_representation(self, instance):
         ret = super().to_representation(instance)
-        ret["source"] = self.get_source(instance)
-        ret["regulator_symbol"] = self.get_regulator_symbol(instance)
-        ret["regulator_locus_tag"] = self.get_regulator_locus_tag(instance)
+
+        if instance.single_binding:
+            single_binding = instance.single_binding
+            ret["source"] = single_binding.source.name
+            ret["regulator_symbol"] = single_binding.regulator.genomicfeature.symbol
+            ret["regulator_locus_tag"] = single_binding.regulator.genomicfeature.locus_tag
+            qc_set = list(single_binding.bindingmanualqc_set.all())
+            ret["rank_recall"] = qc_set[0].rank_recall if qc_set else None
+            ret["data_usable"] = qc_set[0].data_usable if qc_set else None
+        elif instance.composite_binding:
+            composite_binding = instance.composite_binding
+            bindings = list(composite_binding.bindings.all())
+            if bindings:
+                first_binding = bindings[0]
+                ret["source"] = first_binding.source.name
+                ret["regulator_symbol"] = first_binding.regulator.genomicfeature.symbol
+                ret["regulator_locus_tag"] = first_binding.regulator.genomicfeature.locus_tag
+                qc_set = list(first_binding.bindingmanualqc_set.all())
+                ret["rank_recall"] = qc_set[0].rank_recall if qc_set else None
+                ret["data_usable"] = qc_set[0].data_usable if qc_set else None
+            else:
+                ret["source"] = None
+                ret["regulator_symbol"] = None
+                ret["regulator_locus_tag"] = None
+                ret["rank_recall"] = None
+                ret["data_usable"] = None
+        else:
+            ret["source"] = None
+            ret["regulator_symbol"] = None
+            ret["regulator_locus_tag"] = None
+            ret["rank_recall"] = None
+            ret["data_usable"] = None
+
         ret["background_name"] = instance.background.name if instance.background else None
-        ret["rank_recall"] = self.get_rank_recall(instance)
-        ret["data_usable"] = self.get_data_usable(instance)
+
         return ret
 
     def get_source(self, instance):

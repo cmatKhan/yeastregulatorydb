@@ -22,7 +22,7 @@ class BindingFilter(django_filters.rest_framework.FilterSet):
     assay = django_filters.CharFilter(field_name="source__assay", lookup_expr="iexact")
     workflow = django_filters.CharFilter(field_name="source__workflow", lookup_expr="iexact")
     data_usable = django_filters.ChoiceFilter(
-        field_name="bindingmanualqc__data_usable", choices=BindingManualQC.MANUAL_QC_CHOICES
+        field_name="bindingmanualqc__data_usable", choices=BindingManualQC.MANUAL_QC_CHOICES, label="Data Usable"
     )
 
     # pylint: disable=R0801
