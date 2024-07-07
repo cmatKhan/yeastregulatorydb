@@ -1,3 +1,6 @@
+import gzip
+from io import BytesIO
+
 import pandas as pd
 from django.http import HttpResponse
 from rest_framework.decorators import action
@@ -13,17 +16,23 @@ class ExportTableAsGzipFileMixin:
         # Get the queryset and apply any filters
         queryset = self.filter_queryset(self.get_queryset())
 
-        # Convert the filtered queryset to a DataFrame
-        df = pd.DataFrame.from_records(queryset.values())
+        # Serialize the queryset
+        serializer = self.get_serializer(queryset, many=True)
+        serialized_data = serializer.data
+
+        # Convert the serialized data to a DataFrame
+        df = pd.DataFrame.from_records(serialized_data)
+
+        # Create a CSV string
+        csv_data = df.to_csv(index=False)
+
+        # Compress the CSV data using gzip
+        gzip_buffer = BytesIO()
+        with gzip.GzipFile(fileobj=gzip_buffer, mode="w") as f:
+            f.write(csv_data.encode("utf-8"))
 
         # Create a HttpResponse object with the appropriate CSV header.
-        response = HttpResponse(content_type="text/csv")
+        response = HttpResponse(gzip_buffer.getvalue(), content_type="application/gzip")
         response["Content-Disposition"] = f'attachment; filename="{self.queryset.model.__name__}.csv.gz"'
-
-        # Write the DataFrame to a CSV string and compress it
-        csv_data = df.to_csv(index=False, compression="gzip")
-
-        # Set the compressed CSV data as the content of the response
-        response.content = csv_data
 
         return response
