@@ -91,6 +91,10 @@ class BindingManualQCViewSet(UpdateModifiedMixin, ExportTableAsGzipFileMixin, vi
         for item in data:
             instance = BindingManualQC.objects.get(id=item["id"])
             if instance.single_binding.source.assay == "callingcards" and item.get("data_usable"):
+                # TODO defaulting to data_usable pass is really questionable. Presumably
+                # if item.get("data_usable") is not None, then the default doesn't
+                # matter. But, possibly consider checking that it is valid and raising
+                # an error if not.
                 update_cc_combined_set.add(
                     (
                         instance.single_binding.regulator.id,
@@ -126,13 +130,17 @@ class BindingManualQCViewSet(UpdateModifiedMixin, ExportTableAsGzipFileMixin, vi
                     data_usable=data_usable,
                 )
             else:
+                logger.info(
+                    f"Launching promoter_significance_combined_task for regulator_id={regulator_id}, "
+                    f"datasource_name={source_name}, data_usable={data_usable}"
+                )
                 transaction.on_commit(
                     lambda: promoter_significance_combined_task(
                         user_id=self.request.user.id,
                         regulator_id=regulator_id,
                         datasource_name=source_name,
                         output_fileformat=settings.CALLINGCARDS_PROMOTER_SIG_FORMAT,
-                        data_usable=data.get("data_usable", "pass"),
+                        data_usable=data_usable,
                     )
                 )
 

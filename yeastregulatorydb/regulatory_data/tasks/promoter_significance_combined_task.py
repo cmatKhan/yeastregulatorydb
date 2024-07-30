@@ -8,7 +8,9 @@ from collections import namedtuple
 from types import SimpleNamespace
 
 import pandas as pd
-from callingcardstools.PeakCalling.yeast.call_peaks import call_peaks as callingcards_promoter_sig
+from callingcardstools.PeakCalling.yeast.call_peaks import (
+    call_peaks as callingcards_promoter_sig,
+)
 from celery import group
 from django.conf import settings
 from django.contrib.auth import get_user_model
@@ -36,7 +38,9 @@ from yeastregulatorydb.regulatory_data.models import (
     PromoterSetSig,
     Regulator,
 )
-from yeastregulatorydb.regulatory_data.utils.extract_file_from_storage import extract_file_from_storage
+from yeastregulatorydb.regulatory_data.utils.extract_file_from_storage import (
+    extract_file_from_storage,
+)
 from yeastregulatorydb.users.models import User
 
 logger = logging.getLogger(__name__)
@@ -152,6 +156,10 @@ def check_existing_binding_concatenated(
     # otherwise, return none. Later, the BindingConcatenatedSerializer will handle
     # either creating a new record, or updating an existing one
     else:
+        logger.debug(
+            f"No existing BindingConcatenated record found for the current set of bindings with regulator_id: "
+            f"{regulator_id} and datasource_name: {datasource_name}"
+        )
         return None
 
 
@@ -212,6 +220,10 @@ def generate_promoter_significance_result(
     """
     promoter_filepath = extract_file_from_storage(promoter_record.file, tmpdir)
     background_filepath = extract_file_from_storage(background_record.file, tmpdir)
+    logger.debug(
+        f"Calling callingcards_promoter_sig with promoter_filepath {promoter_filepath}, "
+        f"background_filepath {background_filepath}, binding_filepath_list {binding_filepath_list}"
+    )
     result = callingcards_promoter_sig(
         experiment_data_paths=binding_filepath_list,
         experiment_orig_chr_convention=settings.CHR_FORMAT,
@@ -223,6 +235,10 @@ def generate_promoter_significance_result(
         unified_chr_convention=settings.CHR_FORMAT,
         deduplicate_experiment=False,
         genomic_only=True,
+    )
+    logger.debug(
+        f"SUCCESS: callingcards_promoter_sig with promoter_filepath {promoter_filepath} "
+        f"background_filepath {background_filepath}, binding_filepath_list {binding_filepath_list}"
     )
     ResultObject = namedtuple("ResultObject", ["df", "promoter_id", "background_id"])
     return ResultObject(result, promoter_record.id, background_record.id)
@@ -269,6 +285,7 @@ def save_promoter_significance_results(
             "regulator": regulator_id,
             "source": DataSource.objects.get(name=datasource_name).id,
         }
+        logger.debug(f"Creating compositeBinding record with data: {composite_binding_data}")
         composite_binding_serializer = BindingConcatenatedSerializer(
             data=composite_binding_data, context={"request": mock_request}
         )
@@ -376,12 +393,15 @@ def promoter_significance_combined_task(
     user = get_user_by_id(user_id)
     binding_records = get_binding_records(regulator_id, data_usable, datasource_name)
 
+    logger.debug(f"Found {binding_records.count()} binding records for regulator_id {regulator_id}")
+
     # if the number of binding records is less than 2, check to see if there is a
     # BindingConcatenated record. If there is, delete it. This will also delete the
     # corresponding BindingManualQC and PromoterSetSig record.
     # Return is a list where there is a minus sign in front of the deleted
     # BindingConcatenated record ID
     if len(binding_records) < 2:
+        logger.debug(f"Less than 2 binding records found for regulator_id {regulator_id}")
         return handle_less_2_binding_records(binding_records, regulator_id, datasource_name)
 
     # Check to see if a BindingConcatenated record that matches _exactly_ the regulator,
@@ -394,6 +414,10 @@ def promoter_significance_combined_task(
     # None is returned. If no record with the regulator/source exists, then None is
     # also returned
     if possible_bindingconcatenated_record is not None:
+        logger.info(
+            f"Returning existing concatenated PromoterSetSig record for regulator_id "
+            f"{regulator_id} and datasource_name {datasource_name}"
+        )
         return [PromoterSetSig.objects.filter(composite_binding=possible_bindingconcatenated_record.id).first().id]
 
     fileformat_record = get_fileformat(output_fileformat)
@@ -423,6 +447,9 @@ def promoter_significance_combined_task(
         # this function occurs in an atomic block -- all records are saved/updated
         # successfully, or any transactions already performed in the block are
         # rolled back before exit
+        # NOTE: if there does not exist a BindingConcatenated record with the same
+        # bindings, regulator, and source, then one will be created before the
+        # related PromoterSetSig record is created
         return save_promoter_significance_results(
             result_list, user, binding_records, regulator_id, datasource_name, fileformat_record
         )

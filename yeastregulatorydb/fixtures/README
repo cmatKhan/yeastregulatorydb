@@ -1,7 +1,61 @@
+# Exporting the database
+
+```bash
+./manage.py dumpdata --exclude auth.permission --exclude contenttypes users > users_20230306.json
+./manage.py dumpdata --exclude auth.permission --exclude contenttypes regulatory_data > regulatory_data_20230306.json
+```
+
+# Importing the data
+
+first load the users
+
+```bash
+/entrypoint python manage.py loaddata yeastregulatorydb/fixtures/users_20240730.json
+```
+
+There is a problem importing the data when using a one-to-many relationship. Hence, this
+must happen in 2 steps. See
+
+https://code.djangoproject.com/ticket/33582
+
+for discussion.
+
+To load the data in this database, first load the tables that do not have one-to-many
+dependencies (bindingconcatenated and anything that is related to it)
+
+```bash
+/entrypoint python manage.py loaddata -v \
+  -e regulatory_data.bindingconcatenated \
+  -e regulatory_data.bindingmanualqc \
+  -e regulatory_data.promotersetsig \
+  yeastregulatorydb/fixtures/regulatory_data_20240730.json
+```
+
+Then, exclude the other tables and load bindingconcatenated and its relations
+
+```bash
+/entrypoint python manage.py loaddata -v \
+  -e regulatory_data.binding \
+  -e regulatory_data.callingcardsbackground \
+  -e regulatory_data.chrmap \
+  -e regulatory_data.datasource \
+  -e regulatory_data.expression \
+  -e regulatory_data.expressionmanualqc \
+  -e regulatory_data.fileformat \
+  -e regulatory_data.genomicfeature \
+  -e regulatory_data.promoterset \
+  -e regulatory_data.regulator \
+  yeastregulatorydb/fixtures/regulatory_data_20240730.json
+```
+
 # 2024040702
 
 This is the state of the database at 0004
 
-# 20270705
+# 202470705
+
+This is the state of the database at migration 0005
+
+# 20240730
 
 This is the state of the database at migration 0005

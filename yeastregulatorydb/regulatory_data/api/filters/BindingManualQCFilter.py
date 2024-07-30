@@ -41,7 +41,7 @@ class BindingManualQCFilter(django_filters.rest_framework.FilterSet):
         method="filter_source", lookup_expr="iexact", label="Data Source ID", help_text="Data Source ID"
     )
     source_name = django_filters.CharFilter(
-        method="filter_source", lookup_expr="iexact", label="Data Source name", help_text="Data Source name"
+        method="filter_source_name", lookup_expr="iexact", label="Data Source name", help_text="Data Source name"
     )
 
     class Meta:
@@ -83,5 +83,5 @@ class BindingManualQCFilter(django_filters.rest_framework.FilterSet):
     def filter_source(self, queryset, name, value):
         return self.filter_binding(queryset, "source", value)
 
-    def filter_source(self, queryset, name, value):
-        return self.filter_binding(queryset, "source_name", value)
+    def filter_source_name(self, queryset, name, value):
+        return self.filter_binding(queryset, "source__name", value)

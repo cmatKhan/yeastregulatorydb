@@ -37,6 +37,9 @@ class PromoterSetSigFilter(django_filters.rest_framework.FilterSet):
         method="filter_batch", lookup_expr="iexact", label="Binding Batch", help_text="Binding batch"
     )
     source = django_filters.NumberFilter(method="filter_source", label="Data Source ID", help_text="Data Source ID")
+    source_name = django_filters.CharFilter(
+        method="filter_source_name", label="Data Source Name", help_text="Data Source Name"
+    )
     lab = django_filters.CharFilter(
         method="filter_lab",
         lookup_expr="iexact",
@@ -77,6 +80,7 @@ class PromoterSetSigFilter(django_filters.rest_framework.FilterSet):
             "regulator_locus_tag",
             "regulator_symbol",
             "source",
+            "source_name",
             "lab",
             "assay",
             "workflow",
@@ -104,6 +108,9 @@ class PromoterSetSigFilter(django_filters.rest_framework.FilterSet):
 
     def filter_source(self, queryset, name, value):
         return self.filter_binding(queryset, "source", value)
+
+    def filter_source_name(self, queryset, name, value):
+        return self.filter_binding(queryset, "source__name", value)
 
     def filter_lab(self, queryset, name, value):
         return self.filter_binding(queryset, "source__lab", value)
