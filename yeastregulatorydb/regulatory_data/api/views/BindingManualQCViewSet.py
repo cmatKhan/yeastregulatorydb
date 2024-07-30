@@ -121,27 +121,21 @@ class BindingManualQCViewSet(UpdateModifiedMixin, ExportTableAsGzipFileMixin, vi
 
         # After all records are updated, perform your operation on the set
         for regulator_id, source_name, data_usable in update_cc_combined_set:
+            task_arguments = {
+                "user_id": self.request.user.id,
+                "regulator_id": regulator_id,
+                "datasource_name": source_name,
+                "output_fileformat": settings.CALLINGCARDS_PROMOTER_SIG_FORMAT,
+                "data_usable": data_usable,
+            }
+
             if self.request.data.get("testing", False):
-                promoter_significance_combined_task.delay(
-                    user_id=self.request.user.id,
-                    regulator_id=regulator_id,
-                    datasource_name=source_name,
-                    output_fileformat=settings.CALLINGCARDS_PROMOTER_SIG_FORMAT,
-                    data_usable=data_usable,
-                )
+                promoter_significance_combined_task.delay(**task_arguments)
             else:
                 logger.info(
                     f"Launching promoter_significance_combined_task for regulator_id={regulator_id}, "
                     f"datasource_name={source_name}, data_usable={data_usable}"
                 )
-                transaction.on_commit(
-                    lambda: promoter_significance_combined_task(
-                        user_id=self.request.user.id,
-                        regulator_id=regulator_id,
-                        datasource_name=source_name,
-                        output_fileformat=settings.CALLINGCARDS_PROMOTER_SIG_FORMAT,
-                        data_usable=data_usable,
-                    )
-                )
+                transaction.on_commit(lambda: promoter_significance_combined_task(**task_arguments))
 
         return Response(status=status.HTTP_204_NO_CONTENT)
