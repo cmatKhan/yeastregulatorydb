@@ -12,8 +12,17 @@ from rest_framework.serializers import ValidationError
 from ...models import Binding
 from ...tasks import promoter_significance_task
 from ..filters import BindingFilter
-from ..serializers import BindingManualQCSerializer, BindingSerializer, PromoterSetSigSerializer
-from .mixins import BulkUploadMixin, ExportTableAsGzipFileMixin, RetrieveRecordsAndFilesMixin, UpdateModifiedMixin
+from ..serializers import (
+    BindingManualQCSerializer,
+    BindingSerializer,
+    PromoterSetSigSerializer,
+)
+from .mixins import (
+    BulkUploadMixin,
+    ExportTableAsGzipFileMixin,
+    RetrieveRecordsAndFilesMixin,
+    UpdateModifiedMixin,
+)
 
 
 class BindingViewSet(
@@ -45,7 +54,7 @@ class BindingViewSet(
         # must be 'true' or 'false' will be used preferentially to the default value,
         # which is true. This will return a file with the regulator_id, symbol and
         # locus_tag columns
-        return self.retrieve_records_and_files(request, queryset, add_genomicfeature_to_file="true")
+        return self.retrieve_records_and_files(request, queryset, add_genomicfeature_to_file="false")
 
     # note that the hop info are added in the FileFormatMixin in the serializers
     @transaction.atomic
