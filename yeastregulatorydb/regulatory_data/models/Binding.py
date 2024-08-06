@@ -96,6 +96,14 @@ class Binding(BaseModel, GzipFileUploadWithIdMixin):
             self.update_file_name("file", f"binding/{self.source.name}")
             super().save(update_fields=["file"])
 
+    def get_genomicfeature(self):
+        """return the genomicfeature associated with this expression instance"""
+        return self.regulator
+
+    def get_fileformat(self):
+        """return the fileformat associated with this expression instance"""
+        return self.source.fileformat
+
 
 @receiver(models.signals.post_delete, sender=Binding)
 def remove_file_from_s3(sender, instance, using, **kwargs):  # pylint: disable=unused-argument
