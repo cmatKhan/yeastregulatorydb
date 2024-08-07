@@ -2,6 +2,8 @@ from django.conf import settings
 from django.core.cache import cache
 from django.core.files.storage import default_storage
 from django.db import IntegrityError, transaction
+from django.db.models import CharField, OuterRef, Subquery, Value
+from django.db.models.functions import Coalesce
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import viewsets
 from rest_framework.authentication import SessionAuthentication, TokenAuthentication
@@ -9,7 +11,7 @@ from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.serializers import ValidationError
 
-from ...models import Binding
+from ...models import Binding, BindingManualQC
 from ...tasks import promoter_significance_task
 from ..filters import BindingFilter
 from ..serializers import (
@@ -36,8 +38,11 @@ class BindingViewSet(
     A viewset for viewing and editing Binding instances.
     """
 
+    manual_qc_subquery = BindingManualQC.objects.filter(single_binding=OuterRef("pk")).values("data_usable")[:1]
+
     queryset = (
         Binding.objects.select_related("uploader", "regulator", "regulator__genomicfeature", "source")
+        .annotate(data_usable=Coalesce(Subquery(manual_qc_subquery, output_field=CharField()), Value("unreviewed")))
         .all()
         .order_by("-id")
     )
