@@ -1,9 +1,12 @@
 import gzip
 from io import BytesIO
+import logging
 
 import pandas as pd
 from django.http import HttpResponse
 from rest_framework.decorators import action
+
+logger = logging.getLogger(__name__)
 
 
 class ExportTableAsGzipFileMixin:

@@ -1,14 +1,24 @@
+import logging
+
 import pandas as pd
 from django.db import models
 
 from yeastregulatorydb.regulatory_data.models import GenomicFeature
 from yeastregulatorydb.regulatory_data.utils import extract_file_from_storage
 
+logger = logging.getLogger(__name__)
 
-def add_genomicfeature_to_file(record, tmpdir, rename_metric_columns: bool = True, return_cols: list = None):
+
+def add_genomicfeature_to_file(record, tmpdir, rename_metric_columns: bool = True, return_cols: list = None, **kwargs):
     """
     Add genomic feature information to a file. Optionally (default) standardize
     the metric columns and return a standard set of columns.
+
+    Additional keyword arguments:
+        - effect_colname: name of the effect column. Default is to use the
+            effect column specified in the associated fileformat record
+        - pvalue_colname: name of the pvalue column. Default is the pvalue column
+            specified in fileformat
 
     :param record: The record to extract the file from
     :type record: Any
@@ -42,8 +52,10 @@ def add_genomicfeature_to_file(record, tmpdir, rename_metric_columns: bool = Tru
 
     if rename_metric_columns:
 
-        effect_column = fileformat.effect_col
-        pval_column = fileformat.pval_col
+        # Rename the effect and pvalue columns. If 'effect_colname' or 'pvalue_colname'
+        # are not in kwargs, or are None, use the fileformat specified column
+        effect_column = kwargs.get("effect_colname") or fileformat.effect_col
+        pval_column = kwargs.get("pvalue_colname") or fileformat.pval_col
 
         df = df.rename(columns={effect_column: "effect", pval_column: "pvalue"})
         if "effect" not in df.columns:

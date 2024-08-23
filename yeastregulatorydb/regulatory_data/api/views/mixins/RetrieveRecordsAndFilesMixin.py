@@ -1,12 +1,18 @@
+import logging
 import os
 import tempfile
 
 import pandas as pd
 from django.http import HttpResponse
 
-from yeastregulatorydb.regulatory_data.utils import create_tarball, extract_file_from_storage
+from yeastregulatorydb.regulatory_data.utils import (
+    create_tarball,
+    extract_file_from_storage,
+)
 
 from .add_genomicfeature_to_file import add_genomicfeature_to_file
+
+logger = logging.getLogger(__name__)
 
 
 class RetrieveRecordsAndFilesMixin:
@@ -22,7 +28,6 @@ class RetrieveRecordsAndFilesMixin:
 
     def retrieve_records_and_files(self, request, queryset, **kwargs):
         queryset = self.filter_queryset(queryset)
-
         # if 'add_genomicfeature_to_file' is in the request, then use that value.
         # if it is not present, check to see if it is in the kwargs. If it is not
         # then default to "false"
@@ -49,6 +54,8 @@ class RetrieveRecordsAndFilesMixin:
                                 tmpdir,
                                 kwargs.get("rename_metric_cols", True),
                                 kwargs.get("return_cols", None),
+                                effect_colname=request.query_params.get("effect_colname", None),
+                                pvalue_colname=request.query_params.get("pvalue_colname", None),
                             )
                             df.to_csv(dest_file_path, compression="gzip", index=False)
                         else:
