@@ -34,6 +34,7 @@ class BindingSerializer(
         ret = super().to_representation(instance)
         ret["source"] = instance.source.id
         ret["source_name"] = instance.source.name
+        ret["assay"] = instance.source.assay
         ret["regulator_symbol"] = instance.regulator.genomicfeature.symbol
         ret["regulator_locus_tag"] = instance.regulator.genomicfeature.locus_tag
 

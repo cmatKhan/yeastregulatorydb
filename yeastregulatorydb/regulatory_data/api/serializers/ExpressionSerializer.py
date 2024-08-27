@@ -17,6 +17,7 @@ class ExpressionSerializer(
     regulator_locus_tag = serializers.CharField(source="regulator.genomicfeature.locus_tag", read_only=True)
     regulator_symbol = serializers.CharField(source="regulator.genomicfeature.symbol", read_only=True)
     source_name = serializers.CharField(source="source.name", read_only=True)
+    assay = serializers.CharField(source="source.assay", read_only=True)
 
     class Meta:
         model = Expression
