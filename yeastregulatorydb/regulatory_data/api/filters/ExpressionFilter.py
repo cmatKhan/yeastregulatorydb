@@ -40,6 +40,9 @@ class ExpressionFilter(django_filters.rest_framework.FilterSet):
     )
     time = django_filters.NumberFilter(field_name="time", label="Time Point", help_text="Time point (McIsaac only)")
     source = django_filters.NumberFilter(label="Source Record ID", help_text="Source Record ID")
+    source_name = django_filters.CharFilter(
+        field_name="source__name", lookup_expr="iexact", label="Source Name", help_text="Source Name"
+    )
     source_time = django_filters.CharFilter(
         method="filter_source_time",
         label="Source/Time",
