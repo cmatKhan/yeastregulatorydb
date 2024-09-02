@@ -76,7 +76,16 @@ def add_genomicfeature_to_file(record, tmpdir, rename_metric_columns: bool = Tru
     ).values("target_id", "target_locus_tag", "target_symbol")
 
     genomicfeature_df = pd.DataFrame.from_records(genomicfeature_records)
-    df = df.merge(genomicfeature_df, on="target_id", how="left")
+    try:
+        df = df.merge(genomicfeature_df, on="target_id", how="left")
+    except ValueError:
+        logger.error(
+            f"Could not merge the genomic feature information for record {record.id}. "
+            f"This may be due to the target_id column not being present in the file. "
+            f"Please ensure that the file has a column with the target_id values. "
+            f"the data: {df.head()} and the genomicfeature_df: {genomicfeature_df.head()}"
+        )
+        raise
 
     # Add the record id
     df["record_id"] = record.id
