@@ -14,6 +14,7 @@ from yeastregulatorydb.regulatory_data.api.filters import (
     PromoterSetSigFilter,
     RegulatorFilter,
 )
+from yeastregulatorydb.regulatory_data.api.filters.utils import ensure_iterable
 from yeastregulatorydb.regulatory_data.models import (
     Binding,
     BindingConcatenated,
@@ -45,6 +46,23 @@ from .factories import (
     PromoterSetSigWithCompositeBindingFactory,
     RegulatorFactory,
 )
+
+
+def test_ensure_iterable():
+    # Test for a single string value
+    assert ensure_iterable("test") == ["test"]
+
+    # Test for a single integer value
+    assert ensure_iterable(1) == [1]
+
+    # Test for a list of values
+    assert ensure_iterable([1, 2, 3]) == [1, 2, 3]
+
+    # Test for a tuple of values
+    assert ensure_iterable((1, 2, 3)) == (1, 2, 3)
+
+    # Test for a set of values
+    assert ensure_iterable({1, 2, 3}) == {1, 2, 3}
 
 
 @pytest.mark.django_db

@@ -2,6 +2,7 @@ import django_filters
 from django.db.models import Q
 
 from ...models import BindingManualQC, PromoterSetSig
+from .utils import ensure_iterable
 
 
 class PromoterSetSigFilter(django_filters.rest_framework.FilterSet):
@@ -89,13 +90,20 @@ class PromoterSetSigFilter(django_filters.rest_framework.FilterSet):
         ]
 
     def filter_binding(self, queryset, name, value):
+        value = ensure_iterable(value)
         return queryset.filter(
-            Q(single_binding__isnull=False, **{f"single_binding__{name}": value})
-            | Q(composite_binding__isnull=False, **{f"composite_binding__{name}": value})
+            Q(single_binding__isnull=False, **{f"single_binding__{name}__in": value})
+            | Q(composite_binding__isnull=False, **{f"composite_binding__{name}__in": value})
         )
 
     def filter_single_binding(self, queryset, name, value):
         return queryset.filter(**{f"single_binding__{name}": value})
+
+    # def filter_regulator_locus_tag(self, queryset, name, value):
+    #     return self.filter_binding(queryset, "regulator__genomicfeature__locus_tag", value)
+
+    # def filter_regulator_symbol(self, queryset, name, value):
+    #     return self.filter_binding(queryset, "regulator__genomicfeature__symbol", value)
 
     def filter_regulator_locus_tag(self, queryset, name, value):
         return self.filter_binding(queryset, "regulator__genomicfeature__locus_tag", value)
