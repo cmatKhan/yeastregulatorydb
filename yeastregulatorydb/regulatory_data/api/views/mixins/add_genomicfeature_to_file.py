@@ -81,6 +81,7 @@ def add_genomicfeature_to_file(record, tmpdir, rename_metric_columns: bool = Tru
     except ValueError:
         logger.error(
             f"Could not merge the genomic feature information for record {record.id}. "
+            f"Filepath: {filepath}. "
             f"This may be due to the target_id column not being present in the file. "
             f"Please ensure that the file has a column with the target_id values. "
             f"the data: {df.head()} and the genomicfeature_df: {genomicfeature_df.head()}"

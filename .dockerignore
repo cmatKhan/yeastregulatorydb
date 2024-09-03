@@ -11,3 +11,6 @@ venv
 .git
 .envs/
 rds_redis_ec2_config.yml
+yeastregulatorydb/media/
+tmp/
+yeastregulatorydb/tmp
