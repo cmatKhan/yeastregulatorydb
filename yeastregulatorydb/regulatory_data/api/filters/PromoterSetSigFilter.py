@@ -67,6 +67,11 @@ class PromoterSetSigFilter(django_filters.rest_framework.FilterSet):
         label="Aggregated",
         help_text="Filter by aggregated (composite_binding is not null)",
     )
+    condition = django_filters.CharFilter(
+        method="filter_condition",
+        label="Condition",
+        help_text="Filter by the `condition` field in the single_binding record. Useful for harbison_chip data",
+    )
 
     class Meta:
         model = PromoterSetSig
@@ -87,6 +92,7 @@ class PromoterSetSigFilter(django_filters.rest_framework.FilterSet):
             "workflow",
             "data_usable",
             "aggregated",
+            "condition",
         ]
 
     def filter_binding(self, queryset, name, value):
@@ -98,12 +104,6 @@ class PromoterSetSigFilter(django_filters.rest_framework.FilterSet):
 
     def filter_single_binding(self, queryset, name, value):
         return queryset.filter(**{f"single_binding__{name}": value})
-
-    # def filter_regulator_locus_tag(self, queryset, name, value):
-    #     return self.filter_binding(queryset, "regulator__genomicfeature__locus_tag", value)
-
-    # def filter_regulator_symbol(self, queryset, name, value):
-    #     return self.filter_binding(queryset, "regulator__genomicfeature__symbol", value)
 
     def filter_regulator_locus_tag(self, queryset, name, value):
         return self.filter_binding(queryset, "regulator__genomicfeature__locus_tag", value)
@@ -137,3 +137,6 @@ class PromoterSetSigFilter(django_filters.rest_framework.FilterSet):
             return queryset.filter(composite_binding__isnull=False)
         else:
             return queryset.filter(composite_binding__isnull=True)
+
+    def filter_condition(self, queryset, name, value):
+        return self.filter_binding(queryset, "condition", value)
