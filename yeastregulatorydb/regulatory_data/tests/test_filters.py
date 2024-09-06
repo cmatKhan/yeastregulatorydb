@@ -516,8 +516,12 @@ def test_promoter_set_sig_filter():
     background2 = CallingCardsBackgroundFactory(name="bg2")
     datasource1 = DataSourceFactory(lab="lab1", assay="assay1", workflow="workflow1")
     datasource2 = DataSourceFactory(lab="lab2", assay="assay2", workflow="workflow2")
-    binding1 = BindingFactory(regulator=regulator1, batch="batch1", replicate=1, source=datasource1)
-    binding2 = BindingFactory(regulator=regulator1, batch="batch2", replicate=2, source=datasource1)
+    binding1 = BindingFactory(
+        regulator=regulator1, batch="batch1", replicate=1, source=datasource1, condition="condition1"
+    )
+    binding2 = BindingFactory(
+        regulator=regulator1, batch="batch2", replicate=2, source=datasource1, condition="condition2"
+    )
 
     # Use the updated factory for single binding
     promoter_set_sig1 = PromoterSetSigFactory(
@@ -604,6 +608,11 @@ def test_promoter_set_sig_filter():
             "params": {"workflow": "workflow1"},
             "expected": [promoter_set_sig1, promoter_set_sig2],
             "unexpected": [promoter_set_sig3],
+        },
+        {
+            "params": {"condition": "condition1"},
+            "expected": [promoter_set_sig1],
+            "unexpected": [promoter_set_sig2, promoter_set_sig3],
         },
     ]
 

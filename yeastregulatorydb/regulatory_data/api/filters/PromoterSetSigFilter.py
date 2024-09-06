@@ -139,4 +139,4 @@ class PromoterSetSigFilter(django_filters.rest_framework.FilterSet):
             return queryset.filter(composite_binding__isnull=True)
 
     def filter_condition(self, queryset, name, value):
-        return self.filter_binding(queryset, "condition", value)
+        return self.filter_single_binding(queryset, "condition", value)
