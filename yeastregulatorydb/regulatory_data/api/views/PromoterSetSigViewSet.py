@@ -14,7 +14,11 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.request import Request
 from rest_framework.serializers import ValidationError
 
-from yeastregulatorydb.regulatory_data.models import DataSource, Expression, PromoterSetSig
+from yeastregulatorydb.regulatory_data.models import (
+    DataSource,
+    Expression,
+    PromoterSetSig,
+)
 from yeastregulatorydb.regulatory_data.tasks import rank_response_task
 from yeastregulatorydb.regulatory_data.utils.create_tarball import create_tarball
 
@@ -146,6 +150,12 @@ class PromoterSetSigViewSet(
             if not Expression.objects.filter(id=expression_id).exists():
                 raise ValidationError(f"Expression with id {expression_id} does not exist")
             kwargs["expression_id"] = expression_id
+
+        if request.query_params.get("expression_effect_threshold", None):
+            kwargs["expression_effect_threshold"] = request.query_params.get("expression_effect_threshold")
+
+        if request.query_params.get("expression_pvalue_thres", None):
+            kwargs["expression_pvalue_threshold"] = request.query_params.get("expression_pvalue_thres")
 
         celery_result = rank_response_task.delay(promotersetsig_id, **kwargs)
         results_dict = celery_result.get()
