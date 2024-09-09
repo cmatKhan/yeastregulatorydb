@@ -1,17 +1,21 @@
 # pyright: reportMissingImports=false, reportMissingModuleSource=false
+
 import json
 import os
 import tempfile
 
 import pandas as pd
+from celery import group
+from celery.result import AsyncResult
 from django.db import IntegrityError
 from django.http import HttpResponse
 from django_filters.rest_framework import DjangoFilterBackend
-from rest_framework import viewsets
+from rest_framework import status, viewsets
 from rest_framework.authentication import SessionAuthentication, TokenAuthentication
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.request import Request
+from rest_framework.response import Response
 from rest_framework.serializers import ValidationError
 
 from yeastregulatorydb.regulatory_data.models import DataSource, Expression, PromoterSetSig
@@ -133,18 +137,22 @@ class PromoterSetSigViewSet(
 
     @action(detail=False, methods=["get"])
     def rankresponse(self, request, *args, **kwargs):
-        promotersetsig_id = request.query_params.get("promotersetsig_id", None)
-        if promotersetsig_id is None:
-            raise ValidationError("promotersetsig_id must be provided in the query parameters")
-        # validate that the promotersetsig_id exists in the database
-        if not PromoterSetSig.objects.filter(id=promotersetsig_id).exists():
-            raise ValidationError(f"PromoterSetSig with id {promotersetsig_id} does not exist")
+        # Use the existing filter class and queryset from the viewset
+        filtered_queryset = self.filter_queryset(self.get_queryset())
 
-        if request.query_params.get("expression_id", None):
-            expression_id = request.query_params.get("expression_id")
-            # verify that the expression_id exists in the expression table
+        # Check if the filtered queryset is empty
+        if not filtered_queryset.exists():
+            raise ValidationError("No matching PromoterSetSig records found for the given parameters.")
+
+        # Extract promoterset IDs from the filtered queryset
+        promotersetsig_id_list = list(filtered_queryset.values_list("id", flat=True))
+
+        # Handle additional parameters like expression_id
+        expression_id = request.query_params.get("expression_id", None)
+        if expression_id:
+            # Validate expression_id
             if not Expression.objects.filter(id=expression_id).exists():
-                raise ValidationError(f"Expression with id {expression_id} does not exist")
+                raise ValidationError(f"Expression with id {expression_id} does not exist.")
             kwargs["expression_id"] = expression_id
 
         if request.query_params.get("expression_effect_threshold", None):
@@ -159,44 +167,120 @@ class PromoterSetSigViewSet(
         if request.query_params.get("rank_by_binding_effect", None):
             kwargs["rank_by_binding_effect"] = request.query_params.get("rank_by_binding_effect")
 
-        celery_result = rank_response_task.delay(promotersetsig_id, **kwargs)
-        results_dict = celery_result.get()
+        # celery_result = rank_response_task.delay(promotersetsig_id, **kwargs)
+        # results_dict = celery_result.get()
 
-        with tempfile.TemporaryDirectory() as tmpdir:
-            metadata = {}
-            # Write each DataFrame to a compressed CSV file
-            for expression_id, rr_dict in results_dict.items():
-                csv_path = f"{tmpdir}/{promotersetsig_id}_{expression_id}.csv.gz"
-                # the `result` is a dictionary. Convert to DataFrame and write to CSV
-                try:
-                    data_path = rr_dict.pop("data")
-                except KeyError:
-                    raise ValidationError(
-                        "The rank response task did not return "
-                        "the expected data structure. "
-                        "Key `data` is missing for expression_id: ",
-                        expression_id,
+        # Create a group of tasks, one per promotersetsig_id
+        tasks = group(
+            rank_response_task.s(promotersetsig_id, **kwargs) for promotersetsig_id in promotersetsig_id_list
+        )
+
+        # Trigger the group of tasks and get the result
+        celery_group_result = tasks.apply_async()
+
+        # Return the group task ID for tracking
+        return Response({"group_task_id": celery_group_result.id}, status=202)
+
+    @action(detail=False, methods=["get"])
+    def rankresponse_task_status(self, request, *args, **kwargs):
+        task_id = request.query_params.get("task_id", None)
+
+        if task_id:
+            result = AsyncResult(task_id)
+
+            if result.state == "PENDING":
+                return Response({"status": "PENDING"}, status=status.HTTP_200_OK)
+            elif result.state == "STARTED":
+                return Response({"status": "STARTED"}, status=status.HTTP_200_OK)
+            elif result.state == "FAILURE":
+                return Response(
+                    {"status": "FAILURE", "error": str(result.result)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                )
+            elif result.state == "SUCCESS":
+                # When the task is done, process the results and create the tarball
+                results_dict = result.result
+                if not isinstance(results_dict, dict):
+                    return Response(
+                        {"error": "Unexpected result format."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR
                     )
-                rr_dict["filename"] = os.path.basename(csv_path)
-                metadata[expression_id] = rr_dict
 
-                # write the csv to file
-                pd.DataFrame(data_path).to_csv(csv_path, compression="gzip", index=False)
+                with tempfile.TemporaryDirectory() as tmpdir:
+                    metadata = {}
+                    for expression_id, rr_dict in results_dict.items():
+                        promotersetsig_id = rr_dict.get("promotersetsig_id")
+                        csv_path = f"{tmpdir}/{promotersetsig_id}_{expression_id}.csv.gz"
+                        try:
+                            data_path = rr_dict.pop("data")
+                        except KeyError:
+                            raise ValidationError(f"Key `data` is missing for expression_id: {expression_id}")
+                        rr_dict["filename"] = os.path.basename(csv_path)
+                        metadata[expression_id] = rr_dict
 
-            # write the json metadata to file
-            metadata_path = f"{tmpdir}/metadata.json"
-            with open(metadata_path, "w") as f:
-                json.dump(metadata, f)
+                        # Write the DataFrame to CSV
+                        try:
+                            pd.DataFrame(data_path).to_csv(csv_path, compression="gzip", index=False)
+                        except ValidationError as exc:
+                            return Response(
+                                {"error": f"Error writing CSV file for expression_id: {expression_id}. {str(exc)}"},
+                                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                            )
 
-            # Create a tarball of the directory
-            tar_path = f"{tmpdir}/results.tar.gz"
-            create_tarball(tmpdir, tar_path)
+                    # Write the metadata to file
+                    metadata_path = f"{tmpdir}/metadata.json"
+                    with open(metadata_path, "w") as f:
+                        json.dump(metadata, f)
 
-            # Read the tarball into memory (consider streaming for large files)
-            with open(tar_path, "rb") as f:
-                tar_content = f.read()
+                    # Create a tarball of the directory
+                    tar_path = f"{tmpdir}/results.tar.gz"
+                    create_tarball(tmpdir, tar_path)
 
-        # Return the tarball as a download
-        response = HttpResponse(tar_content, content_type="application/gzip")
-        response["Content-Disposition"] = f'attachment; filename="rankresponse_{promotersetsig_id}.tar.gz"'
-        return response
+                    # Return the tarball as a file download
+                    with open(tar_path, "rb") as f:
+                        tar_content = f.read()
+
+                    response = HttpResponse(tar_content, content_type="application/gzip")
+                    response["Content-Disposition"] = f'attachment; filename="rankresponse_{task_id}.tar.gz"'
+                    return response
+
+        return Response({"error": "You must provide a valid task_id."}, status=status.HTTP_400_BAD_REQUEST)
+
+        # results_dict = celery_result.get()
+
+        # with tempfile.TemporaryDirectory() as tmpdir:
+        #     metadata = {}
+        #     # Write each DataFrame to a compressed CSV file
+        #     for expression_id, rr_dict in results_dict.items():
+        #         csv_path = f"{tmpdir}/{promotersetsig_id}_{expression_id}.csv.gz"
+        #         # the `result` is a dictionary. Convert to DataFrame and write to CSV
+        #         try:
+        #             data_path = rr_dict.pop("data")
+        #         except KeyError:
+        #             raise ValidationError(
+        #                 "The rank response task did not return "
+        #                 "the expected data structure. "
+        #                 "Key `data` is missing for expression_id: ",
+        #                 expression_id,
+        #             )
+        #         rr_dict["filename"] = os.path.basename(csv_path)
+        #         metadata[expression_id] = rr_dict
+
+        #         # write the csv to file
+        #         pd.DataFrame(data_path).to_csv(csv_path, compression="gzip", index=False)
+
+        #     # write the json metadata to file
+        #     metadata_path = f"{tmpdir}/metadata.json"
+        #     with open(metadata_path, "w") as f:
+        #         json.dump(metadata, f)
+
+        #     # Create a tarball of the directory
+        #     tar_path = f"{tmpdir}/results.tar.gz"
+        #     create_tarball(tmpdir, tar_path)
+
+        #     # Read the tarball into memory (consider streaming for large files)
+        #     with open(tar_path, "rb") as f:
+        #         tar_content = f.read()
+
+        # # Return the tarball as a download
+        # response = HttpResponse(tar_content, content_type="application/gzip")
+        # response["Content-Disposition"] = f'attachment; filename="rankresponse_{promotersetsig_id}.tar.gz"'
+        # return response
