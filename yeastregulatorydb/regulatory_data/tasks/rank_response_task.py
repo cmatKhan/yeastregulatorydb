@@ -7,7 +7,9 @@ from callingcardstools.Analysis.yeast import rank_response
 
 from config import celery_app
 from yeastregulatorydb.regulatory_data.models import Expression, PromoterSetSig
-from yeastregulatorydb.regulatory_data.utils.extract_file_from_storage import extract_file_from_storage
+from yeastregulatorydb.regulatory_data.utils.extract_file_from_storage import (
+    extract_file_from_storage,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -57,11 +59,19 @@ def rank_response_task(
             # if the expression pval column is none, set the thres to none. This
             # is in the event that there is no pvalue column
             # TODO consider requiring a pvalue column?
-            expr_pval_thres = (
+            expression_pval_threshold = (
                 None
                 if record.source.fileformat.pval_col == "none" or record.source.fileformat.pval_col is None
-                else kwargs.get("expression_pvalue_threshold", record.source.fileformat.default_pvalue_threshold)
+                else float(
+                    kwargs.get("expression_pvalue_threshold", record.source.fileformat.default_pvalue_threshold)
+                )
             )
+
+            expression_effect_threshold = float(
+                kwargs.get("expression_effect_threshold", record.source.fileformat.default_effect_threshold)
+            )
+
+            rank_bin_size = int(kwargs.get("rank_bin_size", 5))
 
             config_dict = {
                 "binding_data_path": promotersetsig_filepath,
@@ -74,12 +84,10 @@ def rank_response_task(
                 "expression_source": record.source.name,
                 "expression_identifier_col": record.source.fileformat.feature_identifier_col,
                 "expression_effect_col": record.source.fileformat.effect_col,
-                "expression_effect_thres": kwargs.get(
-                    "expression_effect_threshold", record.source.fileformat.default_effect_threshold
-                ),
+                "expression_effect_thres": expression_effect_threshold,
                 "expression_pvalue_col": record.source.fileformat.pval_col,
-                "expression_pvalue_thres": expr_pval_thres,
-                "rank_bin_size": kwargs.get("rank_bin_size", 5),
+                "expression_pvalue_thres": expression_pval_threshold,
+                "rank_bin_size": rank_bin_size,
                 "normalize": kwargs.get("normalize", False),
                 "output_file": kwargs.get("output_file", "output.tsv"),
                 "compress": False,

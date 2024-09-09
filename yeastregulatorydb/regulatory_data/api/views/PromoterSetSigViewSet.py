@@ -154,8 +154,11 @@ class PromoterSetSigViewSet(
         if request.query_params.get("expression_effect_threshold", None):
             kwargs["expression_effect_threshold"] = request.query_params.get("expression_effect_threshold")
 
-        if request.query_params.get("expression_pvalue_thres", None):
-            kwargs["expression_pvalue_threshold"] = request.query_params.get("expression_pvalue_thres")
+        if request.query_params.get("expression_pvalue_threshold", None):
+            kwargs["expression_pvalue_threshold"] = request.query_params.get("expression_pvalue_threshold")
+
+        if request.query_params.get("rank_bin_size", None):
+            kwargs["rank_bin_size"] = request.query_params.get("rank_bin_size")
 
         celery_result = rank_response_task.delay(promotersetsig_id, **kwargs)
         results_dict = celery_result.get()
