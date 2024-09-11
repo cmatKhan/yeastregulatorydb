@@ -2,11 +2,12 @@
 
 import json
 import os
+import tarfile
 import tempfile
 
 import pandas as pd
 from celery import group
-from celery.result import AsyncResult
+from celery.result import GroupResult
 from django.db import IntegrityError
 from django.http import HttpResponse
 from django_filters.rest_framework import DjangoFilterBackend
@@ -14,13 +15,14 @@ from rest_framework import status, viewsets
 from rest_framework.authentication import SessionAuthentication, TokenAuthentication
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
-from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.serializers import ValidationError
 
-from yeastregulatorydb.regulatory_data.models import DataSource, Expression, PromoterSetSig
+from yeastregulatorydb.regulatory_data.models import (
+    Expression,
+    PromoterSetSig,
+)
 from yeastregulatorydb.regulatory_data.tasks import rank_response_task
-from yeastregulatorydb.regulatory_data.utils.create_tarball import create_tarball
 
 from ..filters.PromoterSetSigFilter import PromoterSetSigFilter
 from ..serializers.PromoterSetSigSerializer import PromoterSetSigSerializer
@@ -30,37 +32,6 @@ from .mixins import (
     RetrieveRecordsAndFilesMixin,
     UpdateModifiedMixin,
 )
-
-
-def get_expression_data_source(request: Request) -> DataSource:
-    """
-    Extract the expression data source id using either the query parakmeter `expression_data_source`,
-    which should be a string in the data source 'name' field, or expression_data_source_id,
-    which is the `id` of a data source entry. If the 'data_source' or data_source_id'
-    doesn't find a single record, return an error
-
-    :param request: request object
-    :type request: Request
-    :return: DataSource instance
-    :rtype: DataSource
-
-    :raises ValidationError: If the data source is not found by either the name or id
-    """
-    data_source_id = request.query_params.get("expression_data_source_id", None)
-    data_source = request.query_params.get("expression_data_source", None)
-    if data_source_id:
-        data_source = DataSource.objects.filter(id=data_source_id)
-    elif data_source:
-        data_source = DataSource.objects.filter(name=data_source)
-    else:
-        raise ValidationError(
-            "Either expression_data_source_id or expression_data_source must be specified in the query parameters"
-        )
-    if data_source.count() == 0:
-        raise ValidationError("The data source name or id returned no matches to a data source in the database.")
-    if data_source.count() > 1:
-        raise ValidationError("The data source query returned multiple matches to your query. There should only be 1.")
-    return data_source.first()
 
 
 class PromoterSetSigViewSet(
@@ -135,152 +106,200 @@ class PromoterSetSigViewSet(
             return_cols=["all"],
         )
 
-    @action(detail=False, methods=["get"])
+    @action(detail=False, methods=["post"])
     def rankresponse(self, request, *args, **kwargs):
-        # Use the existing filter class and queryset from the viewset
-        filtered_queryset = self.filter_queryset(self.get_queryset())
 
-        # Check if the filtered queryset is empty
-        if not filtered_queryset.exists():
-            raise ValidationError("No matching PromoterSetSig records found for the given parameters.")
+        # Check if data is a list
+        if not isinstance(request.data, list):
+            raise ValidationError("Expected a list of dictionaries in the request body.")
 
-        # Extract promoterset IDs from the filtered queryset
-        promotersetsig_id_list = list(filtered_queryset.values_list("id", flat=True))
+        # Iterate over each dictionary in the request.data
+        tasks = []
+        for item in request.data:
+            additional_arguments = {}
+            if item.get("expression_effect_threshold", None):
+                additional_arguments["expression_effect_threshold"] = item.get("expression_effect_threshold")
 
-        # Handle additional parameters like expression_id
-        expression_id = request.query_params.get("expression_id", None)
-        if expression_id:
-            # Validate expression_id
-            if not Expression.objects.filter(id=expression_id).exists():
-                raise ValidationError(f"Expression with id {expression_id} does not exist.")
-            kwargs["expression_id"] = expression_id
+            if item.get("expression_pvalue_threshold", None):
+                additional_arguments["expression_pvalue_threshold"] = item.get("expression_pvalue_threshold")
 
-        if request.query_params.get("expression_effect_threshold", None):
-            kwargs["expression_effect_threshold"] = request.query_params.get("expression_effect_threshold")
+            if item.get("rank_bin_size", None):
+                additional_arguments["rank_bin_size"] = item.get("rank_bin_size")
 
-        if request.query_params.get("expression_pvalue_threshold", None):
-            kwargs["expression_pvalue_threshold"] = request.query_params.get("expression_pvalue_threshold")
+            if item.get("rank_by_binding_effect", None):
+                rank_by_binding_effect = item.get("rank_by_binding_effect").lower()
+                if rank_by_binding_effect not in ["true", "false"]:
+                    raise ValidationError(
+                        "The value for the 'rank_by_binding_effect' key must be either 'true' or 'false'"
+                    )
+                additional_arguments["rank_by_binding_effect"] = rank_by_binding_effect == "true"
 
-        if request.query_params.get("rank_bin_size", None):
-            kwargs["rank_bin_size"] = request.query_params.get("rank_bin_size")
+            if item.get("summarize_by_rank_bin", None):
+                summarize_by_rank_bin = item.get("summarize_by_rank_bin").lower()
+                if summarize_by_rank_bin not in ["true", "false"]:
+                    raise ValidationError(
+                        "The value for the 'summarize_by_rank_bin' key must be either 'true' or 'false'"
+                    )
+                additional_arguments["summarize_by_rank_bin"] = summarize_by_rank_bin == "true"
 
-        if request.query_params.get("rank_by_binding_effect", None):
-            kwargs["rank_by_binding_effect"] = request.query_params.get("rank_by_binding_effect")
+            promoterset_ids = item.get("promotersetsig_ids")
+            if not promoterset_ids:
+                raise ValidationError("Each dictionary must contain a 'promotersetsig_ids' key")
+            if not isinstance(promoterset_ids, list):
+                promoterset_ids = promoterset_ids.split(",")
 
-        # celery_result = rank_response_task.delay(promotersetsig_id, **kwargs)
-        # results_dict = celery_result.get()
+            for pss_id in promoterset_ids:
+                # Validate the promoterset_id from the data item
+                if not PromoterSetSig.objects.filter(id=pss_id).exists():
+                    raise ValidationError(f"PromoterSetSig with id {pss_id} does not exist.")
 
-        # Create a group of tasks, one per promotersetsig_id
-        tasks = group(
-            rank_response_task.s(promotersetsig_id, **kwargs) for promotersetsig_id in promotersetsig_id_list
-        )
+            expression_ids = item.get("expression_ids")
+            if not expression_ids:
+                raise ValidationError("Each dictionary must contain an 'expression_ids' key")
+            if not isinstance(expression_ids, list):
+                expression_ids = expression_ids.split(",")
 
-        # Trigger the group of tasks and get the result
-        celery_group_result = tasks.apply_async()
+            for expr_id in expression_ids:
+                # Validate the expression_id from the data item
+                if not Expression.objects.filter(id=expr_id).exists():
+                    raise ValidationError(f"Expression with id {expr_id} does not exist.")
+
+            # Create Celery tasks for each promoterset_id
+            for promoterset_id in promoterset_ids:
+                tasks.append(rank_response_task.s(promoterset_ids, expression_ids, **additional_arguments, **kwargs))
+
+        # Create a group of tasks and trigger them
+        celery_group_result = group(tasks).apply_async()
+        celery_group_result.save()
 
         # Return the group task ID for tracking
         return Response({"group_task_id": celery_group_result.id}, status=202)
 
     @action(detail=False, methods=["get"])
     def rankresponse_task_status(self, request, *args, **kwargs):
-        task_id = request.query_params.get("task_id", None)
+        group_task_id = request.query_params.get("task_id", None)
 
-        if task_id:
-            result = AsyncResult(task_id)
+        if group_task_id:
+            # Retrieve the group result using the group_task_id
+            group_result = GroupResult.restore(group_task_id)
 
-            if result.state == "PENDING":
-                return Response({"status": "PENDING"}, status=status.HTTP_200_OK)
-            elif result.state == "STARTED":
-                return Response({"status": "STARTED"}, status=status.HTTP_200_OK)
-            elif result.state == "FAILURE":
-                return Response(
-                    {"status": "FAILURE", "error": str(result.result)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR
-                )
-            elif result.state == "SUCCESS":
-                # When the task is done, process the results and create the tarball
-                results_dict = result.result
-                if not isinstance(results_dict, dict):
+            if not group_result:
+                return Response({"error": "Invalid group_task_id"}, status=status.HTTP_400_BAD_REQUEST)
+
+            # Check the status of the group of tasks
+            if group_result.ready():
+                if group_result.failed():
+                    # If any task in the group failed, return failure status
+                    failed_tasks = [res for res in group_result.results if res.failed()]
                     return Response(
-                        {"error": "Unexpected result format."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                        {"status": "FAILURE", "error": "One or more tasks failed", "failed_tasks": failed_tasks},
+                        status=status.HTTP_500_INTERNAL_SERVER_ERROR,
                     )
 
+                # When all tasks are successful, combine the results from each task
                 with tempfile.TemporaryDirectory() as tmpdir:
                     metadata = {}
-                    for expression_id, rr_dict in results_dict.items():
-                        promotersetsig_id = rr_dict.get("promotersetsig_id")
-                        csv_path = f"{tmpdir}/{promotersetsig_id}_{expression_id}.csv.gz"
-                        try:
-                            data_path = rr_dict.pop("data")
-                        except KeyError:
-                            raise ValidationError(f"Key `data` is missing for expression_id: {expression_id}")
-                        rr_dict["filename"] = os.path.basename(csv_path)
-                        metadata[expression_id] = rr_dict
-
-                        # Write the DataFrame to CSV
-                        try:
-                            pd.DataFrame(data_path).to_csv(csv_path, compression="gzip", index=False)
-                        except ValidationError as exc:
+                    for result in group_result.results:
+                        results_dict = result.result
+                        if not isinstance(results_dict, dict):
                             return Response(
-                                {"error": f"Error writing CSV file for expression_id: {expression_id}. {str(exc)}"},
+                                {"error": "Unexpected result format."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                            )
+
+                        # Combine the results of each task
+                        promotersetsig_ids = results_dict.get("promotersetsig_ids")
+                        expression_ids = results_dict.get("expression_ids")
+                        n_responsive = results_dict.get("n_responsive")
+                        total_expression_genes = results_dict.get("total_expression_genes")
+                        data = results_dict.get("data")
+
+                        # Add metadata for each result
+                        metadata[f"{promotersetsig_ids}_{expression_ids}"] = {
+                            "promotersetsig_ids": promotersetsig_ids,
+                            "expression_ids": expression_ids,
+                            "n_responsive": n_responsive,
+                            "total_expression_genes": total_expression_genes,
+                        }
+
+                        # Save CSV for each task result
+                        csv_filename = f"{promotersetsig_ids}_{expression_ids}.csv.gz"
+                        csv_path = os.path.join(tmpdir, csv_filename)
+
+                        # Write the data (DataFrame) to CSV
+                        try:
+                            pd.DataFrame(data).to_csv(csv_path, compression="gzip", index=False)
+                        except Exception as exc:
+                            return Response(
+                                {"error": f"Error writing CSV file: {str(exc)}"},
                                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
                             )
 
                     # Write the metadata to file
-                    metadata_path = f"{tmpdir}/metadata.json"
+                    metadata_path = os.path.join(tmpdir, "metadata.json")
                     with open(metadata_path, "w") as f:
                         json.dump(metadata, f)
 
                     # Create a tarball of the directory
-                    tar_path = f"{tmpdir}/results.tar.gz"
-                    create_tarball(tmpdir, tar_path)
+                    tar_path = os.path.join(tmpdir, "results.tar.gz")
+                    with tarfile.open(tar_path, "w:gz") as tar:
+                        for result in group_result.results:
+                            promotersetsig_ids = result.result.get("promotersetsig_ids")
+                            expression_ids = result.result.get("expression_ids")
+                            csv_filename = f"{promotersetsig_ids}_{expression_ids}.csv.gz"
+                            csv_path = os.path.join(tmpdir, csv_filename)
+                            tar.add(csv_path, arcname=os.path.basename(csv_path))
+                        tar.add(metadata_path, arcname=os.path.basename(metadata_path))
 
                     # Return the tarball as a file download
                     with open(tar_path, "rb") as f:
                         tar_content = f.read()
 
                     response = HttpResponse(tar_content, content_type="application/gzip")
-                    response["Content-Disposition"] = f'attachment; filename="rankresponse_{task_id}.tar.gz"'
+                    response["Content-Disposition"] = f'attachment; filename="rankresponse_{group_task_id}.tar.gz"'
                     return response
+            else:
+                # If the tasks are not complete, return the current status
+                return Response({"status": group_result.state}, status=status.HTTP_200_OK)
 
-        return Response({"error": "You must provide a valid task_id."}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({"error": "You must provide a valid group_task_id."}, status=status.HTTP_400_BAD_REQUEST)
 
-        # results_dict = celery_result.get()
+    # results_dict = celery_result.get()
 
-        # with tempfile.TemporaryDirectory() as tmpdir:
-        #     metadata = {}
-        #     # Write each DataFrame to a compressed CSV file
-        #     for expression_id, rr_dict in results_dict.items():
-        #         csv_path = f"{tmpdir}/{promotersetsig_id}_{expression_id}.csv.gz"
-        #         # the `result` is a dictionary. Convert to DataFrame and write to CSV
-        #         try:
-        #             data_path = rr_dict.pop("data")
-        #         except KeyError:
-        #             raise ValidationError(
-        #                 "The rank response task did not return "
-        #                 "the expected data structure. "
-        #                 "Key `data` is missing for expression_id: ",
-        #                 expression_id,
-        #             )
-        #         rr_dict["filename"] = os.path.basename(csv_path)
-        #         metadata[expression_id] = rr_dict
+    # with tempfile.TemporaryDirectory() as tmpdir:
+    #     metadata = {}
+    #     # Write each DataFrame to a compressed CSV file
+    #     for expression_id, rr_dict in results_dict.items():
+    #         csv_path = f"{tmpdir}/{promotersetsig_id}_{expression_id}.csv.gz"
+    #         # the `result` is a dictionary. Convert to DataFrame and write to CSV
+    #         try:
+    #             data_path = rr_dict.pop("data")
+    #         except KeyError:
+    #             raise ValidationError(
+    #                 "The rank response task did not return "
+    #                 "the expected data structure. "
+    #                 "Key `data` is missing for expression_id: ",
+    #                 expression_id,
+    #             )
+    #         rr_dict["filename"] = os.path.basename(csv_path)
+    #         metadata[expression_id] = rr_dict
 
-        #         # write the csv to file
-        #         pd.DataFrame(data_path).to_csv(csv_path, compression="gzip", index=False)
+    #         # write the csv to file
+    #         pd.DataFrame(data_path).to_csv(csv_path, compression="gzip", index=False)
 
-        #     # write the json metadata to file
-        #     metadata_path = f"{tmpdir}/metadata.json"
-        #     with open(metadata_path, "w") as f:
-        #         json.dump(metadata, f)
+    #     # write the json metadata to file
+    #     metadata_path = f"{tmpdir}/metadata.json"
+    #     with open(metadata_path, "w") as f:
+    #         json.dump(metadata, f)
 
-        #     # Create a tarball of the directory
-        #     tar_path = f"{tmpdir}/results.tar.gz"
-        #     create_tarball(tmpdir, tar_path)
+    #     # Create a tarball of the directory
+    #     tar_path = f"{tmpdir}/results.tar.gz"
+    #     create_tarball(tmpdir, tar_path)
 
-        #     # Read the tarball into memory (consider streaming for large files)
-        #     with open(tar_path, "rb") as f:
-        #         tar_content = f.read()
+    #     # Read the tarball into memory (consider streaming for large files)
+    #     with open(tar_path, "rb") as f:
+    #         tar_content = f.read()
 
-        # # Return the tarball as a download
-        # response = HttpResponse(tar_content, content_type="application/gzip")
-        # response["Content-Disposition"] = f'attachment; filename="rankresponse_{promotersetsig_id}.tar.gz"'
-        # return response
+    # # Return the tarball as a download
+    # response = HttpResponse(tar_content, content_type="application/gzip")
+    # response["Content-Disposition"] = f'attachment; filename="rankresponse_{promotersetsig_id}.tar.gz"'
+    # return response
