@@ -7,7 +7,9 @@ from callingcardstools.Analysis.yeast import rank_response
 
 from config import celery_app
 from yeastregulatorydb.regulatory_data.models import Expression, PromoterSetSig
-from yeastregulatorydb.regulatory_data.utils.extract_file_from_storage import extract_file_from_storage
+from yeastregulatorydb.regulatory_data.utils.extract_file_from_storage import (
+    extract_file_from_storage,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -82,13 +84,13 @@ def rank_response_task(
                 rank_by_binding_effect = rank_by_binding_effect.lower() == "true"
 
             config_dict = {
-                "binding_data_path": promotersetsig_filepath,
+                "binding_data_path": [promotersetsig_filepath],
                 "binding_source": promotersetsig_record.get_source_name().name,
                 "binding_identifier_col": promotersetsig_record.fileformat.feature_identifier_col,
                 "binding_effect_col": promotersetsig_record.fileformat.effect_col,
                 "binding_pvalue_col": promotersetsig_record.fileformat.pval_col,
                 "rank_by_binding_effect": rank_by_binding_effect,
-                "expression_data_path": expression_filepath,
+                "expression_data_path": [expression_filepath],
                 "expression_source": record.source.name,
                 "expression_identifier_col": record.source.fileformat.feature_identifier_col,
                 "expression_effect_col": record.source.fileformat.effect_col,
@@ -96,15 +98,16 @@ def rank_response_task(
                 "expression_pvalue_col": record.source.fileformat.pval_col,
                 "expression_pvalue_thres": expression_pval_threshold,
                 "rank_bin_size": rank_bin_size,
-                "normalize": kwargs.get("normalize", False),
-                "output_file": kwargs.get("output_file", "output.tsv"),
-                "compress": False,
+                "normalization_threshold": kwargs.get("normalization_threshold", -1),
             }
+
+            # "output_file": kwargs.get("output_file", "rank_response.csv"),
+            # "compress": kwargs.get("compress", False),
 
             # validate the configuration key/value pairs
             args = rank_response.validate_config(config_dict)
 
-            rank_response_df = rank_response.create_rank_response_table(args)
+            rank_response_df, _, _ = rank_response.create_rank_response_table(args)
             # just the total number of genes in the expression data
             total_expression_genes = pd.read_csv(expression_filepath).shape[0]
             # note that the `id` needs to be like this in order for the return to be
