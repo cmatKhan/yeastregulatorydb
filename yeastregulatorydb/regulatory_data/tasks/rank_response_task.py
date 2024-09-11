@@ -7,9 +7,7 @@ from callingcardstools.Analysis.yeast import rank_response
 
 from config import celery_app
 from yeastregulatorydb.regulatory_data.models import Expression, PromoterSetSig
-from yeastregulatorydb.regulatory_data.utils.extract_file_from_storage import (
-    extract_file_from_storage,
-)
+from yeastregulatorydb.regulatory_data.utils.extract_file_from_storage import extract_file_from_storage
 
 logger = logging.getLogger(__name__)
 
@@ -107,17 +105,26 @@ def rank_response_task(
             # validate the configuration key/value pairs
             args = rank_response.validate_config(config_dict)
 
-            rank_response_df, _, _ = rank_response.create_rank_response_table(args)
-            # just the total number of genes in the expression data
-            total_expression_genes = pd.read_csv(expression_filepath).shape[0]
+            rank_response_df, labeled_binding_response_df, random_expectation_df = (
+                rank_response.create_rank_response_table(args)
+            )
+
             # note that the `id` needs to be like this in order for the return to be
             # consistent with the RetrieveRecordsAndFilesMixin
+            # if kwargs.get("summary", True) is True, return the rank_response_df
+            # summarized by rank_bin. Else, return the labeled_binding_response_df
             results_dict[record.id] = {
                 "id": str(promotersetsig_id) + "_" + str(record.id),
                 "promotersetsig_id": promotersetsig_id,
-                "data": rank_response_df.to_dict(),
-                "n_responsive": ceiling(total_expression_genes * rank_response_df.random.unique()[0]),
-                "total_expression_genes": total_expression_genes,
+                "data": (
+                    rank_response_df.to_dict()
+                    if kwargs.get("summary", True)
+                    else labeled_binding_response_df.to_dict()
+                ),
+                "n_responsive": int(random_expectation_df.responsive[0]),
+                "total_expression_genes": float(
+                    random_expectation_df.unresponsive[0] + random_expectation_df.responsive[0]
+                ),
             }
 
     return results_dict

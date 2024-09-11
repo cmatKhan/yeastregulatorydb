@@ -332,7 +332,7 @@ def test_chipexo_rankresponse(
     metadata_dict = json.load(tar.extractfile(tar.getmember("metadata.json")))
 
     for expression_id, rr_dict in metadata_dict.items():
-        assert rr_dict.get("n_responsive") == 0
+        assert rr_dict.get("n_responsive") == 1
         assert rr_dict.get("total_expression_genes") == 101
 
         content = tar.extractfile(tar.getmember(rr_dict["filename"])).read()
