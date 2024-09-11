@@ -7,9 +7,7 @@ from callingcardstools.Analysis.yeast import rank_response
 
 from config import celery_app
 from yeastregulatorydb.regulatory_data.models import Expression, PromoterSetSig
-from yeastregulatorydb.regulatory_data.utils.extract_file_from_storage import (
-    extract_file_from_storage,
-)
+from yeastregulatorydb.regulatory_data.utils.extract_file_from_storage import extract_file_from_storage
 
 logger = logging.getLogger(__name__)
 
@@ -73,13 +71,23 @@ def rank_response_task(
 
             rank_bin_size = int(kwargs.get("rank_bin_size", 5))
 
+            rank_by_binding_effect = kwargs.get("rank_by_binding_effect", False)
+            if isinstance(rank_by_binding_effect, str):
+                # verify first that the string is a variant of true or false
+                if rank_by_binding_effect.lower() not in ["true", "false"]:
+                    raise ValueError(
+                        "The value for the 'rank_by_binding_effect' key must be either 'true' or 'false' "
+                        "if it is a string"
+                    )
+                rank_by_binding_effect = rank_by_binding_effect.lower() == "true"
+
             config_dict = {
                 "binding_data_path": promotersetsig_filepath,
                 "binding_source": promotersetsig_record.get_source_name().name,
                 "binding_identifier_col": promotersetsig_record.fileformat.feature_identifier_col,
                 "binding_effect_col": promotersetsig_record.fileformat.effect_col,
                 "binding_pvalue_col": promotersetsig_record.fileformat.pval_col,
-                "rank_by_effect": kwargs.get("rank_by_effect", False),
+                "rank_by_binding_effect": rank_by_binding_effect,
                 "expression_data_path": expression_filepath,
                 "expression_source": record.source.name,
                 "expression_identifier_col": record.source.fileformat.feature_identifier_col,

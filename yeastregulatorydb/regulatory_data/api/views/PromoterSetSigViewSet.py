@@ -14,11 +14,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.request import Request
 from rest_framework.serializers import ValidationError
 
-from yeastregulatorydb.regulatory_data.models import (
-    DataSource,
-    Expression,
-    PromoterSetSig,
-)
+from yeastregulatorydb.regulatory_data.models import DataSource, Expression, PromoterSetSig
 from yeastregulatorydb.regulatory_data.tasks import rank_response_task
 from yeastregulatorydb.regulatory_data.utils.create_tarball import create_tarball
 
@@ -159,6 +155,9 @@ class PromoterSetSigViewSet(
 
         if request.query_params.get("rank_bin_size", None):
             kwargs["rank_bin_size"] = request.query_params.get("rank_bin_size")
+
+        if request.query_params.get("rank_by_binding_effect", None):
+            kwargs["rank_by_binding_effect"] = request.query_params.get("rank_by_binding_effect")
 
         celery_result = rank_response_task.delay(promotersetsig_id, **kwargs)
         results_dict = celery_result.get()
