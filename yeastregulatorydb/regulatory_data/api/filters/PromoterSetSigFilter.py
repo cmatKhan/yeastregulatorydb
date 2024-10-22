@@ -72,6 +72,12 @@ class PromoterSetSigFilter(django_filters.rest_framework.FilterSet):
         label="Condition",
         help_text="Filter by the `condition` field in the single_binding record. Useful for harbison_chip data",
     )
+    deduplicate = django_filters.BooleanFilter(
+        method="filter_deduplicate",
+        label="Deduplicate",
+        help_text="When true, removes single_binding rec "
+        "composite_binding exists for the same regulator_id and source_name",
+    )
 
     class Meta:
         model = PromoterSetSig
@@ -140,3 +146,22 @@ class PromoterSetSigFilter(django_filters.rest_framework.FilterSet):
 
     def filter_condition(self, queryset, name, value):
         return self.filter_single_binding(queryset, "condition", value)
+
+    def filter_deduplicate(self, queryset, name, value):
+        """
+        Filter out single_binding records when composite_binding
+        exists for the same regulator_id and source_name.
+        """
+        if value:  # Apply deduplication only if the user has requested it
+            # Get the distinct combinations of regulator_id and source_name that have composite_binding
+            composite_subquery = queryset.filter(composite_binding__isnull=False).values(
+                "composite_binding__regulator", "composite_binding__source"
+            )
+
+            # Exclude single_binding records where a composite_binding exists for the same regulator_id/source_name
+            queryset = queryset.exclude(
+                Q(single_binding__isnull=False)
+                & Q(single_binding__regulator__in=composite_subquery.values("composite_binding__regulator"))
+                & Q(single_binding__source__in=composite_subquery.values("composite_binding__source"))
+            )
+        return queryset

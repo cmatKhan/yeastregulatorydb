@@ -1,9 +1,8 @@
 # pyright: reportMissingImports=false, reportMissingModuleSource=false
 
+import io
 import json
-import os
 import tarfile
-import tempfile
 
 import pandas as pd
 from celery import group
@@ -18,10 +17,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.serializers import ValidationError
 
-from yeastregulatorydb.regulatory_data.models import (
-    Expression,
-    PromoterSetSig,
-)
+from yeastregulatorydb.regulatory_data.models import Expression, PromoterSetSig
 from yeastregulatorydb.regulatory_data.tasks import rank_response_task
 
 from ..filters.PromoterSetSigFilter import PromoterSetSigFilter
@@ -117,6 +113,9 @@ class PromoterSetSigViewSet(
         tasks = []
         for item in request.data:
             additional_arguments = {}
+            if item.get("expression_effect_colname", None):
+                additional_arguments["expression_effect_colname"] = item.get("expression_effect_colname")
+
             if item.get("expression_effect_threshold", None):
                 additional_arguments["expression_effect_threshold"] = item.get("expression_effect_threshold")
 
@@ -165,8 +164,7 @@ class PromoterSetSigViewSet(
                     raise ValidationError(f"Expression with id {expr_id} does not exist.")
 
             # Create Celery tasks for each promoterset_id
-            for promoterset_id in promoterset_ids:
-                tasks.append(rank_response_task.s(promoterset_ids, expression_ids, **additional_arguments, **kwargs))
+            tasks.append(rank_response_task.s(promoterset_ids, expression_ids, **additional_arguments, **kwargs))
 
         # Create a group of tasks and trigger them
         celery_group_result = group(tasks).apply_async()
@@ -177,129 +175,119 @@ class PromoterSetSigViewSet(
 
     @action(detail=False, methods=["get"])
     def rankresponse_task_status(self, request, *args, **kwargs):
-        group_task_id = request.query_params.get("task_id", None)
+        group_task_id = request.query_params.get("group_task_id", None)
 
-        if group_task_id:
-            # Retrieve the group result using the group_task_id
-            group_result = GroupResult.restore(group_task_id)
+        if not group_task_id:
+            return Response({"error": "You must provide a valid group_task_id."}, status=status.HTTP_400_BAD_REQUEST)
 
-            if not group_result:
-                return Response({"error": "Invalid group_task_id"}, status=status.HTTP_400_BAD_REQUEST)
+        # Retrieve the group result using the group_task_id
+        group_result = GroupResult.restore(group_task_id)
 
-            # Check the status of the group of tasks
-            if group_result.ready():
-                if group_result.failed():
-                    # If any task in the group failed, return failure status
-                    failed_tasks = [res for res in group_result.results if res.failed()]
-                    return Response(
-                        {"status": "FAILURE", "error": "One or more tasks failed", "failed_tasks": failed_tasks},
-                        status=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                    )
+        if not group_result:
+            return Response({"error": "Invalid group_task_id"}, status=status.HTTP_400_BAD_REQUEST)
 
-                # When all tasks are successful, combine the results from each task
-                with tempfile.TemporaryDirectory() as tmpdir:
-                    metadata = {}
-                    for result in group_result.results:
-                        results_dict = result.result
-                        if not isinstance(results_dict, dict):
-                            return Response(
-                                {"error": "Unexpected result format."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR
-                            )
+        # Summarize task states by counting the occurrences of each state
+        state_counts = {}
+        for task in group_result.results:
+            state = task.state
+            state_counts[state] = state_counts.get(state, 0) + 1
 
-                        # Combine the results of each task
-                        promotersetsig_ids = results_dict.get("promotersetsig_ids")
-                        expression_ids = results_dict.get("expression_ids")
-                        n_responsive = results_dict.get("n_responsive")
-                        total_expression_genes = results_dict.get("total_expression_genes")
-                        data = results_dict.get("data")
+        # Handle not ready tasks
+        if not group_result.ready():
+            return Response(
+                {"status": "IN_PROGRESS", "task_state_summary": state_counts},  # Summarizing task states
+                status=status.HTTP_200_OK,
+            )
 
-                        # Add metadata for each result
-                        metadata[f"{promotersetsig_ids}_{expression_ids}"] = {
-                            "promotersetsig_ids": promotersetsig_ids,
-                            "expression_ids": expression_ids,
-                            "n_responsive": n_responsive,
-                            "total_expression_genes": total_expression_genes,
-                        }
+        # Handle failure cases
+        if group_result.failed():
+            failed_tasks = [res for res in group_result.results if res.failed()]
+            return Response(
+                {"status": "FAILURE", "error": "One or more tasks failed", "failed_tasks": failed_tasks},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
 
-                        # Save CSV for each task result
-                        csv_filename = f"{promotersetsig_ids}_{expression_ids}.csv.gz"
-                        csv_path = os.path.join(tmpdir, csv_filename)
+        # Handle success cases
+        if group_result.ready() and not group_result.failed():
+            return Response(
+                {"status": "SUCCESS", "group_task_id": group_task_id, "task_state_summary": state_counts},
+                status=status.HTTP_200_OK,
+            )
 
-                        # Write the data (DataFrame) to CSV
-                        try:
-                            pd.DataFrame(data).to_csv(csv_path, compression="gzip", index=False)
-                        except Exception as exc:
-                            return Response(
-                                {"error": f"Error writing CSV file: {str(exc)}"},
-                                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                            )
+        # Fallback for unknown states
+        return Response(
+            {"status": "UNKNOWN", group_task_id: group_task_id},
+            status=status.HTTP_202_ACCEPTED,
+        )
 
-                    # Write the metadata to file
-                    metadata_path = os.path.join(tmpdir, "metadata.json")
-                    with open(metadata_path, "w") as f:
-                        json.dump(metadata, f)
+    @action(detail=False, methods=["get"])
+    def rankresponse_get_data(self, request, *args, **kwargs):
+        group_task_id = request.query_params.get("group_task_id", None)
 
-                    # Create a tarball of the directory
-                    tar_path = os.path.join(tmpdir, "results.tar.gz")
-                    with tarfile.open(tar_path, "w:gz") as tar:
-                        for result in group_result.results:
-                            promotersetsig_ids = result.result.get("promotersetsig_ids")
-                            expression_ids = result.result.get("expression_ids")
-                            csv_filename = f"{promotersetsig_ids}_{expression_ids}.csv.gz"
-                            csv_path = os.path.join(tmpdir, csv_filename)
-                            tar.add(csv_path, arcname=os.path.basename(csv_path))
-                        tar.add(metadata_path, arcname=os.path.basename(metadata_path))
+        if not group_task_id:
+            return Response({"error": "You must provide a valid group_task_id."}, status=status.HTTP_400_BAD_REQUEST)
 
-                    # Return the tarball as a file download
-                    with open(tar_path, "rb") as f:
-                        tar_content = f.read()
+        # Retrieve the group result using the group_task_id
+        group_result = GroupResult.restore(group_task_id)
 
-                    response = HttpResponse(tar_content, content_type="application/gzip")
-                    response["Content-Disposition"] = f'attachment; filename="rankresponse_{group_task_id}.tar.gz"'
-                    return response
-            else:
-                # If the tasks are not complete, return the current status
-                return Response({"status": group_result.state}, status=status.HTTP_200_OK)
+        if not group_result:
+            return Response({"error": "Invalid group_task_id"}, status=status.HTTP_400_BAD_REQUEST)
 
-        return Response({"error": "You must provide a valid group_task_id."}, status=status.HTTP_400_BAD_REQUEST)
+        # Check if the task is ready
+        if group_result.ready() and not group_result.failed():
+            # Create in-memory tarball
+            tar_buffer = io.BytesIO()
 
-    # results_dict = celery_result.get()
+            # Collect metadata
+            metadata = {}
 
-    # with tempfile.TemporaryDirectory() as tmpdir:
-    #     metadata = {}
-    #     # Write each DataFrame to a compressed CSV file
-    #     for expression_id, rr_dict in results_dict.items():
-    #         csv_path = f"{tmpdir}/{promotersetsig_id}_{expression_id}.csv.gz"
-    #         # the `result` is a dictionary. Convert to DataFrame and write to CSV
-    #         try:
-    #             data_path = rr_dict.pop("data")
-    #         except KeyError:
-    #             raise ValidationError(
-    #                 "The rank response task did not return "
-    #                 "the expected data structure. "
-    #                 "Key `data` is missing for expression_id: ",
-    #                 expression_id,
-    #             )
-    #         rr_dict["filename"] = os.path.basename(csv_path)
-    #         metadata[expression_id] = rr_dict
+            # Open tarfile in memory
+            with tarfile.open(fileobj=tar_buffer, mode="w:gz") as tar:
+                for result in group_result.results:
+                    results_dict = result.result
+                    if not isinstance(results_dict, dict):
+                        return Response(
+                            {"error": "Unexpected result format."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                        )
 
-    #         # write the csv to file
-    #         pd.DataFrame(data_path).to_csv(csv_path, compression="gzip", index=False)
+                    # Add metadata for each result
+                    metadata[result.id] = {
+                        "regulator_symbol": results_dict.get("regulator_symbol"),
+                        "promotersetsig_ids": results_dict.get("promotersetsig_ids"),
+                        "expression_ids": results_dict.get("expression_ids"),
+                        "n_responsive": results_dict.get("n_responsive"),
+                        "total_expression_genes": results_dict.get("total_expression_genes"),
+                    }
 
-    #     # write the json metadata to file
-    #     metadata_path = f"{tmpdir}/metadata.json"
-    #     with open(metadata_path, "w") as f:
-    #         json.dump(metadata, f)
+                    # Create CSV in memory
+                    csv_buffer = io.BytesIO()
+                    try:
+                        pd.DataFrame(results_dict.get("data")).to_csv(csv_buffer, compression="gzip", index=False)
+                        csv_buffer.seek(0)  # Reset buffer to the beginning for reading
+                    except Exception as exc:
+                        return Response(
+                            {"error": f"Error writing CSV file: {str(exc)}"},
+                            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                        )
 
-    #     # Create a tarball of the directory
-    #     tar_path = f"{tmpdir}/results.tar.gz"
-    #     create_tarball(tmpdir, tar_path)
+                    # Add CSV to tarball
+                    tar_info = tarfile.TarInfo(name=f"{result.id}.csv.gz")
+                    tar_info.size = len(csv_buffer.getvalue())
+                    tar.addfile(tar_info, csv_buffer)
 
-    #     # Read the tarball into memory (consider streaming for large files)
-    #     with open(tar_path, "rb") as f:
-    #         tar_content = f.read()
+                # Write metadata to memory
+                metadata_buffer = io.BytesIO(json.dumps(metadata).encode())
+                tar_info = tarfile.TarInfo(name="metadata.json")
+                tar_info.size = len(metadata_buffer.getvalue())
+                tar.addfile(tar_info, metadata_buffer)
 
-    # # Return the tarball as a download
-    # response = HttpResponse(tar_content, content_type="application/gzip")
-    # response["Content-Disposition"] = f'attachment; filename="rankresponse_{promotersetsig_id}.tar.gz"'
-    # return response
+            # Return the tarball as a file download
+            tar_buffer.seek(0)  # Reset buffer to the beginning for reading
+            response = HttpResponse(tar_buffer.getvalue(), content_type="application/gzip")
+            response["Content-Disposition"] = f'attachment; filename="rankresponse_{group_task_id}.tar.gz"'
+            return response
+        else:
+            return Response(
+                {"error": "The task is not yet complete or has failed."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )

@@ -70,13 +70,17 @@ class PromoterSetSig(BaseModel, GzipFileUploadWithIdMixin):
 
     # pylint:enable=R0801
 
-    def get_genomicfeature(self):
-        """return the genomicfeature associated with this promotersetsig instance"""
+    def get_regulator(self):
+        """return the regulator associated with this promotersetsig instance"""
         if self.single_binding:
             return self.single_binding.regulator
         elif self.composite_binding and self.composite_binding.bindings.exists():
             return self.composite_binding.bindings.first().regulator
         return None
+
+    def get_genomicfeature(self):
+        """return the genomicfeature associated with this promotersetsig instance"""
+        return self.get_regulator().genomicfeature
 
     def get_source_name(self):
         """return the source associated with this promotersetsig instance"""
@@ -84,6 +88,14 @@ class PromoterSetSig(BaseModel, GzipFileUploadWithIdMixin):
             return self.single_binding.source
         elif self.composite_binding and self.composite_binding.bindings.exists():
             return self.composite_binding.bindings.first().source
+        return None
+
+    def get_assay(self):
+        """return the source associated with this promotersetsig instance"""
+        if self.single_binding:
+            return self.single_binding.source.assay
+        elif self.composite_binding and self.composite_binding.bindings.exists():
+            return self.composite_binding.bindings.first().source.assay
         return None
 
     def get_fileformat(self):

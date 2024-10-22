@@ -96,9 +96,13 @@ class Binding(BaseModel, GzipFileUploadWithIdMixin):
             self.update_file_name("file", f"binding/{self.source.name}")
             super().save(update_fields=["file"])
 
+    def get_regulator(self):
+        """return the regulator associated with this expression instance"""
+        return self.regulator
+
     def get_genomicfeature(self):
         """return the genomicfeature associated with this expression instance"""
-        return self.regulator
+        return self.get_regulator().genomicfeature
 
     def get_fileformat(self):
         """return the fileformat associated with this expression instance"""

@@ -14,11 +14,8 @@ from django.urls import reverse
 from rest_framework.authtoken.models import Token
 from rest_framework.test import APIClient, APIRequestFactory
 
-from yeastregulatorydb.regulatory_data.api.serializers import (
-    BindingSerializer,
-    ExpressionSerializer,
-    PromoterSetSerializer,
-)
+from yeastregulatorydb.regulatory_data.api.filters import PromoterSetSigFilter
+from yeastregulatorydb.regulatory_data.api.serializers import BindingSerializer, PromoterSetSerializer
 from yeastregulatorydb.regulatory_data.models import (
     Binding,
     BindingConcatenated,
@@ -30,11 +27,16 @@ from yeastregulatorydb.regulatory_data.models import (
     Regulator,
 )
 from yeastregulatorydb.regulatory_data.tasks import promoter_significance_combined_task, promoter_significance_task
+from yeastregulatorydb.regulatory_data.tasks.cc_replicate_agreement import (
+    calculate_log_manhattan_outliers,
+    calculate_spearman_corr,
+    cc_replicate_agreement,
+)
 from yeastregulatorydb.regulatory_data.tests.utils.model_to_dict_select import model_to_dict_select
 from yeastregulatorydb.regulatory_data.utils import extract_file_from_storage
 from yeastregulatorydb.users.models import User
 
-from .factories import BindingFactory, ExpressionFactory, GenomicFeatureFactory, PromoterSetFactory, RegulatorFactory
+from .factories import BindingFactory, GenomicFeatureFactory, PromoterSetFactory, RegulatorFactory
 
 pytestmark = pytest.mark.django_db
 
@@ -302,3 +304,108 @@ def test_promoter_significance_combined_task(
     ].equals(
         df_other2["background_total_hops"]
     ), "The 'background_total_hops' values should be the same in all three dataframes"
+
+
+# Test data
+example_data = pd.DataFrame(
+    {"sample1": [15, 7, 5, 20, 10], "sample2": [12, 22, 3, 9, 13], "sample3": [11, 19, 6, 8, 14]}
+)
+
+# Expected outputs
+expected_spearman_corr = pd.DataFrame(
+    {"sample1": [1.0, 0.0, 0.0], "sample2": [0.0, 1.0, 1.0], "sample3": [0.0, 1.0, 1.0]},
+    index=["sample1", "sample2", "sample3"],
+)
+
+expected_manhattan_dist = pd.Series({"sample1": 1.045757, "sample2": 0.000000, "sample3": 0.000000})
+
+
+# Test for Spearman Correlation
+def test_calculate_spearman_corr():
+    result = calculate_spearman_corr(example_data)
+    pd.testing.assert_frame_equal(result, expected_spearman_corr)
+
+
+# Test for Log-Transformed Manhattan Distances
+def test_calculate_log_manhattan_outliers():
+    result = calculate_log_manhattan_outliers(example_data)
+    pd.testing.assert_series_equal(result, expected_manhattan_dist, atol=1e-5)
+
+
+@pytest.mark.django_db()
+def test_cc_replicate_agreement(
+    clean_test_database,
+    auth_token: Token,
+    cc_datasource: DataSource,
+    yiming_promoterset: PromoterSet,
+    adh1_background: CallingCardsBackground,
+    chrmap: QuerySet,
+    fileformat: QueryDict,
+    test_data_dict: dict,
+):
+    factory = APIRequestFactory()
+    request = factory.get("/")
+    request.user = auth_token.user
+
+    client = APIClient()
+    client.credentials(HTTP_AUTHORIZATION="Token " + auth_token.key)
+
+    genomicfeature_instance = GenomicFeatureFactory.create(symbol="HAP5")
+    hap5_regulator = RegulatorFactory.create(genomicfeature=genomicfeature_instance)
+
+    for ccfile in ["ccexperiment_292_hap5_chrI.csv.gz", "ccexperiment_302_hap5_chrI.csv.gz"]:
+        binding_path = next(
+            file for file in test_data_dict["binding"]["callingcards"]["files"] if os.path.basename(file) == ccfile
+        )
+        assert os.path.exists(binding_path), f"path: {binding_path}"
+
+        # Open the file and read its content
+        with open(binding_path, "rb") as file_obj:
+            file_content = file_obj.read()
+            # Create a SimpleUploadedFile instance
+            upload_file = SimpleUploadedFile(ccfile, file_content, content_type="application/gzip")
+            data = model_to_dict_select(BindingFactory.build())
+            # set path to test data and check that it exists
+            data["file"] = upload_file
+            # note: test passing the regulator_locus_tag and source_name
+            # instead of the regulator and source ids works
+            data.pop("source")
+            data["source_name"] = cc_datasource.name
+            data.pop("regulator")
+            data["regulator_locus_tag"] = hap5_regulator.genomicfeature.locus_tag
+
+            # Define your query parameters
+            query_params = {"testing": "True"}
+
+            # Create the URL for the request
+            url = reverse("api:binding-list")
+
+            # Add the query parameters to the URL
+            url += "?" + urlencode(query_params)
+
+            settings.CELERY_TASK_ALWAYS_EAGER = True
+            response = client.post(url, data, format="multipart")
+
+            assert response.status_code == 201, response.data
+
+    promotersetsig_ids = list(
+        PromoterSetSigFilter(
+            data={"regulator_locus_tag": hap5_regulator.genomicfeature.locus_tag, "assay": cc_datasource.assay},
+            queryset=PromoterSetSig.objects.all(),
+        ).qs.values_list("id", flat=True)
+    )
+
+    assert len(promotersetsig_ids) >= 2, "There should be two or more PromoterSetSig records"
+
+    settings.CELERY_TASK_ALWAYS_EAGER = True
+    task_result = cc_replicate_agreement.delay(promotersetsig_ids)
+
+    assert isinstance(task_result, EagerResult)
+
+    res = task_result.get()
+
+    assert isinstance(res, dict)
+    assert "spearman_corr" in res, "The 'spearman_corr' key should be present in the result"
+    assert isinstance(res["spearman_corr"], pd.DataFrame)
+    assert "log_manhattan_dist" in res, "The 'log_manhattan_dist' key should be present in the result"
+    assert isinstance(res["log_manhattan_dist"], pd.Series)

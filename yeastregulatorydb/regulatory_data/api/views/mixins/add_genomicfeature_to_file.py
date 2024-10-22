@@ -93,14 +93,14 @@ def add_genomicfeature_to_file(record, tmpdir, rename_metric_columns: bool = Tru
 
     # Add the regulator information
     try:
-        regulator = record.get_genomicfeature()
+        regulator = record.get_regulator()
     except AttributeError as exc:
         raise AttributeError(
-            "Could not find 'get_genomicfeature()' method on the record. "
-            "This method should return a GenomicFeature instance. "
+            "Could not find 'get_regulator()' method on the record. "
+            "This method should return a Regulator instance. "
             "Please report this as an issue to: https://github.com/cmatKhan/yeastregulatorydb/issues"
         ) from exc
-    df["regulator_id"] = regulator.genomicfeature.id
+    df["regulator_id"] = regulator.id
     df["regulator_locus_tag"] = regulator.genomicfeature.locus_tag
     df["regulator_symbol"] = regulator.genomicfeature.symbol
 

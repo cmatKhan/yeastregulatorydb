@@ -3,12 +3,13 @@ import os
 import tempfile
 from typing import List
 
-import pandas as pd
 from callingcardstools.Analysis.yeast import rank_response
 
 from config import celery_app
 from yeastregulatorydb.regulatory_data.models import Expression, PromoterSetSig
-from yeastregulatorydb.regulatory_data.utils.extract_file_from_storage import extract_file_from_storage
+from yeastregulatorydb.regulatory_data.utils.extract_file_from_storage import (
+    extract_file_from_storage,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -25,6 +26,7 @@ def rank_response_task(
         raise ValueError("summarize_by_rank_bin must be a boolean")
 
     with tempfile.TemporaryDirectory() as tmpdir:
+        regulator_symbol = set()
         # create a subdirectory 'promotersetsig' in the temporary directory
         # to store the extracted promotersetsig files
         promotersetsig_dict = {
@@ -38,6 +40,10 @@ def rank_response_task(
         os.makedirs(tmpdir_promotersetsig, exist_ok=True)
         for promotersetsig_id in promotersetsig_ids:
             promotersetsig_record = PromoterSetSig.objects.get(id=promotersetsig_id)
+
+            regulator_symbol.add(promotersetsig_record.get_genomicfeature().symbol)
+            if len(regulator_symbol) > 1:
+                raise ValueError("All PromoterSetSig objects must have the same regulator")
 
             promotersetsig_dict["source"].add(promotersetsig_record.get_source_name().name)
             if len(promotersetsig_dict["source"]) > 1:
@@ -69,8 +75,12 @@ def rank_response_task(
         for expression_id in expression_ids:
             expression_record = Expression.objects.get(id=expression_id)
 
+            regulator_symbol.add(expression_record.get_genomicfeature().symbol)
+            if len(regulator_symbol) > 1:
+                raise ValueError("All PromoterSetSig and Expression objects must have the same regulator")
+
             expression_dict["source"].add(expression_record.source.name)
-            if len(expression_dict["source"]) == set():
+            if len(expression_dict["source"]) > 1:
                 raise ValueError("All Expression objects must have the same source")
 
             # as long as the source is all the same, these will be all the same
@@ -79,7 +89,10 @@ def rank_response_task(
                 expression_dict["feature_col"].add(expression_record.source.fileformat.feature_identifier_col)
 
                 # set the effect column settings
-                expression_dict["effect_col"].add(expression_record.source.fileformat.effect_col)
+                expression_effect_colname = kwargs.get(
+                    "expression_effect_colname", expression_record.source.fileformat.effect_col
+                )
+                expression_dict["effect_col"].add(expression_effect_colname)
 
                 expression_effect_threshold = float(
                     kwargs.get(
@@ -133,6 +146,8 @@ def rank_response_task(
             "normalization_threshold": int(kwargs.get("normalization_threshold", -1)),
         }
 
+        logger.debug(f"Rank Response task config: {config_dict}")
+
         # validate the configuration key/value pairs
         args = rank_response.validate_config(config_dict)
 
@@ -145,6 +160,7 @@ def rank_response_task(
         # if kwargs.get("summary", True) is True, return the rank_response_df
         # summarized by rank_bin. Else, return the labeled_binding_response_df
         results_dict = {
+            "regulator_symbol": regulator_symbol.pop(),
             "promotersetsig_ids": ",".join(map(str, promotersetsig_ids)),
             "expression_ids": ",".join(map(str, expression_ids)),
             "data": (rank_response_df.to_dict() if summarize_by_rank_bin else labeled_binding_response_df.to_dict()),

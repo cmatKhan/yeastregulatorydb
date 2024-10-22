@@ -264,6 +264,11 @@ def test_cc_rankresponse(
     group_task_id = response.data.get("group_task_id")
     assert group_task_id is not None
 
+    # Get the group task result
+    response = client.get(reverse("api:promotersetsig-rankresponse-task-status"), {"group_task_id": group_task_id})
+
+    assert response.status_code == 200, response.content
+
 
 # @pytest.mark.django_db
 # def test_chipexo_rankresponse(
