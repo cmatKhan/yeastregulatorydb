@@ -6,6 +6,12 @@ from .utils import ensure_iterable
 
 
 class PromoterSetSigFilter(django_filters.rest_framework.FilterSet):
+    """
+    FilterSet for the PromoterSetSig model. Note that the order in which the fields
+    are applied is controlled by the `fields` attribute. It is important that the
+    first filter in `fields` is 'deduplicate'.
+    """
+
     id = django_filters.NumberFilter(label="Promoter Set Signature ID", help_text="ID of the promoter set signature")
     single_binding = django_filters.NumberFilter(
         label="Single Binding ID",
@@ -82,6 +88,7 @@ class PromoterSetSigFilter(django_filters.rest_framework.FilterSet):
     class Meta:
         model = PromoterSetSig
         fields = [
+            "deduplicate",
             "id",
             "single_binding",
             "composite_binding",
@@ -152,13 +159,16 @@ class PromoterSetSigFilter(django_filters.rest_framework.FilterSet):
         Filter out single_binding records when composite_binding
         exists for the same regulator_id and source_name.
         """
-        if value:  # Apply deduplication only if the user has requested it
-            # Get the distinct combinations of regulator_id and source_name that have composite_binding
+        # if the user sets deduplicate to true, then filter out single_binding records
+        if value:
+            # Get the distinct combinations of regulator_id
+            # and source_name that have composite_binding
             composite_subquery = queryset.filter(composite_binding__isnull=False).values(
                 "composite_binding__regulator", "composite_binding__source"
             )
 
-            # Exclude single_binding records where a composite_binding exists for the same regulator_id/source_name
+            # Exclude single_binding records where a composite_binding
+            # exists for the same regulator_id/source_name
             queryset = queryset.exclude(
                 Q(single_binding__isnull=False)
                 & Q(single_binding__regulator__in=composite_subquery.values("composite_binding__regulator"))

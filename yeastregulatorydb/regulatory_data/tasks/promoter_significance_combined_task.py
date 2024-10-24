@@ -8,9 +8,7 @@ from collections import namedtuple
 from types import SimpleNamespace
 
 import pandas as pd
-from callingcardstools.PeakCalling.yeast.call_peaks import (
-    call_peaks as callingcards_promoter_sig,
-)
+from callingcardstools.PeakCalling.yeast.call_peaks import call_peaks as callingcards_promoter_sig
 from celery import group
 from django.conf import settings
 from django.contrib.auth import get_user_model
@@ -38,9 +36,7 @@ from yeastregulatorydb.regulatory_data.models import (
     PromoterSetSig,
     Regulator,
 )
-from yeastregulatorydb.regulatory_data.utils.extract_file_from_storage import (
-    extract_file_from_storage,
-)
+from yeastregulatorydb.regulatory_data.utils.extract_file_from_storage import extract_file_from_storage
 from yeastregulatorydb.users.models import User
 
 logger = logging.getLogger(__name__)
@@ -364,7 +360,7 @@ def promoter_significance_combined_task(
     data_usable: str = "pass",
     **kwargs,
 ) -> list:
-    """For each promoter set in PromoterSet, create the chipexo promoter significance file.
+    """For each promoter set in PromoterSet, create the  promoter significance file.
     Return a list of PromoterSetSig objects that may be passed on to the rank response
     endpoint. NOTE that this task expects the following global variables to
     be set in the django settings:
@@ -423,14 +419,18 @@ def promoter_significance_combined_task(
     fileformat_record = get_fileformat(output_fileformat)
 
     with tempfile.TemporaryDirectory() as tmpdir:
+        # write the chrmap file to a temporary directory
         chrmap_filepath = os.path.join(tmpdir, "chrmap.csv")
         pd.DataFrame(list(ChrMap.objects.all().values())).to_csv(chrmap_filepath, index=False)
+
+        # do the same with the binding data -- extract from storage, write to tmpdir
         binding_filepath_list = extract_files(binding_records, tmpdir)
         promoterset_objects_iterator = (
             PromoterSet.objects.filter(id=kwargs.get("promoterset_id")).iterator()
             if "promoterset_id" in kwargs
             else PromoterSet.objects.iterator()
         )
+
         result_list = []
         for promoter_record in promoterset_objects_iterator:
             background_objects_iterator = (
