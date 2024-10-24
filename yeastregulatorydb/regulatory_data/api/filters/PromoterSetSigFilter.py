@@ -88,6 +88,8 @@ class PromoterSetSigFilter(django_filters.rest_framework.FilterSet):
     class Meta:
         model = PromoterSetSig
         fields = [
+            "source",
+            "source_name",
             "deduplicate",
             "id",
             "single_binding",
@@ -98,8 +100,6 @@ class PromoterSetSigFilter(django_filters.rest_framework.FilterSet):
             "background_name",
             "regulator_locus_tag",
             "regulator_symbol",
-            "source",
-            "source_name",
             "lab",
             "assay",
             "workflow",
