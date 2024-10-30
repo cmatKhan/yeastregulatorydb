@@ -62,7 +62,7 @@ class PromoterSetSigFilter(django_filters.rest_framework.FilterSet):
         label="Binding Data Workflow",
         help_text="Binding workflow name",
     )
-    data_usable = django_filters.ChoiceFilter(
+    data_usable = django_filters.MultipleChoiceFilter(
         method="filter_data_usable",
         choices=BindingManualQC.MANUAL_QC_CHOICES,
         label="Binding Data Usable",

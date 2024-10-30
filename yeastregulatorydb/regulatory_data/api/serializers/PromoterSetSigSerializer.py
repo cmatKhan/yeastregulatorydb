@@ -56,7 +56,7 @@ class PromoterSetSigSerializer(CustomValidateMixin, FileValidationMixin, seriali
                 ret["source"] = first_binding.source.name
                 ret["regulator_symbol"] = first_binding.regulator.genomicfeature.symbol
                 ret["regulator_locus_tag"] = first_binding.regulator.genomicfeature.locus_tag
-                qc_set = list(first_binding.bindingmanualqc_set.all())
+                qc_set = list(composite_binding.bindingmanualqc_set.all())
                 ret["rank_recall"] = qc_set[0].rank_recall if qc_set else None
                 ret["data_usable"] = qc_set[0].data_usable if qc_set else None
             else:

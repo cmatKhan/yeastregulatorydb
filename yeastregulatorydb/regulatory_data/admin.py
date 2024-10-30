@@ -14,6 +14,7 @@ from .models import (
     GenomicFeature,
     PromoterSet,
     PromoterSetSig,
+    RankResponse,
     Regulator,
 )
 
@@ -29,4 +30,5 @@ admin.site.register(FileFormat)
 admin.site.register(GenomicFeature)
 admin.site.register(PromoterSet)
 admin.site.register(PromoterSetSig)
+admin.site.register(RankResponse)
 admin.site.register(Regulator)

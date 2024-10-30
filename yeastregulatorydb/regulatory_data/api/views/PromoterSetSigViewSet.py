@@ -42,7 +42,8 @@ class PromoterSetSigViewSet(
     """
 
     queryset = (
-        PromoterSetSig.objects.select_related(
+        PromoterSetSig.objects.order_by("id")
+        .select_related(
             "uploader",
             "single_binding",
             "single_binding__regulator",
@@ -58,14 +59,12 @@ class PromoterSetSigViewSet(
         )
         .prefetch_related(
             "single_binding__bindingmanualqc_set",
+            "composite_binding__bindingmanualqc_set",
             "composite_binding__bindings",
-            "composite_binding__bindings__bindingmanualqc_set",
             "composite_binding__bindings__source",
             "composite_binding__bindings__regulator",
             "composite_binding__bindings__regulator__genomicfeature",
         )
-        .all()
-        .order_by("id")
     )
 
     authentication_classes = [SessionAuthentication, TokenAuthentication]

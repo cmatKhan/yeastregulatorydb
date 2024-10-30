@@ -10,6 +10,7 @@ from .FileFormat import FileFormat
 from .GenomicFeature import GenomicFeature
 from .PromoterSet import PromoterSet
 from .PromoterSetSig import PromoterSetSig
+from .RankResponse import RankResponse
 from .Regulator import Regulator
 
 __all__ = [
@@ -25,5 +26,6 @@ __all__ = [
     "GenomicFeature",
     "PromoterSet",
     "PromoterSetSig",
+    "RankResponse",
     "Regulator",
 ]

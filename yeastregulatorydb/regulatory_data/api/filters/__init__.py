@@ -9,6 +9,7 @@ from .FileFormatFilter import FileFormatFilter
 from .GenomicFeatureFilter import GenomicFeatureFilter
 from .PromoterSetFilter import PromoterSetFilter
 from .PromoterSetSigFilter import PromoterSetSigFilter
+from .RankResponseFilter import RankResponseFilter
 from .RegulatorFilter import RegulatorFilter
 
 __all__ = [
@@ -23,5 +24,6 @@ __all__ = [
     "GenomicFeatureFilter",
     "PromoterSetFilter",
     "PromoterSetSigFilter",
+    "RankResponseFilter",
     "RegulatorFilter",
 ]

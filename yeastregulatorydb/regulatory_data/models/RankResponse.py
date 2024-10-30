@@ -1,0 +1,95 @@
+import logging
+
+from django.db import models
+from django.dispatch import receiver
+
+from .BaseModel import BaseModel
+from .mixins.GzipFileUploadWithIdMixin import GzipFileUploadWithIdMixin
+
+logger = logging.getLogger(__name__)
+
+
+class RankResponse(BaseModel, GzipFileUploadWithIdMixin):
+    """
+    Store RankResponse data
+    """
+
+    promotersetsig = models.ForeignKey(
+        "PromoterSetSig",
+        on_delete=models.CASCADE,
+        related_name="promotersetsig",
+        help_text="Foreign key to the 'PromoterSetSig' table",
+    )
+
+    expression = models.ForeignKey(
+        "Expression",
+        on_delete=models.CASCADE,
+        related_name="expression",
+        help_text="Foreign key to the 'Expression' table",
+    )
+
+    # a json field to store parameters used to generate the rankresponse
+    parameters = models.JSONField(
+        help_text=(
+            "A json field to store parameters used to generate the rankresponse. "
+            "The keys are 'bin_size' and 'bin_overlap'. The values are integers."
+        )
+    )
+
+    file = models.FileField(
+        upload_to="temp",
+        help_text=(
+            "A csv which summarizes the responsiveness of a given TF, "
+            "ranked by binding. The data is unsummarized but the column "
+            "'bin' allows for summarization"
+        ),
+    )
+
+    def __str__(self):
+        return f"pk:{self.pk}"
+
+    class Meta:
+        db_table = "rankresponse"
+
+    # pylint:disable=R0801
+    def save(self, *args, **kwargs):
+        # Store the old file path
+        is_create = self.pk is None
+        super().save(*args, **kwargs)
+        if is_create:
+            self.update_file_name("file", "rankresponse", "csv.gz")
+            super().save(update_fields=["file"])
+
+    # pylint:enable=R0801
+
+    def get_regulator(self):
+        """return the regulator associated with this promotersetsig instance"""
+        return self.promotersetsig.get_regulator()
+
+    def get_genomicfeature(self):
+        """return the genomicfeature associated with this promotersetsig instance"""
+        return self.get_regulator().genomicfeature
+
+    def get_source_name(self):
+        """return the source associated with this promotersetsig instance"""
+        return self.promotersetsig.get_source_name()
+
+    def get_assay(self):
+        """return the source associated with this promotersetsig instance"""
+        return self.promotersetsig.get_assay()
+
+
+@receiver(models.signals.post_delete, sender=RankResponse)
+def remove_file_from_s3(sender, instance, using, **kwargs):  # pylint: disable=unused-argument
+    """
+    this is a post_delete signal. Hence, if the delete command is successful,
+    the file will be deleted. If the delete command is successful, and for some
+    reason the delete signal fails, it is possible to end up with files in S3
+    which are not referenced by the database.
+    upon inception, there did not exist any images which were not referenced.
+    So,if unreferenced files are ever found, that should indicate that these
+    files are erroneous and can be safely deleted
+    """
+    # note that if the directory (and all subdirectories) are empty, the
+    # directory will also be removed
+    instance.file.delete(save=False)

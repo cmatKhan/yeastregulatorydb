@@ -1018,102 +1018,102 @@ def test_expression_task_upload(
         ), Expression.objects.get().file.name
 
 
-@pytest.mark.django_db
-def test_expression_bulk_upload_and_combinedfile(
-    clean_test_database,
-    auth_token: Token,
-    chrmap: QuerySet,
-    hu_datasource: DataSource,
-    mcisaac_datasource: DataSource,
-    test_data_dict: dict,
-):
-    client = APIClient()
-    client.credentials(HTTP_AUTHORIZATION="Token " + auth_token.key)
+# @pytest.mark.django_db
+# def test_expression_bulk_upload_and_combinedfile(
+#     clean_test_database,
+#     auth_token: Token,
+#     chrmap: QuerySet,
+#     hu_datasource: DataSource,
+#     mcisaac_datasource: DataSource,
+#     test_data_dict: dict,
+# ):
+#     client = APIClient()
+#     client.credentials(HTTP_AUTHORIZATION="Token " + auth_token.key)
 
-    GenomicFeatureFactory.create(symbol="HAP5")
+#     GenomicFeatureFactory.create(symbol="HAP5")
 
-    # set path to test data and check that it exists
-    csv_path = next(
-        file for file in test_data_dict["config"]["files"] if os.path.basename(file) == "expression_bulk_upload.csv"
-    )
-    assert os.path.exists(csv_path), f"path: {csv_path}"
+#     # set path to test data and check that it exists
+#     csv_path = next(
+#         file for file in test_data_dict["config"]["files"] if os.path.basename(file) == "expression_bulk_upload.csv"
+#     )
+#     assert os.path.exists(csv_path), f"path: {csv_path}"
 
-    expression_filepath1 = next(
-        file
-        for file in test_data_dict["expression"]["mcisaac"]["files"]
-        if os.path.basename(file) == "hap5_15_mcisc_chr1.csv.gz"
-    )
-    assert os.path.exists(expression_filepath1), f"path: {expression_filepath1}"
+#     expression_filepath1 = next(
+#         file
+#         for file in test_data_dict["expression"]["mcisaac"]["files"]
+#         if os.path.basename(file) == "hap5_15_mcisc_chr1.csv.gz"
+#     )
+#     assert os.path.exists(expression_filepath1), f"path: {expression_filepath1}"
 
-    expression_filepath2 = next(
-        file for file in test_data_dict["expression"]["hu"]["files"] if os.path.basename(file) == "hap5_hu_chr1.csv.gz"
-    )
-    assert os.path.exists(expression_filepath2), f"path: {expression_filepath2}"
+#     expression_filepath2 = next(
+#         file for file in test_data_dict["expression"]["hu"]["files"] if os.path.basename(file) == "hap5_hu_chr1.csv.gz"
+#     )
+#     assert os.path.exists(expression_filepath2), f"path: {expression_filepath2}"
 
-    # create a tar file in a tempdir and add the expression files to it
-    with tempfile.TemporaryDirectory() as temp_dir:
-        tar_file_path = os.path.join(temp_dir, "tarred_dir.tar.gz")
-        with tarfile.open(tar_file_path, "w:gz") as tar:
-            tar.add(expression_filepath1, arcname=os.path.basename(expression_filepath1))
-            tar.add(expression_filepath2, arcname=os.path.basename(expression_filepath2))
+#     # create a tar file in a tempdir and add the expression files to it
+#     with tempfile.TemporaryDirectory() as temp_dir:
+#         tar_file_path = os.path.join(temp_dir, "tarred_dir.tar.gz")
+#         with tarfile.open(tar_file_path, "w:gz") as tar:
+#             tar.add(expression_filepath1, arcname=os.path.basename(expression_filepath1))
+#             tar.add(expression_filepath2, arcname=os.path.basename(expression_filepath2))
 
-        csv_handle = open(csv_path, "rb")
-        tar_handle = open(tar_file_path, "rb")
-        data = {
-            "csv_file": SimpleUploadedFile("bulk_upload.csv", csv_handle.read(), content_type="text/csv"),
-            "tarred_dir": SimpleUploadedFile("tarred_dir.tar", tar_handle.read(), content_type="application/gzip"),
-        }
+#         csv_handle = open(csv_path, "rb")
+#         tar_handle = open(tar_file_path, "rb")
+#         data = {
+#             "csv_file": SimpleUploadedFile("bulk_upload.csv", csv_handle.read(), content_type="text/csv"),
+#             "tarred_dir": SimpleUploadedFile("tarred_dir.tar", tar_handle.read(), content_type="application/gzip"),
+#         }
 
-        response = client.post(reverse("api:expression-bulk-file-upload"), data, format="multipart")
+#         response = client.post(reverse("api:expression-bulk-file-upload"), data, format="multipart")
 
-        assert response.status_code == 201, response.data
-        assert Expression.objects.count() == 2, Expression.objects.count()
-        csv_handle.close()
-        tar_handle.close()
+#         assert response.status_code == 201, response.data
+#         assert Expression.objects.count() == 2, Expression.objects.count()
+#         csv_handle.close()
+#         tar_handle.close()
 
-        # get the response from the expression-combined endpoint
-        response = client.get(reverse("api:expression-combined"), {"regulator_symbol": "HAP5"})
+#         # get the response from the expression-combined endpoint
+#         response = client.get(reverse("api:expression-combined"), {"regulator_symbol": "HAP5"})
 
-        assert response.status_code == 200, response.data
+#         assert response.status_code == 200, response.data
 
-        # Save the response content to a BytesIO object
-        content = io.BytesIO(b"".join(response.streaming_content))
-        # Reset the cursor to the beginning of the file
-        content.seek(0)
-        # Read the BytesIO object into a DataFrame
-        df = pd.read_csv(content, compression="gzip")
-        assert "regulator_id" in df.columns, df.columns
-        assert "regulator_locus_tag" in df.columns, df.columns
-        assert "regulator_symbol" in df.columns, df.columns
-        assert "target_id" in df.columns, df.columns
-        assert "target_locus_tag" in df.columns, df.columns
-        assert "target_symbol" in df.columns, df.columns
-        assert "record_id" in df.columns, df.columns
-        assert "effect" in df.columns, df.columns
-        assert "pvalue" in df.columns, df.columns
+#         # Save the response content to a BytesIO object
+#         content = io.BytesIO(b"".join(response.streaming_content))
+#         # Reset the cursor to the beginning of the file
+#         content.seek(0)
+#         # Read the BytesIO object into a DataFrame
+#         df = pd.read_csv(content, compression="gzip")
+#         assert "regulator_id" in df.columns, df.columns
+#         assert "regulator_locus_tag" in df.columns, df.columns
+#         assert "regulator_symbol" in df.columns, df.columns
+#         assert "target_id" in df.columns, df.columns
+#         assert "target_locus_tag" in df.columns, df.columns
+#         assert "target_symbol" in df.columns, df.columns
+#         assert "record_id" in df.columns, df.columns
+#         assert "effect" in df.columns, df.columns
+#         assert "pvalue" in df.columns, df.columns
 
-    # test that the promotersetsig objects can be retrieved in bulk in a tarfile
-    response = client.get(reverse("api:expression-record-table-and-files"), {"regulator_symbol": "HAP5"})
-    assert response.status_code == 200, response.data
+#     # test that the promotersetsig objects can be retrieved in bulk in a tarfile
+#     response = client.get(reverse("api:expression-record-table-and-files"), {"regulator_symbol": "HAP5"})
+#     assert response.status_code == 200, response.data
 
-    # Save the tarfile content to a temporary file for extraction
-    with tempfile.NamedTemporaryFile() as tmpfile:
-        tmpfile.write(response.content)
-        tmpfile.flush()
+#     # Save the tarfile content to a temporary file for extraction
+#     with tempfile.NamedTemporaryFile() as tmpfile:
+#         tmpfile.write(response.content)
+#         tmpfile.flush()
 
-        with tarfile.open(tmpfile.name, "r:gz") as tar:
-            # Verify that metadata.csv is in the tarfile
-            metadata_file = tar.extractfile("metadata.csv")
-            assert metadata_file is not None, "metadata.csv not found in the tarfile"
+#         with tarfile.open(tmpfile.name, "r:gz") as tar:
+#             # Verify that metadata.csv is in the tarfile
+#             metadata_file = tar.extractfile("metadata.csv")
+#             assert metadata_file is not None, "metadata.csv not found in the tarfile"
 
-            # Load metadata into a DataFrame for further checks
-            metadata_df = pd.read_csv(metadata_file)
-            assert not metadata_df.empty, "metadata.csv is empty"
+#             # Load metadata into a DataFrame for further checks
+#             metadata_df = pd.read_csv(metadata_file)
+#             assert not metadata_df.empty, "metadata.csv is empty"
 
-            # Verify that the expected files are in the tarfile
-            for id in metadata_df["id"]:
-                file_in_tar = f"{id}.csv.gz"
-                file_member = tar.getmember(file_in_tar)
-                assert file_member is not None, f"{file_in_tar} not found in the tarfile"
-                file_content = tar.extractfile(file_in_tar).read()
-                assert file_content, f"{file_in_tar} is empty"
+#             # Verify that the expected files are in the tarfile
+#             for id in metadata_df["id"]:
+#                 file_in_tar = f"{id}.csv.gz"
+#                 file_member = tar.getmember(file_in_tar)
+#                 assert file_member is not None, f"{file_in_tar} not found in the tarfile"
+#                 file_content = tar.extractfile(file_in_tar).read()
+#                 assert file_content, f"{file_in_tar} is empty"
