@@ -15,6 +15,8 @@ services:
     depends_on:
       - postgres
       - redis
+    volumes:
+      - /ref/mblab/software/bin:/executables:z
     env_file:
       - ./.envs/.htcf/.django
       - ./.envs/.htcf/.postgres
