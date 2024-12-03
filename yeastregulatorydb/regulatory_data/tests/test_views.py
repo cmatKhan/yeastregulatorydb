@@ -9,7 +9,6 @@ from urllib.parse import urlencode
 
 import pandas as pd
 import pytest
-from celery.result import AsyncResult
 from django.conf import settings
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.db.models.query import QuerySet
@@ -256,7 +255,7 @@ def test_cc_rankresponse(
     ]
 
     # Send a POST request to the rankresponse endpoint
-    response = client.post(reverse("api:promotersetsig-rankresponse"), data=request_data, format="json")
+    response = client.post(reverse("api:rankresponse-submit"), data=request_data, format="json")
 
     assert response.status_code == 202  # Expecting status code 202 for accepted
 
@@ -265,7 +264,7 @@ def test_cc_rankresponse(
     assert group_task_id is not None
 
     # Get the group task result
-    response = client.get(reverse("api:promotersetsig-rankresponse-task-status"), {"group_task_id": group_task_id})
+    response = client.get(reverse("api:rankresponse-status"), {"group_task_id": group_task_id})
 
     assert response.status_code == 200, response.content
 

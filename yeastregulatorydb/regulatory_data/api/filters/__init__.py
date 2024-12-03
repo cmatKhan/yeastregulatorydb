@@ -3,6 +3,7 @@ from .BindingFilter import BindingFilter
 from .BindingManualQCFilter import BindingManualQCFilter
 from .CallingCardsBackgroundFilter import CallingCardsBackgroundFilter
 from .DataSourceFilter import DataSourceFilter
+from .DTOFilter import DTOFilter
 from .ExpressionFilter import ExpressionFilter
 from .ExpressionManualQCFilter import ExpressionManualQCFilter
 from .FileFormatFilter import FileFormatFilter
@@ -18,6 +19,7 @@ __all__ = [
     "BindingManualQCFilter",
     "CallingCardsBackgroundFilter",
     "DataSourceFilter",
+    "DTOFilter",
     "ExpressionFilter",
     "ExpressionManualQCFilter",
     "FileFormatFilter",

@@ -8,6 +8,7 @@ from yeastregulatorydb.regulatory_data.api.views import (
     CallingCardsBackgroundViewSet,
     ChrMapViewSet,
     DataSourceViewSet,
+    DTOViewSet,
     ExpressionManualQCViewSet,
     ExpressionViewSet,
     FileFormatViewSet,
@@ -31,6 +32,7 @@ router.register("bindingmanualqc", BindingManualQCViewSet)
 router.register("callingcardsbackground", CallingCardsBackgroundViewSet)
 router.register("chrmap", ChrMapViewSet)
 router.register("datasource", DataSourceViewSet)
+router.register("dto", DTOViewSet)
 router.register("expressionmanualqc", ExpressionManualQCViewSet)
 router.register("expression", ExpressionViewSet)
 router.register("fileformat", FileFormatViewSet)

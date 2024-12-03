@@ -4,7 +4,7 @@ import pandas as pd
 from django.db import models
 
 from yeastregulatorydb.regulatory_data.models import GenomicFeature
-from yeastregulatorydb.regulatory_data.utils import extract_file_from_storage
+from yeastregulatorydb.regulatory_data.utils.extract_file_from_storage import extract_file_from_storage
 
 logger = logging.getLogger(__name__)
 

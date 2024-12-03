@@ -2,6 +2,7 @@ import os
 import tempfile
 from urllib.parse import urlencode
 
+import numpy as np
 import pandas as pd
 import pytest
 from celery.result import EagerResult
@@ -15,13 +16,18 @@ from rest_framework.authtoken.models import Token
 from rest_framework.test import APIClient, APIRequestFactory
 
 from yeastregulatorydb.regulatory_data.api.filters import PromoterSetSigFilter
-from yeastregulatorydb.regulatory_data.api.serializers import BindingSerializer, PromoterSetSerializer
+from yeastregulatorydb.regulatory_data.api.serializers import (
+    BindingSerializer,
+    ExpressionSerializer,
+    PromoterSetSerializer,
+)
 from yeastregulatorydb.regulatory_data.models import (
     Binding,
     BindingConcatenated,
     BindingManualQC,
     CallingCardsBackground,
     DataSource,
+    Expression,
     PromoterSet,
     PromoterSetSig,
     Regulator,
@@ -32,11 +38,12 @@ from yeastregulatorydb.regulatory_data.tasks.cc_replicate_agreement import (
     calculate_spearman_corr,
     cc_replicate_agreement,
 )
+from yeastregulatorydb.regulatory_data.tasks.dto_task import dto_task, get_ranks
 from yeastregulatorydb.regulatory_data.tests.utils.model_to_dict_select import model_to_dict_select
 from yeastregulatorydb.regulatory_data.utils import extract_file_from_storage
 from yeastregulatorydb.users.models import User
 
-from .factories import BindingFactory, GenomicFeatureFactory, PromoterSetFactory, RegulatorFactory
+from .factories import BindingFactory, ExpressionFactory, GenomicFeatureFactory, PromoterSetFactory, RegulatorFactory
 
 pytestmark = pytest.mark.django_db
 
@@ -180,6 +187,7 @@ def test_promoter_significance_combined_task(
     clean_test_database,
     auth_token: Token,
     cc_datasource: DataSource,
+    mcisaac_datasource: DataSource,
     yiming_promoterset: PromoterSet,
     adh1_background: CallingCardsBackground,
     chrmap: QuerySet,
@@ -233,6 +241,27 @@ def test_promoter_significance_combined_task(
 
     # get the Binding records
     binding_records = Binding.objects.all()
+
+    expression_path = next(
+        file
+        for file in test_data_dict["expression"]["mcisaac"]["files"]
+        if os.path.basename(file) == "hap5_15_mcisc_chr1.csv.gz"
+    )
+    assert os.path.exists(expression_path), f"path: {expression_path}"
+
+    # Open the file and read its content
+    with open(expression_path, "rb") as file_obj:
+        file_content = file_obj.read()
+        # Create a SimpleUploadedFile instance
+        upload_file = SimpleUploadedFile("28366_chrI.csv.gz", file_content, content_type="application/gzip")
+        data = model_to_dict_select(
+            ExpressionFactory.build(
+                source=mcisaac_datasource, regulator=binding_records.first().regulator, file=upload_file
+            )
+        )
+        serializer = ExpressionSerializer(data=data, context={"request": request})
+        assert serializer.is_valid() is True, serializer.errors
+        serializer.save()
 
     # get the bindingmanualqc records associated with the binding_records and update
     # the data_usable field to "pass"
@@ -409,3 +438,119 @@ def test_cc_replicate_agreement(
     assert isinstance(res["spearman_corr"], pd.DataFrame)
     assert "log_manhattan_dist" in res, "The 'log_manhattan_dist' key should be present in the result"
     assert isinstance(res["log_manhattan_dist"], pd.Series)
+
+
+@pytest.mark.django_db()
+def test_get_ranks(
+    test_data_dict: dict,
+):
+
+    rank_args = {
+        "pss_col1_ascending": True,
+        "pss_col2_ascending": False,
+        "pss_ranker_col1": "poisson_pval",
+        "pss_ranker_col2": "callingcards_enrichment",
+        "expression_col1_ascending": False,
+        "expression_ranker_col1": "effect",
+        "expression_ranker_col2": None,
+        "expression_ranker_col1_abs": True,
+    }
+
+    for ccfile in ["hap5_cc_adh1.csv.gz"]:
+        binding_path = next(
+            file for file in test_data_dict["promotersetsig"]["files"] if os.path.basename(file) == ccfile
+        )
+        assert os.path.exists(binding_path), f"path: {binding_path}"
+
+        df = pd.read_csv(binding_path)
+
+    pss_rank_series = get_ranks("pss", df, **rank_args)
+
+    assert isinstance(pss_rank_series, np.ndarray)
+    # assert that the minimum df.pvalue index is rank 1 in the rank_series
+    assert pss_rank_series[df["poisson_pval"].idxmin()] == 1
+    # assert that the max pvalue index has the largest rank
+    assert pss_rank_series[df["poisson_pval"].idxmax()] == len(pss_rank_series)
+
+    for exprfile in ["hap5_3204_15_log2ratio.csv.gz"]:
+        expression_path = next(
+            file for file in test_data_dict["expression"]["mcisaac"]["files"] if os.path.basename(file) == exprfile
+        )
+        assert os.path.exists(expression_path), f"path: {expression_path}"
+
+        df = pd.read_csv(expression_path)
+
+    expression_rank_series = get_ranks("expression", df, **rank_args)
+
+    assert isinstance(expression_rank_series, np.ndarray)
+    # assert that the max absolute df.effect index is rank 1 in the rank_series
+    assert expression_rank_series[df["effect"].abs().idxmax()] == 1
+    # assert that the min absolute df.effect index has the largest rank
+    assert expression_rank_series[df["effect"].abs().idxmin()] == len(expression_rank_series)
+
+
+@pytest.mark.django_db()
+def test_dto_task(
+    clean_test_database,
+    auth_token: Token,
+    cc_datasource: DataSource,
+    mcisaac_datasource: DataSource,
+    yiming_promoterset: PromoterSet,
+    adh1_background: CallingCardsBackground,
+    chrmap: QuerySet,
+    fileformat: QueryDict,
+    test_data_dict: dict,
+):
+    factory = APIRequestFactory()
+    request = factory.get("/")
+    request.user = auth_token.user
+
+    client = APIClient()
+    client.credentials(HTTP_AUTHORIZATION="Token " + auth_token.key)
+
+    genomicfeature_instance = GenomicFeatureFactory.create(symbol="RTG3")
+
+    for pss_file in ["RTG3_6546_cc.csv.gz"]:
+        pss_path = next(
+            file for file in test_data_dict["promotersetsig"]["files"] if os.path.basename(file) == pss_file
+        )
+        assert os.path.exists(pss_path), f"path: {pss_path}"
+
+    for expr_file in ["rtg3_1764_15_log2ratio.csv.gz"]:
+        expr_path = next(
+            file for file in test_data_dict["expression"]["mcisaac"]["files"] if os.path.basename(file) == expr_file
+        )
+        assert os.path.exists(expr_path), f"path: {expr_path}"
+
+    pss_df = pd.read_csv(pss_path, compression="gzip")
+    expr_df = pd.read_csv(expr_path, compression="gzip")
+
+    # find the intersect of the target_symbol columns
+    target_symbols = set(pss_df["target_symbol"]).intersection(set(expr_df["target_symbol"]))
+    # filter the DataFrames to only include the intersecting target_symbols
+    pss_df = pss_df[pss_df["target_symbol"].isin(target_symbols)]
+    expr_df = expr_df[expr_df["target_symbol"].isin(target_symbols)]
+
+    assert pss_df is not None
+    assert expr_df is not None
+
+    rank_args = {
+        "pss_col1_ascending": True,
+        "pss_col2_ascending": False,
+        "pss_ranker_col1": "poisson_pval",
+        "pss_ranker_col2": "callingcards_enrichment",
+        "expression_col1_ascending": False,
+        "expression_ranker_col1": "effect",
+        "expression_ranker_col2": None,
+        "expression_ranker_col1_abs": True,
+        "n_permutations": 0,
+    }
+
+    settings.CELERY_TASK_ALWAYS_EAGER = True
+    result = dto_task(auth_token.user.id, 1, 1, pss_df, expr_df, save_record=False, **rank_args)
+
+    assert isinstance(result, dict)
+
+    assert isinstance(result["success"], dict)
+
+    assert isinstance(result["success"]["empirical_pvalue"], float)

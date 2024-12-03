@@ -1,6 +1,7 @@
 """
 Base settings to build other settings files upon.
 """
+
 from pathlib import Path
 
 import environ
@@ -355,4 +356,8 @@ CALLINGCARDS_PROMOTER_SIG_FORMAT = env(
 NULL_BINDING_FILE_DATASOURCES = env.list(
     "NULL_BINDING_FILE_DATASOURCES",
     default=["harbison_chip"],
+)
+DTO_EXECUTABLE = env(
+    "DTO_EXECUTABLE",
+    default="Error_Not_Set",
 )

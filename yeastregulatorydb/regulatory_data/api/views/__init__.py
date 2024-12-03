@@ -4,6 +4,7 @@ from .BindingViewSet import BindingViewSet
 from .CallingCardsBackgroundViewSet import CallingCardsBackgroundViewSet
 from .ChrMapViewSet import ChrMapViewSet
 from .DataSourceViewSet import DataSourceViewSet
+from .DTOViewSet import DTOViewSet
 from .ExpressionManualQCViewSet import ExpressionManualQCViewSet
 from .ExpressionViewSet import ExpressionViewSet
 from .FileFormatViewSet import FileFormatViewSet
@@ -16,9 +17,11 @@ from .RegulatorViewSet import RegulatorViewSet
 __all__ = [
     "BindingManualQCViewSet",
     "BindingViewSet",
+    "BindingConcatenatedViewSet",
     "CallingCardsBackgroundViewSet",
     "ChrMapViewSet",
     "DataSourceViewSet",
+    "DTOViewSet",
     "ExpressionManualQCViewSet",
     "ExpressionViewSet",
     "FileFormatViewSet",

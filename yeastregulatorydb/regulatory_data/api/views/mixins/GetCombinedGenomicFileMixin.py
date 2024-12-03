@@ -6,7 +6,7 @@ import pandas as pd
 from django.http import FileResponse
 from rest_framework.decorators import action
 
-from .add_genomicfeature_to_file import add_genomicfeature_to_file
+from yeastregulatorydb.regulatory_data.utils import add_genomicfeature_to_file
 
 logger = logging.getLogger(__name__)
 

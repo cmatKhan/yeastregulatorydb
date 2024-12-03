@@ -6,6 +6,7 @@ from .BulkRecordUploadSerializer import BulkRecordUploadSerializer
 from .CallingCardsBackgroundSerializer import CallingCardsBackgroundSerializer
 from .ChrMapSerializer import ChrMapSerializer
 from .DataSourceSerializer import DataSourceSerializer
+from .DTOSerializer import DTOSerializer
 from .ExpressionManualQCSerializer import ExpressionManualQCSerializer
 from .ExpressionSerializer import ExpressionSerializer
 from .FileFormatSerializer import FileFormatSerializer
@@ -22,6 +23,7 @@ __all__ = [
     "BulkFileUploadSerializer",
     "BulkRecordUploadSerializer",
     "DataSourceSerializer",
+    "DTOSerializer",
     "CallingCardsBackgroundSerializer",
     "ChrMapSerializer",
     "ExpressionManualQCSerializer",

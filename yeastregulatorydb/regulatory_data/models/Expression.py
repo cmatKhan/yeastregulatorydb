@@ -90,6 +90,10 @@ class Expression(BaseModel, GzipFileUploadWithIdMixin):
         """return the genomicfeature associated with this expression instance"""
         return self.get_regulator().genomicfeature
 
+    def get_source_name(self):
+        """return the source associated with this expression instance"""
+        return self.source.name
+
     def get_fileformat(self):
         """return the fileformat associated with this expression instance"""
         return self.source.fileformat

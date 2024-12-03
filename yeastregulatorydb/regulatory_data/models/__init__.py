@@ -4,6 +4,7 @@ from .BindingManualQC import BindingManualQC
 from .CallingCardsBackground import CallingCardsBackground
 from .ChrMap import ChrMap
 from .DataSource import DataSource
+from .DTO import DTO
 from .Expression import Expression
 from .ExpressionManualQC import ExpressionManualQC
 from .FileFormat import FileFormat
@@ -18,6 +19,7 @@ __all__ = [
     "BindingConcatenated",
     "BindingManualQC",
     "DataSource",
+    "DTO",
     "CallingCardsBackground",
     "ChrMap",
     "Expression",

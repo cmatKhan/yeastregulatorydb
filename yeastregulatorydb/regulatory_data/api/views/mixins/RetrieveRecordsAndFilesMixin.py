@@ -6,11 +6,10 @@ import pandas as pd
 from django.http import HttpResponse
 
 from yeastregulatorydb.regulatory_data.utils import (
+    add_genomicfeature_to_file,
     create_tarball,
     extract_file_from_storage,
 )
-
-from .add_genomicfeature_to_file import add_genomicfeature_to_file
 
 logger = logging.getLogger(__name__)
 

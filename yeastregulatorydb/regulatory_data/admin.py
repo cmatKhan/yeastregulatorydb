@@ -2,6 +2,7 @@ from django.contrib import admin
 
 # Register your models here.
 from .models import (
+    DTO,
     Binding,
     BindingConcatenated,
     BindingManualQC,
@@ -22,6 +23,7 @@ admin.site.register(Binding)
 admin.site.register(BindingConcatenated)
 admin.site.register(BindingManualQC)
 admin.site.register(DataSource)
+admin.site.register(DTO)
 admin.site.register(CallingCardsBackground)
 admin.site.register(ChrMap)
 admin.site.register(Expression)
