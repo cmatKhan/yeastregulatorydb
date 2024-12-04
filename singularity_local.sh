@@ -101,24 +101,26 @@ start_service() {
     esac
 
     # spack load the necessary packages based on the service
-    case $1 in
-        postgres)
-            echo "trying to spack load postgresql..."
-            if ! eval $(spack load --sh postgresql); then
-                echo "Error loading PostgreSQL package with spack. Ensure the package exists and is available."
-                exit 1
-            fi
-            echo "postgresql loaded successfully."
-            ;;
-        redis)
-            echo "trying to spack load redis..."
-            if ! eval $(spack load --sh redis); then
-                echo "Error loading Redis package with spack. Ensure the package exists and is available."
-                exit 1
-            fi
-            echo "redis loaded successfully."
-            ;;
-    esac
+    # This is here so that the launch script can check that redis and postgres
+    # are running
+   case $1 in
+       postgres)
+           echo "trying to spack load postgresql..."
+           if ! eval $(spack load --sh postgresql); then
+               echo "Error loading PostgreSQL package with spack. Ensure the package exists and is available."
+               exit 1
+           fi
+           echo "postgresql loaded successfully."
+           ;;
+       redis)
+           echo "trying to spack load redis..."
+           if ! eval $(spack load --sh redis); then
+               echo "Error loading Redis package with spack. Ensure the package exists and is available."
+               exit 1
+           fi
+           echo "redis loaded successfully."
+           ;;
+   esac
 
     # if $1 is not postgres or redis, check that the APP_CODEBASE exists
     # if [ "$1" != "postgres" ] && [ "$1" != "redis" ]; then
@@ -155,6 +157,7 @@ start_service() {
             # empty strings, then pass them as --env variables to singularity
             cmd="singularity exec \
                              --env-file $CONCAT_ENV_FILE \
+                             --bind /ref/mblab/software/bin:/executables \
                              $env_vars \
                              $sif_path bash -c 'cd /app && /entrypoint /start' &> django_log.txt &"
             echo "executing cmd: $cmd"
@@ -176,6 +179,7 @@ start_service() {
         celeryworker)
             cmd="singularity exec \
                              --env-file $CONCAT_ENV_FILE \
+                             --bind /ref/mblab/software/bin:/executables \
                              $env_vars \
                              $sif_path bash -c 'cd /app && /entrypoint /start-celeryworker' &> celeryworker_log.txt &"
             echo "executing cmd: $cmd"
