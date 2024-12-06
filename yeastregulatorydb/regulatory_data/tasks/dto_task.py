@@ -4,7 +4,7 @@ import os
 import subprocess
 import tempfile
 from types import SimpleNamespace
-from typing import Literal, Union
+from typing import Literal, Tuple, Union
 
 import numpy as np
 import pandas as pd
@@ -26,6 +26,7 @@ def get_ranks(prefix: Literal["pss", "expression"], df: pd.DataFrame, **kwargs) 
 
     :param prefix: The prefix to use for the keyword arguments. One of "pss" or "expression"
     :param df: The dataframe from which to extract columns to calculate the ranks
+    :param unfiltered_background: If this is true, the features will be
     :param kwargs: Additional keyword arguments to pass to the stable_rank function. The
         keywords that are currently supported are:
 
@@ -46,11 +47,13 @@ def get_ranks(prefix: Literal["pss", "expression"], df: pd.DataFrame, **kwargs) 
     """
     logger.debug(f"Calculating ranks for {prefix} dataframe. Columns: {df.columns}. Keyword arguments: {kwargs}")
 
+    # Prepare stable rank arguments
     stable_rank_arguments = {
         "col1_ascending": kwargs.get(f"{prefix}_col1_ascending", True),
-        "method": kwargs.get("{prefix}_method", "min"),
+        "method": kwargs.get(f"{prefix}_method", "min"),
     }
 
+    # Extract and process columns for ranking
     try:
         ranker_col1 = kwargs.get(f"{prefix}_ranker_col1", "pvalue")
         stable_rank_arguments["col1"] = (
@@ -76,6 +79,33 @@ def get_ranks(prefix: Literal["pss", "expression"], df: pd.DataFrame, **kwargs) 
     return stable_rank(**stable_rank_arguments)
 
 
+def conditional_filter(
+    df: pd.DataFrame, filter_condition: Union[str, None], feature_col
+) -> Tuple[pd.DataFrame, pd.Series]:
+    """
+    If the filter is a string, then use it to filter the dataframe. Return the filtered
+    dataframe, and the unfiltered set of features.
+
+    :param df: The dataframe to filter
+    :param filter_condition: The filter to use. If None, then return the dataframe as is
+
+    :return: A tuple with the filtered dataframe and the unfiltered set of features
+
+    :raises ValueError: If the filter is not a string
+    """
+    feature_set = df[feature_col]
+    # Apply optional filtering if `{prefix}_filter` is provided
+    if filter_condition:
+        logger.debug(f"Applying filter condition: {filter_condition}")
+        try:
+            df = df.query(filter_condition)
+            logger.debug(f"Filtered dataframe shape: {df.shape}")
+        except Exception as e:
+            raise ValueError(f"Invalid filter condition: '{filter_condition}'. Error: {e}")
+
+    return df, feature_set
+
+
 # set the soft time limit to 2 hrs
 @celery_app.task(serializer="json", soft_time_limit=7200, time_limit=8000)
 def dto_task(
@@ -92,6 +122,13 @@ def dto_task(
 
     :param promotersetsig_id: The ID of the PromoterSetSig record
     :param expression_id: The ID of the Expression record
+
+    :param promotersetsig_df: A pandas DataFrame with the PromoterSetSig data. If this is
+        provided, then the promotersetsig_id is not used. This is intended for testing
+        purposes only.
+    :param expression_df: A pandas DataFrame with the Expression data. If this is provided,
+        then the expression_id is not used. This is intended for testing purposes only.
+
     :param kwargs: Additional keyword arguments to pass to the DTO executable. keyword
         arguments associated with the promotersetsig file should be prefixed with "pss_"
         and keyword arguments associated with the expression file should be prefixed with
@@ -101,9 +138,13 @@ def dto_task(
         - deduplicate: Whether to deduplicate the ranks based on the target_symbol column
             (default: True)
         - intersect_features: Whether to filter the rows of both dataframes to only include
-            the target_symbols that are in the intersection of the two sets (default: True)
+            the features that are in the intersection of the two sets (default: True)
+        - use_unfiltered_background: Whether to use the intersect of the pss_df and
+            expression_df backgrounds prior to any possible filtering (default: True)
 
         ## promoter set sig arguments:
+        - pss_feature_colname: The name of the feature column in the PromoterSetSig file.
+            Defaults to target_symbol
         - pss_pvalue_colname: The name of the p-value column in the PromoterSetSig file
         - pss_effect_colname: The name of the effect column in the PromoterSetSig file
         - pss_rename_metric_columns: Whether to rename the metric columns in the
@@ -119,6 +160,8 @@ def dto_task(
         - pss_ranker_col2_abs: Whether to take the absolute value of the second ranker col
 
         ## expression arguments:
+        - expression_feature_colname: The name of the feature column in the Expression file.
+            Defaults to target_symbol
         - expression_pvalue_colname: The name of the p-value column in the Expression file
         - expression_effect_colname: The name of the effect column in the Expression file
         - expression_rename_metric_columns: Whether to rename the metric columns in the
@@ -146,6 +189,7 @@ def dto_task(
     if save_record and (promotersetsig_df or expression_df):
         raise ValueError("Cannot save record if promotersetsig_df or expression_df are provided")
 
+    # get the User record -- this is used to udpate the database if save_record is True
     try:
         User = get_user_model()
         user = User.objects.get(id=user_id)
@@ -154,6 +198,8 @@ def dto_task(
 
     with tempfile.TemporaryDirectory() as tmpdir:
 
+        # if promotersetsig_df is None, then we need to get the promotersetsig record
+        # and use it to retrieve the pss file
         if promotersetsig_df is None:
             tmpdir_promotersetsig = os.path.join(tmpdir, "promotersetsig")
             os.makedirs(tmpdir_promotersetsig, exist_ok=True)
@@ -172,6 +218,8 @@ def dto_task(
             pss_df = promotersetsig_df
 
         if expression_df is None:
+            # if expression_df is None, then we need to get the expression record
+            # and use it to retrieve the expression file
             tmpdir_expression = os.path.join(tmpdir, "expression")
             os.makedirs(tmpdir_expression, exist_ok=True)
 
@@ -206,43 +254,60 @@ def dto_task(
         else:
             expr_df = expression_df
 
-        pss_df["rank"] = get_ranks("pss", pss_df, **kwargs)
+        # get the feature column names
+        pss_feature_colname = kwargs.get("pss_feature_colname", "target_symbol")
+        expr_feature_colname = kwargs.get("expression_feature_colname", "target_symbol")
 
+        # add the ranks to the dataframes
+        pss_df["rank"] = get_ranks("pss", pss_df, **kwargs)
         expr_df["rank"] = get_ranks("expression", expr_df, **kwargs)
 
         # if kwargs.get("deduplicate") is True, then for pss_df and expr_df if
         # there are multiple rows with the same target_symbol, keep only the row
         # with the lowest rank. If the ranks are tied, just keep the first row.
         if kwargs.get("deduplicate", True):
-            pss_df = pss_df.sort_values("rank").drop_duplicates("target_symbol", keep="first")
-            expr_df = expr_df.sort_values("rank").drop_duplicates("target_symbol", keep="first")
+            pss_df = pss_df.sort_values("rank").drop_duplicates(pss_feature_colname, keep="first")
+            expr_df = expr_df.sort_values("rank").drop_duplicates(expr_feature_colname, keep="first")
 
-        # test to make sure that the target_symbols are the same in both files
-        # first, find the set difference between the two files dataframes' target_symbols
-        pss_target_symbols = set(pss_df["target_symbol"])
-        expr_target_symbols = set(expr_df["target_symbol"])
-        target_symbol_diff = pss_target_symbols.symmetric_difference(expr_target_symbols)
+        pss_df, pss_background = conditional_filter(pss_df, kwargs.get("pss_filter", None), pss_feature_colname)
+        expr_df, expr_background = conditional_filter(
+            expr_df, kwargs.get("expression_filter", None), expr_feature_colname
+        )
 
-        if len(target_symbol_diff) > 0:
-            # if intersect_features is True, then filter the rows of both dataframes
-            # to only include the target_symbols that are in the intersection
-            # of the two sets
-            if kwargs.get("intersect_features", True):
-                pss_df = pss_df[~pss_df["target_symbol"].isin(target_symbol_diff)]
-                expr_df = expr_df[~expr_df["target_symbol"].isin(target_symbol_diff)]
-                logger.info("The number of rows remaiing after filtering: {} and {}".format(len(pss_df), len(expr_df)))
-            else:
-                raise ValueError(f"Target symbols in the two files are not the same: {target_symbol_diff}")
+        # if use_unfiltered_background is true, then the background is the intersect
+        # of the backgrounds prior to the possible filtering from `conditional_filter()`
+        # Else, the background is the intersect of the features in the two dataframes.
+        # NOTE: if tehre is no filter condition passed for pss and expr, then either
+        # of these conditions returns the same thing, so there is no need to set
+        # use_unfiltered_background to False. It is only necessary to use
+        # `use_unfiltered_background` if you specifically want to use the intersect of
+        # the dataframes after filtering as the background.
+        background = (
+            set(pss_background).intersection(set(expr_background))
+            if kwargs.get("use_unfiltered_background", True)
+            else set(pss_df[pss_feature_colname]).intersection(set(expr_df[expr_feature_colname]))
+        )
 
-        pss_df.loc[:, ["target_symbol", "rank"]].to_csv(
+        # if intersect_features is True, then filter the dataframes to only include
+        # the features that are in the background
+        if kwargs.get("intersect_features", True):
+            pss_df = pss_df[pss_df[pss_feature_colname].isin(background)]
+            expr_df = expr_df[expr_df[expr_feature_colname].isin(background)]
+            logger.info("The number of rows remaiing after filtering: {} and {}".format(len(pss_df), len(expr_df)))
+
+        pss_df.loc[:, [pss_feature_colname, "rank"]].to_csv(
             os.path.join(tmpdir, "pss_ranks.csv"), index=False, header=None
         )
 
-        expr_df.loc[:, ["target_symbol", "rank"]].to_csv(
+        expr_df.loc[:, [expr_feature_colname, "rank"]].to_csv(
             os.path.join(tmpdir, "expression_ranks.csv"), index=False, header=None
         )
-        output_dict = {}
 
+        pd.DataFrame(list(background), columns=["background"]).to_csv(
+            os.path.join(tmpdir, "background.csv"), index=False, header=None
+        )
+
+        output_dict = {}
         try:
             # Execute the DTO executable with the given parameters
             result = subprocess.run(
@@ -252,6 +317,8 @@ def dto_task(
                     os.path.join(tmpdir, "pss_ranks.csv"),
                     "-2",
                     os.path.join(tmpdir, "expression_ranks.csv"),
+                    "-b",
+                    os.path.join(tmpdir, "background.csv"),
                     "-p",
                     str(kwargs.get("n_permutations", 1000)),  # Ensure numeric arguments are strings
                     "-t",

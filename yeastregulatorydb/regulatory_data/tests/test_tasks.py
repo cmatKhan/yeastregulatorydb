@@ -537,9 +537,11 @@ def test_dto_task(
     rank_args = {
         "pss_col1_ascending": True,
         "pss_col2_ascending": False,
+        "pss_filter": "poisson_pval < 0.1",
         "pss_ranker_col1": "poisson_pval",
         "pss_ranker_col2": "callingcards_enrichment",
         "expression_col1_ascending": False,
+        "expression_filter": "abs(effect) > 0.25",
         "expression_ranker_col1": "effect",
         "expression_ranker_col2": None,
         "expression_ranker_col1_abs": True,
