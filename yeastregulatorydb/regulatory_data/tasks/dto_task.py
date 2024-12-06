@@ -250,6 +250,7 @@ def dto_task(
                 rename_metric_columns=kwargs.get("expression_rename_metric_columns", True),
                 pvalue_colname=kwargs.get("expression_pvalue_colname", None),
                 effect_colname=kwargs.get("expression_effect_colname", None),
+                return_cols=["all"],
             )
         else:
             expr_df = expression_df
