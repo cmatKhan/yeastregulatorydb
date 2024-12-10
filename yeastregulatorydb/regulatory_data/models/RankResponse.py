@@ -1,6 +1,7 @@
 import logging
 
 from django.db import models
+from django.db.models import UniqueConstraint
 from django.dispatch import receiver
 
 from .BaseModel import BaseModel
@@ -36,6 +37,15 @@ class RankResponse(BaseModel, GzipFileUploadWithIdMixin):
         )
     )
 
+    passing = models.BooleanField(
+        help_text="A boolean field which is `True` if at least one bin is significant in the first 100.",
+        default=True,
+    )
+
+    rank_25 = models.FloatField(help_text="The rank response at bin 25", default=0.0)
+
+    rank_50 = models.FloatField(help_text="The rank response at bin 50", default=0.0)
+
     file = models.FileField(
         upload_to="temp",
         help_text=(
@@ -50,6 +60,11 @@ class RankResponse(BaseModel, GzipFileUploadWithIdMixin):
 
     class Meta:
         db_table = "rankresponse"
+        constraints = [
+            UniqueConstraint(
+                fields=["promotersetsig", "expression"], name="unique_promotersetsig_expression_rankresponse"
+            )
+        ]
 
     # pylint:disable=R0801
     def save(self, *args, **kwargs):

@@ -251,7 +251,11 @@ def test_cc_rankresponse(
 
     # Prepare the request data for the POST request
     request_data = [
-        {"promotersetsig_ids": [hap5_cc_promotersetsig.id], "expression_ids": [mcisaac_hap5_expression.id]}
+        {
+            "promotersetsig_ids": [hap5_cc_promotersetsig.id],
+            "expression_ids": [mcisaac_hap5_expression.id],
+            "save_record": True,
+        }
     ]
 
     # Send a POST request to the rankresponse endpoint

@@ -491,14 +491,7 @@ def test_get_ranks(
 
 @pytest.mark.django_db()
 def test_dto_task(
-    clean_test_database,
     auth_token: Token,
-    cc_datasource: DataSource,
-    mcisaac_datasource: DataSource,
-    yiming_promoterset: PromoterSet,
-    adh1_background: CallingCardsBackground,
-    chrmap: QuerySet,
-    fileformat: QueryDict,
     test_data_dict: dict,
 ):
     factory = APIRequestFactory()
@@ -507,8 +500,6 @@ def test_dto_task(
 
     client = APIClient()
     client.credentials(HTTP_AUTHORIZATION="Token " + auth_token.key)
-
-    genomicfeature_instance = GenomicFeatureFactory.create(symbol="RTG3")
 
     for pss_file in ["RTG3_6546_cc.csv.gz"]:
         pss_path = next(

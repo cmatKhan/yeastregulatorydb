@@ -27,6 +27,16 @@ class DTO(BaseModel):
         help_text="Foreign keys field to the 'Expression' table",
     )
 
+    passing_fdr = models.BooleanField(
+        help_text=("A boolean field which is `True` when FDR >= 0.2. See the DTO paper/software for more details"),
+        default=True,
+    )
+
+    passing_pvalue = models.BooleanField(
+        help_text=("A boolean field which is `True` when the empirical p-value <= 0.1"),
+        default=True,
+    )
+
     parameters = models.JSONField(help_text="A json field to store the parameters used to generate the DTO result")
 
     result = models.JSONField(help_text=("A json field to store the result of DTO"))

@@ -1,5 +1,6 @@
 import io
 import json
+import logging
 import tarfile
 
 import pandas as pd
@@ -21,8 +22,10 @@ from ..filters.RankResponseFilter import RankResponseFilter
 from ..serializers.RankResponseSerializer import RankResponseSerializer
 from .mixins import ExportTableAsGzipFileMixin, RetrieveRecordsAndFilesMixin, UpdateModifiedMixin
 
+logger = logging.getLogger(__name__)
 
-def generate_rank_response_tasks(request_data: list, **kwargs) -> list:
+
+def generate_rank_response_tasks(user_id: int, request_data: list, **kwargs) -> list:
     """
     Submit rank response tasks for each item in the request data.
 
@@ -96,8 +99,18 @@ def generate_rank_response_tasks(request_data: list, **kwargs) -> list:
             if not Expression.objects.filter(id=expr_id).exists():
                 raise ValidationError(f"Expression with id {expr_id} does not exist.")
 
+        additional_arguments["save_record"] = item.get("save_record", False)
+
+        if not isinstance(additional_arguments["save_record"], bool):
+            if additional_arguments["save_record"].lower() in ["true", "1"]:
+                additional_arguments["save_record"] = True
+            elif additional_arguments["save_record"].lower() in ["false", "0"]:
+                additional_arguments["save_record"] = False
+            else:
+                raise ValidationError("The value for the 'save_record' key must be either 'true' or 'false'")
+
         # Create Celery tasks for each promoterset_id
-        tasks.append(rank_response_task.s(promoterset_ids, expression_ids, **additional_arguments, **kwargs))
+        tasks.append(rank_response_task.s(user_id, promoterset_ids, expression_ids, **additional_arguments, **kwargs))
 
     return tasks
 
@@ -163,9 +176,13 @@ class RankResponseViewSet(
 
         # Check if data is a list
         if not isinstance(request.data, list):
-            raise ValidationError("Expected a list of dictionaries in the request body.")
+            logger.error("Expected a list of dictionaries in the request body.")
+            return Response(
+                {"error": "Expected a list of dictionaries in the request body."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
-        tasks = generate_rank_response_tasks(request.data, **kwargs)
+        tasks = generate_rank_response_tasks(self.request.user.id, request.data, **kwargs)
 
         # Create a group of tasks and trigger them
         celery_group_result = group(tasks).apply_async()
@@ -258,6 +275,9 @@ class RankResponseViewSet(
                         "expression_ids": results_dict.get("expression_ids"),
                         "n_responsive": results_dict.get("n_responsive"),
                         "total_expression_genes": results_dict.get("total_expression_genes"),
+                        "passing": results_dict.get("passing"),
+                        "rank_25": results_dict.get("rank_25"),
+                        "rank_50": results_dict.get("rank_50"),
                     }
 
                     # Create CSV in memory

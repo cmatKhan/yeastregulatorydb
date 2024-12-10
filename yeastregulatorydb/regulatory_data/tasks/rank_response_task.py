@@ -1,21 +1,27 @@
+import gzip
+import io
 import logging
 import os
 import tempfile
+import uuid
+from types import SimpleNamespace
 from typing import List
 
 from callingcardstools.Analysis.yeast import rank_response
+from django.contrib.auth import get_user_model
+from django.core.files import File
 
 from config import celery_app
+from yeastregulatorydb.regulatory_data.api.serializers import RankResponseSerializer
 from yeastregulatorydb.regulatory_data.models import Expression, PromoterSetSig
-from yeastregulatorydb.regulatory_data.utils.extract_file_from_storage import (
-    extract_file_from_storage,
-)
+from yeastregulatorydb.regulatory_data.utils.extract_file_from_storage import extract_file_from_storage
 
 logger = logging.getLogger(__name__)
 
 
 @celery_app.task(serializer="json")
 def rank_response_task(
+    user_id: int,
     promotersetsig_ids: List[int],
     expression_ids: List[int],
     **kwargs,
@@ -155,6 +161,29 @@ def rank_response_task(
             rank_response.create_rank_response_table(args)
         )
 
+        # true if any of the rank_bins less than 100 have ci_lower > 0
+        try:
+            passing = (
+                rank_response_df[rank_response_df["rank_bin"] < 100]["ci_lower"].max()
+                > random_expectation_df.random[0]
+            )
+        except TypeError:
+            passing = False
+        except KeyError:
+            passing = False
+
+        try:
+            rank_25_rr = rank_response_df.loc[rank_response_df["rank_bin"] == 25, "response_ratio"].values[0]
+        except (ZeroDivisionError, KeyError) as exc:
+            logger.error(f"Error calculating rank_25: {exc}")
+            rank_25_rr = 0.0
+
+        try:
+            rank_50_rr = rank_response_df.loc[rank_response_df["rank_bin"] == 50, "response_ratio"].values[0]
+        except (ZeroDivisionError, KeyError) as exc:
+            logger.error(f"Error calculating rank_50: {exc}")
+            rank_50_rr = 0.0
+
         # note that the `id` needs to be like this in order for the return to be
         # consistent with the RetrieveRecordsAndFilesMixin
         # if kwargs.get("summary", True) is True, return the rank_response_df
@@ -168,6 +197,64 @@ def rank_response_task(
             "total_expression_genes": float(
                 random_expectation_df.unresponsive[0] + random_expectation_df.responsive[0]
             ),
+            "passing": int(passing),
+            "rank_25": rank_25_rr,
+            "rank_50": rank_50_rr,
         }
 
+        if kwargs.get("save_record", False):
+            # get the User record -- this is used to udpate the database if save_record is True
+            try:
+                User = get_user_model()
+                user = User.objects.get(id=user_id)
+            except User.DoesNotExist:
+                raise ValueError(f"User with id {user_id} does not exist")
+
+            if len(promotersetsig_ids) > 1:
+                raise ValueError(
+                    "`save_record` can currently only be used when there is a single promotersetsig record"
+                )
+            if len(expression_ids) > 1:
+                raise ValueError("`save_record` can currently only be used when there is a single expression record")
+
+            buffer = io.BytesIO()
+            with gzip.GzipFile(fileobj=buffer, mode="wb") as gzipped_file:
+                labeled_binding_response_df.to_csv(gzipped_file, index=False)
+                gzipped_file.flush()
+
+            # Reset buffer position
+            buffer.seek(0)
+
+            # Test gzip integrity
+            try:
+                with gzip.GzipFile(fileobj=buffer, mode="rb") as gzipped_file:
+                    _ = gzipped_file.read(1024)  # Read a chunk to validate
+                logger.debug("Gzip file integrity check passed.")
+            except (OSError, EOFError) as e:
+                logger.error(f"Gzip file integrity check failed: {e}")
+                raise ValueError("Compressed file is invalid or corrupted.")
+
+            buffer.seek(0)  # Reset buffer for Django File
+            # Create a Django File object with a uuid filename
+            upload_file = File(buffer, name=f"{uuid.uuid4()}.csv.gz")
+
+            record_data = {
+                "promotersetsig": promotersetsig_ids[0],
+                "expression": expression_ids[0],
+                "parameters": kwargs,
+                "passing": passing,
+                "rank_25": rank_25_rr,
+                "rank_50": rank_50_rr,
+                "file": upload_file,
+            }
+
+            mock_request = SimpleNamespace(user=user)  # Mock the request object
+
+            serializer = RankResponseSerializer(data=record_data, context={"request": mock_request})
+            if serializer.is_valid():
+                rr_record = serializer.save()
+                results_dict["id"] = rr_record.id
+            else:
+                # Handle validation errors
+                logger.error(f"Invalid data: {serializer.errors}")
     return results_dict

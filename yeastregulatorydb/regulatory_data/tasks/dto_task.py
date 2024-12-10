@@ -338,6 +338,20 @@ def dto_task(
                 f"DTO execution failed with exit code {exc.returncode}. Command: {exc.cmd}. Output: {exc.stderr}"
             ) from exc
 
+        dto_result = json.loads(result.stdout)
+
+        try:
+            passing_fdr = dto_result["fdr"] <= 0.2
+        except KeyError as exc:
+            logger.error(f"Error getting FDR: {exc}", exc_info=True)
+            passing_fdr = False
+
+        try:
+            passing_pvalue = dto_result["empirical_pvalue"] <= 0.1
+        except KeyError as exc:
+            logger.error(f"Error getting empirical p-value: {exc}", exc_info=True)
+            passing_pvalue = False
+
         try:
             if save_record:
 
@@ -345,7 +359,9 @@ def dto_task(
                     "promotersetsig": promotersetsig_record.id,  # Use primary key if related fields are ForeignKey/OneToOneField
                     "expression": expression_record.id,  # Use primary key
                     "parameters": kwargs,
-                    "result": json.loads(result.stdout),
+                    "result": dto_result,
+                    "passing_fdr": passing_fdr,
+                    "passing_pvalue": passing_pvalue,
                 }
 
                 mock_request = SimpleNamespace(user=user)  # Mock the request object
@@ -358,7 +374,7 @@ def dto_task(
                     # Handle validation errors
                     raise ValueError(f"Invalid data: {serializer.errors}")
             else:
-                output_dict["success"] = json.loads(result.stdout)
+                output_dict["success"] = dto_result
         except Exception as exc:
             logger.error(f"Error saving DTO: {exc}", exc_info=True)
             output_dict["error"] = f"ERROR: {str(exc)}"

@@ -1,3 +1,4 @@
+import gzip
 import logging
 from typing import Protocol, cast
 
@@ -46,8 +47,6 @@ class GzipFileUploadWithIdMixin:  # pylint: disable=too-few-public-methods
             self.update_file_name('file', 'hu', 'csv.gz')
             super().save(update_fields=['file'])
 
-        # Other fields and methods...
-
     """
 
     def update_file_name(self, file_field_name: str, upload_dir: str, extension: str = "") -> None:
@@ -88,11 +87,11 @@ class GzipFileUploadWithIdMixin:  # pylint: disable=too-few-public-methods
             # raise AttributeError if self does not have a pk attribute
             if not self_with_pk.pk:
                 raise AttributeError(f"{self} does not have a pk attribute")
-            logger.debug("Updating file name for %s to %s/%s.%s", self_with_pk, upload_dir, self_with_pk.pk, extension)
             file_field = getattr(self, file_field_name, None)
             if file_field and self_with_pk.pk and file_field.name:
                 # Define new filename with ID
                 new_filename = f"{upload_dir}/{self_with_pk.pk}.{extension}"
+                logger.info("Updating file name from %s to %s", file_field.name, new_filename)
 
                 # Move and rename the file if it exists
                 if default_storage.exists(file_field.name):
