@@ -17,6 +17,7 @@ from .models import (
     PromoterSetSig,
     RankResponse,
     Regulator,
+    UnivariateModels,
 )
 
 admin.site.register(Binding)
@@ -34,3 +35,4 @@ admin.site.register(PromoterSet)
 admin.site.register(PromoterSetSig)
 admin.site.register(RankResponse)
 admin.site.register(Regulator)
+admin.site.register(UnivariateModels)

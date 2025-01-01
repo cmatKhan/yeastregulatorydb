@@ -42,10 +42,4 @@ class Migration(migrations.Migration):
             name="rank_50",
             field=models.FloatField(default=0.0, help_text="The rank response at bin 50"),
         ),
-        migrations.AddConstraint(
-            model_name="rankresponse",
-            constraint=models.UniqueConstraint(
-                fields=("promotersetsig", "expression"), name="unique_promotersetsig_expression_rankresponse"
-            ),
-        ),
     ]

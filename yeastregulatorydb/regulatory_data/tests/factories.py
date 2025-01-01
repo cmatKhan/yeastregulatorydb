@@ -12,6 +12,7 @@ from django.utils.http import urlencode
 from factory import Faker, LazyFunction, SubFactory, post_generation
 from factory.django import DjangoModelFactory, FileField
 from rest_framework.authtoken.models import Token
+from rest_framework.test import APIClient
 
 from yeastregulatorydb.regulatory_data.api.serializers import ExpressionSerializer, PromoterSetSerializer
 from yeastregulatorydb.users.tests.factories import UserFactory
@@ -29,6 +30,7 @@ from ..models import (
     GenomicFeature,
     PromoterSet,
     PromoterSetSig,
+    RankResponse,
     Regulator,
 )
 from .utils.model_to_dict_select import model_to_dict_select
@@ -251,9 +253,7 @@ class BindingManualQCFactory(DjangoModelFactory):
     uploader = SubFactory(UserFactory)
     modifier = SubFactory(UserFactory)
     single_binding = SubFactory(BindingFactory)
-    best_datatype = Faker("pybool")
     data_usable = Faker("pybool")
-    passing_replicate = Faker("pybool")
     notes = Faker("pystr", max_chars=100)
 
     class Meta:
@@ -299,6 +299,24 @@ class PromoterSetSigWithCompositeBindingFactory(DjangoModelFactory):
     class Meta:
         model = PromoterSetSig
         django_get_or_create = ["composite_binding", "promoter", "background"]
+
+
+class RankResponseFactory(DjangoModelFactory):
+    uploader = SubFactory(UserFactory)
+    modifier = SubFactory(UserFactory)
+    promotersetsig = SubFactory(PromoterSetSigFactory)
+    expression = SubFactory(ExpressionFactory)
+    parameters = {"param1": 1, "param2": 2}
+    passing = Faker("pybool")
+    total_expression_genes = Faker("pyint")
+    random_expectation = Faker("pyfloat")
+    rank_25 = Faker("pyfloat")
+    rank_50 = Faker("pyfloat")
+    file = FileField(filename="testfile.csv.gz")
+
+    class Meta:
+        model = RankResponse
+        django_get_or_create = ["promotersetsig", "expression"]
 
 
 @pytest.fixture

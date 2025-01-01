@@ -1,114 +1,45 @@
 import json
 import logging
 import os
-import subprocess
 import tempfile
 from types import SimpleNamespace
-from typing import Literal, Tuple, Union
+from typing import Union
 
 import numpy as np
 import pandas as pd
+import statsmodels.api as sm
 from django.contrib.auth import get_user_model
 
 from config import celery_app
-from yeastregulatorydb.regulatory_data.api.serializers import DTOSerializer
-from yeastregulatorydb.regulatory_data.models import DTO, Expression, PromoterSetSig
-from yeastregulatorydb.regulatory_data.utils import add_genomicfeature_to_file, stable_rank
+from yeastregulatorydb.regulatory_data.api.serializers import UnivariateModelsSerializer
+from yeastregulatorydb.regulatory_data.models import Expression, PromoterSetSig, UnivariateModels
+from yeastregulatorydb.regulatory_data.tasks.dto_task import conditional_filter, get_ranks
+from yeastregulatorydb.regulatory_data.utils import add_genomicfeature_to_file
 
 logger = logging.getLogger(__name__)
 
 
-def get_ranks(prefix: Literal["pss", "expression"], df: pd.DataFrame, **kwargs) -> np.ndarray:
+def shifted_negative_log_ranks(ranks: np.ndarray) -> np.ndarray:
     """
-    This is a helper function to create a column of ranks given a dataframe. The
-    `prefix` is used to permit passing in different keyword arguments for the
-    PromoterSetSig and Expression files in kwargs.
+    Transforms ranks to negative log10 values and shifts such that the lowest value is
+    0.
 
-    :param prefix: The prefix to use for the keyword arguments. One of "pss" or "expression"
-    :param df: The dataframe from which to extract columns to calculate the ranks
-    :param unfiltered_background: If this is true, the features will be
-    :param kwargs: Additional keyword arguments to pass to the stable_rank function. The
-        keywords that are currently supported are:
+    :param ranks: A vector of ranks
+    :return np.ndarray: A vector of negative log10 transformed ranks shifted such that
+        the lowest value is 0
+    :raises ValueError: If the ranks are not numeric.
 
-    - {prefix}_col1_ascending: Whether the first column should be sorted in ascending order
-        (default: True)
-    - {prefix}_col2_ascending: Whether the second column should be sorted in ascending order
-        (default: True)
-    - {prefix}_method: The method to use for stable ranking (default: "min")
-    - {prefix}_ranker_col1: The name of the column to use as the first ranker
-    - {prefix}_ranker_col1_abs: Whether to take the absolute value of the first ranker
-    - {prefix}_ranker_col2: The name of the column to use as the second ranker
-    - {prefix}_ranker_col2_abs: Whether to take the absolute value of the second ranker
-
-    :return: A numpy array with ranks
-
-    :raises KeyError: If the column specified in the ranker_col1 or ranker_col2 keyword
-        arguments is not found in the dataframe
     """
-    logger.debug(f"Calculating ranks for {prefix} dataframe. Columns: {df.columns}. Keyword arguments: {kwargs}")
-
-    # Prepare stable rank arguments
-    stable_rank_arguments = {
-        "col1_ascending": kwargs.get(f"{prefix}_col1_ascending", True),
-        "method": kwargs.get(f"{prefix}_method", "min"),
-    }
-
-    # Extract and process columns for ranking
-    try:
-        ranker_col1 = kwargs.get(f"{prefix}_ranker_col1", "pvalue")
-        stable_rank_arguments["col1"] = (
-            df.loc[:, ranker_col1].abs().values
-            if kwargs.get(f"{prefix}_ranker_col1_abs", False)
-            else df.loc[:, ranker_col1].values
-        )
-    except KeyError:
-        raise KeyError(f"Column '{ranker_col1}' not found in the PromoterSetSig file. The columns are: {df.columns}")
-
-    if kwargs.get(f"{prefix}_ranker_col2"):
-        ranker_col2 = kwargs.get(f"{prefix}_ranker_col2")
-        try:
-            stable_rank_arguments["col2"] = (
-                df.loc[:, ranker_col2].abs().values
-                if kwargs.get(f"{prefix}_ranker_col2_abs", False)
-                else df.loc[:, ranker_col2].values
-            )
-            stable_rank_arguments["col2_ascending"] = kwargs.get(f"{prefix}_col2_ascending", False)
-        except KeyError:
-            raise KeyError(f"Column '{ranker_col2}' not found in the PromoterSetSig file")
-
-    return stable_rank(**stable_rank_arguments)
-
-
-def conditional_filter(
-    df: pd.DataFrame, filter_condition: Union[str, None], feature_col
-) -> Tuple[pd.DataFrame, pd.Series]:
-    """
-    If the filter is a string, then use it to filter the dataframe. Return the filtered
-    dataframe, and the unfiltered set of features.
-
-    :param df: The dataframe to filter
-    :param filter_condition: The filter to use. If None, then return the dataframe as is
-
-    :return: A tuple with the filtered dataframe and the unfiltered set of features
-
-    :raises ValueError: If the filter is not a string
-    """
-    feature_set = df[feature_col]
-    # Apply optional filtering if `{prefix}_filter` is provided
-    if filter_condition:
-        logger.debug(f"Applying filter condition: {filter_condition}")
-        try:
-            df = df.query(filter_condition)
-            logger.debug(f"Filtered dataframe shape: {df.shape}")
-        except Exception as e:
-            raise ValueError(f"Invalid filter condition: '{filter_condition}'. Error: {e}")
-
-    return df, feature_set
+    if not np.issubdtype(ranks.dtype, np.number):
+        raise ValueError("`ranks` must be a numeric")
+    max_rank = np.max(ranks)
+    log_max_rank = np.log10(max_rank)
+    return -1 * np.log10(ranks) + log_max_rank
 
 
 # set the soft time limit to 2 hrs
 @celery_app.task(serializer="json", soft_time_limit=7200, time_limit=8000)
-def dto_task(
+def univariatemodels_task(
     user_id: int,
     promotersetsig_id: int,
     expression_id: int,
@@ -227,11 +158,11 @@ def dto_task(
 
             # If a record with the same promotersetsig.id and expression.id exists,
             # then just return that pk
-            if DTO.objects.filter(
+            if UnivariateModels.objects.filter(
                 promotersetsig=promotersetsig_record.id, expression_id=expression_record.id
             ).exists():
                 return {
-                    "success": DTO.objects.get(
+                    "success": UnivariateModels.objects.get(
                         promotersetsig=promotersetsig_record.id, expression_id=expression_record.id
                     ).pk
                 }
@@ -275,108 +206,66 @@ def dto_task(
             expr_df, kwargs.get("expression_filter", None), expr_feature_colname
         )
 
-        # if use_unfiltered_background is true, then the background is the intersect
-        # of the backgrounds prior to the possible filtering from `conditional_filter()`
-        # Else, the background is the intersect of the features in the two dataframes.
-        # NOTE: if tehre is no filter condition passed for pss and expr, then either
-        # of these conditions returns the same thing, so there is no need to set
-        # use_unfiltered_background to False. It is only necessary to use
-        # `use_unfiltered_background` if you specifically want to use the intersect of
-        # the dataframes after filtering as the background.
-        background = (
-            set(pss_background).intersection(set(expr_background))
-            if kwargs.get("use_unfiltered_background", True)
-            else set(pss_df[pss_feature_colname]).intersection(set(expr_df[expr_feature_colname]))
+        pss_transformed_rank_colname = "pss_transformed_rank"
+        expr_transformed_rank_colname = "expr_transformed_rank"
+
+        pss_df[pss_transformed_rank_colname] = shifted_negative_log_ranks(pss_df["rank"].values)
+        expr_df[expr_transformed_rank_colname] = shifted_negative_log_ranks(expr_df["rank"].values)
+
+        # inner join the two dataframes on the feature columns
+        merged_df = pd.merge(
+            pss_df.loc[:, [pss_feature_colname, pss_transformed_rank_colname]],
+            expr_df.loc[:, [expr_feature_colname, expr_transformed_rank_colname]],
+            how="inner",
+            on=[pss_feature_colname, expr_feature_colname],
         )
 
-        # if intersect_features is True, then filter the dataframes to only include
-        # the features that are in the background
-        if kwargs.get("intersect_features", True):
-            pss_df = pss_df[pss_df[pss_feature_colname].isin(background)]
-            expr_df = expr_df[expr_df[expr_feature_colname].isin(background)]
-            logger.info("The number of rows remaiing after filtering: {} and {}".format(len(pss_df), len(expr_df)))
+        # Log transform and then shift the ranks, and
+        # define the independent variable (X) and dependent variable (y)
+        X = merged_df[pss_transformed_rank_colname].values
+        y = merged_df[expr_transformed_rank_colname].values
 
-        pss_df.loc[:, [pss_feature_colname, "rank"]].to_csv(
-            os.path.join(tmpdir, "pss_ranks.csv"), index=False, header=None
-        )
+        # Add a constant to the independent variable (intercept term) for modeling
+        X = sm.add_constant(X)
 
-        expr_df.loc[:, [expr_feature_colname, "rank"]].to_csv(
-            os.path.join(tmpdir, "expression_ranks.csv"), index=False, header=None
-        )
+        # Fit the linear model
+        model = sm.OLS(y, X).fit()
 
-        pd.DataFrame(list(background), columns=["background"]).to_csv(
-            os.path.join(tmpdir, "background.csv"), index=False, header=None
-        )
+        # Extract the r_squared, pvalue, and coefficients
+        r_squared = model.rsquared
+        pvalue = model.f_pvalue
+        coefficients = model.params
 
         output_dict = {}
         try:
-            # Execute the DTO executable with the given parameters
-            result = subprocess.run(
-                [
-                    os.getenv("DTO_EXECUTABLE"),
-                    "-1",
-                    os.path.join(tmpdir, "pss_ranks.csv"),
-                    "-2",
-                    os.path.join(tmpdir, "expression_ranks.csv"),
-                    "-b",
-                    os.path.join(tmpdir, "background.csv"),
-                    "-p",
-                    str(kwargs.get("n_permutations", 1000)),  # Ensure numeric arguments are strings
-                    "-t",
-                    str(kwargs.get("n_threads", 1)),  # Ensure numeric arguments are strings
-                ],
-                cwd=tmpdir,
-                stdout=subprocess.PIPE,  # Capture stdout
-                stderr=subprocess.PIPE,  # Capture stderr
-                check=True,  # Raise CalledProcessError if the command fails
-                text=True,  # Decode stdout and stderr as text
-            )
 
-        except subprocess.CalledProcessError as exc:
-            # Extend the error with custom information
-            raise RuntimeError(
-                f"DTO execution failed with exit code {exc.returncode}. Command: {exc.cmd}. Output: {exc.stderr}"
-            ) from exc
+            # if the record won't be saved, just return the modeling results
+            univariatemodels_data = {
+                "rsquared": r_squared,
+                "pvalue": pvalue,
+                "coefficients": json.dumps({k: v for k, v in zip(["intercept", "slope"], coefficients)}),
+            }
 
-        dto_result = json.loads(result.stdout)
-
-        try:
-            passing_fdr = float(dto_result["fdr"]) <= 0.2
-        except KeyError as exc:
-            logger.error(f"Error getting FDR: {exc}", exc_info=True)
-            passing_fdr = False
-
-        try:
-            passing_pvalue = float(dto_result["empirical_pvalue"]) <= 0.01
-        except KeyError as exc:
-            logger.error(f"Error getting empirical p-value: {exc}", exc_info=True)
-            passing_pvalue = False
-
-        try:
             if save_record:
 
-                dto_data = {
-                    "promotersetsig": promotersetsig_record.id,
-                    "expression": expression_record.id,
-                    "parameters": kwargs,
-                    "result": dto_result,
-                    "passing_fdr": passing_fdr,
-                    "passing_pvalue": passing_pvalue,
-                }
+                # update the record with the promotersetsig and expression ids
+                univariatemodels_data.update(
+                    {"promotersetsig": promotersetsig_record.id, "expression": expression_record.id}
+                )
 
                 mock_request = SimpleNamespace(user=user)  # Mock the request object
 
-                serializer = DTOSerializer(data=dto_data, context={"request": mock_request})
+                serializer = UnivariateModelsSerializer(data=univariatemodels_data, context={"request": mock_request})
                 if serializer.is_valid():
-                    dto = serializer.save()
-                    output_dict["success"] = dto.pk
+                    univariatemodels_record = serializer.save()
+                    output_dict["success"] = univariatemodels_record.pk
                 else:
                     # Handle validation errors
                     raise ValueError(f"Invalid data: {serializer.errors}")
             else:
-                output_dict["success"] = dto_result
+                output_dict["success"] = univariatemodels_data
         except Exception as exc:
-            logger.error(f"Error saving DTO: {exc}", exc_info=True)
+            logger.error(f"Error saving UnivariateModels: {exc}", exc_info=True)
             output_dict["error"] = f"ERROR: {str(exc)}"
 
         return output_dict

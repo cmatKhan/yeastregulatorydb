@@ -14,6 +14,21 @@ class Binding(BaseModel, GzipFileUploadWithIdMixin):
     Store some metadata and filepaths to binding data
     """
 
+    # the harbison condition codes are not actually provided
+    # anywhere that I can find. However, in the paper it lists the
+    # regulators with the following conditions, which I used to
+    # create the map below. Where there are parens, it means I am making
+    # an assumption about what the code means as no info is provided in the paper
+
+    # RAFF = Raffinose
+    # H202Hi = highly hyperoxic
+    # H202Lo = mildly hyperoxic
+    # SM = Amino acid starved (Synthetic media)
+    # BUT14 = Filamentation (Butano 14%)
+    # BUT90 = Filamentation (Butano 90% -- don't know why a subset had higher concentration)
+    # Alpha = mating type alpha
+    # Thi- = Amino acid starved (Thiamine)
+    # Pi- = Phosphate deprived
     CONDITION_CHOICES = [
         ("unknown", "unknown"),
         ("YPD", "YPD"),

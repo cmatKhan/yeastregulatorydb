@@ -294,14 +294,13 @@ def save_promoter_significance_results(
 
         if composite_binding_record.bindingmanualqc_set.exists():
             composite_binding_manualqc_record = composite_binding_record.bindingmanualqc_set.first()
-            composite_binding_manualqc_record.best_datatype = "unreviewed"
             composite_binding_manualqc_record.data_usable = "unreviewed"
-            composite_binding_manualqc_record.rank_recall = "unreviewed"
+            composite_binding_manualqc_record.preferred_replicate = True
             composite_binding_manualqc_record.save()
         else:
             composite_binding_manualqc_data = {
                 "composite_binding": composite_binding_record.id,
-                "passing_replicate": "note",
+                "preferred_replicate": True,
                 "note": f"aggregated callingcards replicates for source {datasource_name}",
             }
             composite_binding_manualqc_serializer = BindingManualQCSerializer(

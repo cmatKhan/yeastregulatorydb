@@ -17,6 +17,7 @@ from yeastregulatorydb.regulatory_data.api.views import (
     PromoterSetViewSet,
     RankResponseViewSet,
     RegulatorViewSet,
+    UnivariateModelsViewSet,
 )
 from yeastregulatorydb.users.api.views import UserViewSet
 
@@ -41,6 +42,7 @@ router.register("promotersetsig", PromoterSetSigViewSet)
 router.register("promoterset", PromoterSetViewSet)
 router.register("rankresponse", RankResponseViewSet)
 router.register("regulator", RegulatorViewSet)
+router.register("univariatemodels", UnivariateModelsViewSet)
 
 
 app_name = "api"

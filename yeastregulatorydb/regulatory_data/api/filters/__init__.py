@@ -12,6 +12,7 @@ from .PromoterSetFilter import PromoterSetFilter
 from .PromoterSetSigFilter import PromoterSetSigFilter
 from .RankResponseFilter import RankResponseFilter
 from .RegulatorFilter import RegulatorFilter
+from .UnivariateModelsFilter import UnivariateModelsFilter
 
 __all__ = [
     "BindingFilter",
@@ -28,4 +29,5 @@ __all__ = [
     "PromoterSetSigFilter",
     "RankResponseFilter",
     "RegulatorFilter",
+    "UnivariateModelsFilter",
 ]

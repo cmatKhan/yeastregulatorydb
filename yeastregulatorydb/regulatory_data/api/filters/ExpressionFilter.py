@@ -57,6 +57,11 @@ class ExpressionFilter(django_filters.rest_framework.FilterSet):
     workflow = django_filters.CharFilter(
         field_name="source__workflow", lookup_expr="iexact", label="Workflow Name", help_text="Workflow Name"
     )
+    preferred_replicate = django_filters.BooleanFilter(
+        field_name="preferred_replicate",
+        label="Preferred Replicate",
+        help_text="Filter by whether the replicate is preferred (True or False)",
+    )
 
     class Meta:
         model = Expression
@@ -76,6 +81,7 @@ class ExpressionFilter(django_filters.rest_framework.FilterSet):
             "lab",
             "assay",
             "workflow",
+            "preferred_replicate",
         ]
 
     # pylint: enable=R0801

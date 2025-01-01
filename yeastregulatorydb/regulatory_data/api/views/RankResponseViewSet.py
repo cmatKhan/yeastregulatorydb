@@ -1,11 +1,15 @@
+import gzip
 import io
 import json
 import logging
+import os
 import tarfile
+import tempfile
 
 import pandas as pd
 from celery import group
 from celery.result import GroupResult
+from django.db.models import Case, CharField, F, Value, When
 from django.http import HttpResponse
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import status, viewsets
@@ -16,6 +20,7 @@ from rest_framework.response import Response
 from rest_framework.serializers import ValidationError
 
 from yeastregulatorydb.regulatory_data.tasks import rank_response_task
+from yeastregulatorydb.regulatory_data.utils.extract_file_from_storage import extract_file_from_storage
 
 from ...models import Expression, PromoterSetSig, RankResponse
 from ..filters.RankResponseFilter import RankResponseFilter
@@ -123,38 +128,87 @@ class RankResponseViewSet(
     """
 
     queryset = (
-        PromoterSetSig.objects.order_by("id")
+        RankResponse.objects.order_by("id")
         .select_related(
             "uploader",
-            "single_binding",
-            "single_binding__regulator",
-            "single_binding__regulator__genomicfeature",
-            "single_binding__source",
-            "composite_binding",
-            "composite_binding__regulator",
-            "composite_binding__regulator__genomicfeature",
-            "composite_binding__source",
-            "promoter",
-            "background",
-            "fileformat",
+            "promotersetsig__single_binding__source",
+            "promotersetsig__composite_binding__source",
+            "expression__source",
+            "expression__expressionmanualqc",
         )
-        .prefetch_related(
-            "single_binding__bindingmanualqc_set",
-            "composite_binding__bindingmanualqc_set",
-            "composite_binding__bindings",
-            "composite_binding__bindings__source",
-            "composite_binding__bindings__regulator",
-            "composite_binding__bindings__regulator__genomicfeature",
+        .annotate(
+            preferred_replicate=Case(
+                When(
+                    promotersetsig__single_binding__isnull=False,
+                    then=F("promotersetsig__single_binding__bindingmanualqc__preferred_replicate"),
+                ),
+                When(promotersetsig__composite_binding__isnull=False, then=Value(True)),
+                default=Value(None),
+                output_field=CharField(),
+            ),
+            regulator_symbol=F("expression__regulator__genomicfeature__symbol"),
+            regulator_locus_tag=F("expression__regulator__genomicfeature__symbol"),
+            expression_time=F("expression__time"),
+            expression_mechanism=F("expression__mechanism"),
+            experession_restriction=F("expression__restriction"),
+            expression_control=F("expression__control"),
+            expression_replicate=F("expression__replicate"),
         )
-    )
-    queryset = RankResponse.objects.order_by("id").select_related(
-        "promotersetsig", "expression", "expression__regulator", "expression__regulator__genomicfeature"
     )
     authentication_classes = [SessionAuthentication, TokenAuthentication]
     permission_classes = [IsAuthenticated]
     serializer_class = RankResponseSerializer
     filter_backends = [DjangoFilterBackend]
     filterset_class = RankResponseFilter
+
+    # def retrieve(self, request, *args, **kwargs):
+    #     """
+    #     This adds a feature to the default retrieve() function. If "retrieve_all_data"
+    #     is passed as a query parameter `retrieve_all_data`, false by default, which
+    #     allows a user to a concatenated file of the rankresponse files for each record
+    #     in the queryset. The result is cached by its request parameters.
+    #     """
+    #     # Check if "retrieve_all_data" parameter is passed
+    #     retrieve_all_data = request.query_params.get("retrieve_all_data", False).tolower() == "true"
+    #     if not isinstance(retrieve_all_data, bool):
+    #         raise ValidationError(
+    #             "The value for the 'retrieve_all_data' key " "must be either 'true' or 'false', or omitted."
+    #         )
+    #     if retrieve_all_data:
+    #         # Get the queryset
+    #         queryset = self.filter_queryset(self.get_queryset())
+
+    #         # Retrieve the files
+    #         file_paths = []
+    #         with tempfile.TemporaryDirectory() as temp_dir:
+    #             for rank_response in queryset:
+    #                 file = rank_response.file
+    #                 if file:
+    #                     # Use your provided function to fetch the file
+    #                     file_path = extract_file_from_storage(file, dirpath=temp_dir)
+    #                     file_paths.append(file_path)
+
+    #             # Concatenate files into a single gzip file
+    #             with tempfile.NamedTemporaryFile(delete=False, suffix=".gz") as temp_file:
+    #                 with gzip.open(temp_file, "wb") as outfile:
+    #                     for file_path in file_paths:
+    #                         with open(file_path, "rb") as infile:
+    #                             outfile.write(infile.read())
+
+    #                 temp_file_path = temp_file.name
+
+    #         # Serve the concatenated file
+    #         with open(temp_file_path, "rb") as f:
+    #             response = HttpResponse(f.read(), content_type="application/gzip")
+    #             response["Content-Disposition"] = "attachment; filename=concatenated_data.gz"
+
+    #         # Cleanup temporary concatenated file
+    #         os.unlink(temp_file_path)
+
+    #         return response
+    #     else:
+    #         # Default behavior
+    #         return super().retrieve(request, *args, **kwargs)
 
     @action(detail=False, methods=["get"])
     def record_table_and_files(self, request, *args, **kwargs):
@@ -312,3 +366,23 @@ class RankResponseViewSet(
                 {"error": "The task is not yet complete or has failed."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
+
+    def destroy(self, request, *args, **kwargs):
+        ids = request.data.get("ids", None)
+
+        if isinstance(ids, list):
+            try:
+                RankResponse.objects.filter(id__in=ids).delete()
+            except Exception as exc:
+                return Response(
+                    {"error": f"Failed to delete RankResponse instances: {str(exc)}"},
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                )
+            return Response({"message": "Successfully deleted"}, status=status.HTTP_200_OK)
+        else:
+            instance = self.get_object()
+            # Custom pre-deletion logic
+            logger.info(f"Deleting RankResponse with ID {instance.id}")
+            self.perform_destroy(instance)
+            # Custom post-deletion logic
+            return Response({"message": "Successfully deleted"}, status=status.HTTP_200_OK)

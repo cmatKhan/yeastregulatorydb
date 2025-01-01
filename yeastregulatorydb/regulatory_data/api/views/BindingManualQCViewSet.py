@@ -3,6 +3,7 @@ import logging
 from django.conf import settings
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.db import transaction
+from django.db.models import Case, CharField, Exists, F, OuterRef, Q, Value, When
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import status, viewsets
 from rest_framework.authentication import SessionAuthentication, TokenAuthentication
@@ -13,7 +14,7 @@ from rest_framework.response import Response
 
 from yeastregulatorydb.regulatory_data.tasks import promoter_significance_combined_task
 
-from ...models import BindingManualQC
+from ...models import DTO, BindingManualQC, PromoterSetSig, RankResponse
 from ..filters.BindingManualQCFilter import BindingManualQCFilter
 from ..serializers.BindingManualQCSerializer import BindingManualQCSerializer
 from .mixins import ExportTableAsGzipFileMixin, UpdateModifiedMixin
@@ -41,9 +42,80 @@ class BindingManualQCViewSet(UpdateModifiedMixin, ExportTableAsGzipFileMixin, vi
             "composite_binding__source",
             "composite_binding__source__fileformat",
         )
-        .all()
+        .prefetch_related(
+            "single_binding__promoter_set_sigs",
+            "composite_binding__promoter_set_sigs",
+        )
+        .annotate(
+            has_passing_rankresponse=Exists(
+                RankResponse.objects.filter(
+                    (
+                        ~Q(expression__source__name="mcisaac_oe")  # All sources except mcisaac_oe
+                        | (Q(expression__source__name="mcisaac_oe", expression__time=15))  # mcisaac_oe with time=15
+                    ),
+                    promotersetsig__in=PromoterSetSig.objects.filter(
+                        Q(single_binding=OuterRef(OuterRef("single_binding")))
+                        | Q(composite_binding=OuterRef(OuterRef("composite_binding")))
+                    ),
+                    passing=True,
+                )
+            ),
+            has_any_rankresponse=Exists(
+                RankResponse.objects.filter(
+                    (
+                        ~Q(expression__source__name="mcisaac_oe")  # All sources except mcisaac_oe
+                        | (Q(expression__source__name="mcisaac_oe", expression__time=15))  # mcisaac_oe with time=15
+                    ),
+                    promotersetsig__in=PromoterSetSig.objects.filter(
+                        Q(single_binding=OuterRef(OuterRef("single_binding")))
+                        | Q(composite_binding=OuterRef(OuterRef("composite_binding")))
+                    ),
+                )
+            ),
+            has_passing_dto=Exists(
+                DTO.objects.filter(
+                    (
+                        ~Q(expression__source__name="mcisaac_oe")  # All sources except mcisaac_oe
+                        | (Q(expression__source__name="mcisaac_oe", expression__time=15))  # mcisaac_oe with time=15
+                    ),
+                    promotersetsig__in=PromoterSetSig.objects.filter(
+                        Q(single_binding=OuterRef(OuterRef("single_binding")))
+                        | Q(composite_binding=OuterRef(OuterRef("composite_binding")))
+                    ),
+                    passing_pvalue=True,
+                    passing_fdr=True,
+                )
+            ),
+            has_any_dto=Exists(
+                DTO.objects.filter(
+                    (
+                        ~Q(expression__source__name="mcisaac_oe")  # All sources except mcisaac_oe
+                        | (Q(expression__source__name="mcisaac_oe", expression__time=15))  # mcisaac_oe with time=15
+                    ),
+                    promotersetsig__in=PromoterSetSig.objects.filter(
+                        Q(single_binding=OuterRef(OuterRef("single_binding")))
+                        | Q(composite_binding=OuterRef(OuterRef("composite_binding")))
+                    ),
+                )
+            ),
+        )
+        .annotate(
+            rank_response_status=Case(
+                When(has_passing_rankresponse=True, then=Value("pass")),
+                When(has_any_rankresponse=True, then=Value("fail")),
+                default=Value("unreviewed"),
+                output_field=CharField(),
+            ),
+            dto_status=Case(
+                When(has_passing_dto=True, then=Value("pass")),
+                When(has_any_dto=True, then=Value("fail")),
+                default=Value("unreviewed"),
+                output_field=CharField(),
+            ),
+        )
         .order_by("-id")
     )
+
     authentication_classes = [SessionAuthentication, TokenAuthentication]
     permission_classes = [IsAuthenticated]
     serializer_class = BindingManualQCSerializer
@@ -78,48 +150,56 @@ class BindingManualQCViewSet(UpdateModifiedMixin, ExportTableAsGzipFileMixin, vi
     @transaction.atomic
     def bulk_update(self, request, *args, **kwargs):
         data = request.data.get("data")
-        # collect errors and updated records to report as a Response after all
-        # items have been processed
         updated_records = []
         errors = []
-        # Create a set to store the regulator_id, source_name, and data_usable for callingcards data
-        # data_usable is set to "pass" by default to only aggregate the passing replicates.
-        # This is parameterized through the request.data, though, so the option is
-        # exposed to the user
         update_cc_combined_set = set()
 
         for item in data:
-            instance = BindingManualQC.objects.get(id=item["id"])
-            if instance.single_binding.source.assay == "callingcards" and item.get("data_usable"):
-                # TODO defaulting to data_usable pass is really questionable. Presumably
-                # if item.get("data_usable") is not None, then the default doesn't
-                # matter. But, possibly consider checking that it is valid and raising
-                # an error if not.
-                update_cc_combined_set.add(
-                    (
-                        instance.single_binding.regulator.id,
-                        instance.single_binding.source.name,
-                        item.get("data_usable", "pass"),
-                    )
-                )
             try:
-                for attr, value in item.items():
-                    setattr(instance, attr, value)
-                instance.full_clean()  # This line validates the model instance before saving
-                instance.save()
-                updated_records.append(instance)
+                instance = BindingManualQC.objects.get(id=item["id"])
             except BindingManualQC.DoesNotExist:
                 errors.append(f"BindingManualQC with id {item['id']} does not exist")
                 logger.error(f"BindingManualQC with id {item['id']} does not exist")
+                continue
+
+            # Handle single_binding and composite_binding
+            binding_source = None
+            assay = None
+
+            if instance.single_binding:
+                binding_source = instance.single_binding.source
+                assay = binding_source.assay
+            elif instance.composite_binding:
+                binding_source = instance.composite_binding.source
+                assay = binding_source.assay
+
+            if binding_source and assay == "callingcards" and item.get("data_usable"):
+                update_cc_combined_set.add(
+                    (
+                        (
+                            instance.single_binding.regulator.id
+                            if instance.single_binding
+                            else instance.composite_binding.regulator.id
+                        ),
+                        binding_source.name,
+                        item.get("data_usable", "pass"),
+                    )
+                )
+
+            try:
+                for attr, value in item.items():
+                    setattr(instance, attr, value)
+                instance.full_clean()  # Validate before saving
+                instance.save()
+                updated_records.append(instance)
             except DjangoValidationError as exc:
                 errors.append(f"Failed to update BindingManualQC with id {item['id']}: {exc}")
                 logger.error(f"Failed to update BindingManualQC with id {item['id']}: {exc}")
 
         if errors:
-            # return a 400 response with the collected errors
             raise DRFValidationError({"errors": errors})
 
-        # After all records are updated, perform your operation on the set
+        # Launch tasks for the aggregated callingcards data
         for regulator_id, source_name, data_usable in update_cc_combined_set:
             task_arguments = {
                 "user_id": self.request.user.id,

@@ -174,13 +174,13 @@ def rank_response_task(
 
         try:
             rank_25_rr = rank_response_df.loc[rank_response_df["rank_bin"] == 25, "response_ratio"].values[0]
-        except (ZeroDivisionError, KeyError) as exc:
+        except (ZeroDivisionError, KeyError, IndexError) as exc:
             logger.error(f"Error calculating rank_25: {exc}")
             rank_25_rr = 0.0
 
         try:
             rank_50_rr = rank_response_df.loc[rank_response_df["rank_bin"] == 50, "response_ratio"].values[0]
-        except (ZeroDivisionError, KeyError) as exc:
+        except (ZeroDivisionError, KeyError, IndexError) as exc:
             logger.error(f"Error calculating rank_50: {exc}")
             rank_50_rr = 0.0
 
@@ -243,6 +243,8 @@ def rank_response_task(
                 "expression": expression_ids[0],
                 "parameters": kwargs,
                 "passing": passing,
+                "random_expectation": random_expectation_df.random[0],
+                "total_expression_genes": random_expectation_df.unresponsive[0] + random_expectation_df.responsive[0],
                 "rank_25": rank_25_rr,
                 "rank_50": rank_50_rr,
                 "file": upload_file,

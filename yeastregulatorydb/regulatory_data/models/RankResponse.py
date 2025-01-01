@@ -42,6 +42,12 @@ class RankResponse(BaseModel, GzipFileUploadWithIdMixin):
         default=True,
     )
 
+    total_expression_genes = models.IntegerField(
+        help_text="The total number of genes in the expression data", default=0
+    )
+
+    random_expectation = models.FloatField(help_text="The random expectation", default=0.0)
+
     rank_25 = models.FloatField(help_text="The rank response at bin 25", default=0.0)
 
     rank_50 = models.FloatField(help_text="The rank response at bin 50", default=0.0)
@@ -85,13 +91,15 @@ class RankResponse(BaseModel, GzipFileUploadWithIdMixin):
         """return the genomicfeature associated with this promotersetsig instance"""
         return self.get_regulator().genomicfeature
 
-    def get_source_name(self):
+    def get_binding_source_name(self):
         """return the source associated with this promotersetsig instance"""
-        return self.promotersetsig.get_source_name()
+        # TODO: fix the naming -- promotersetsig.get_source_name() returns the source,
+        # not the name
+        return self.promotersetsig.get_source_name().name
 
-    def get_assay(self):
+    def get_expression_source_name(self):
         """return the source associated with this promotersetsig instance"""
-        return self.promotersetsig.get_assay()
+        return self.expression.get_source_name()
 
 
 @receiver(models.signals.post_delete, sender=RankResponse)

@@ -23,6 +23,15 @@ class ExpressionManualQC(BaseModel):
         default="unverified",
         help_text="whether the strain is verified",
     )
+    preferred_replicate = models.BooleanField(
+        default=False,
+        help_text="Where replicates or multiple conditions exist, "
+        "this field indicates the preferred replicate for analysis",
+    )
+
+    notes = models.CharField(
+        max_length=300, default="none", help_text="Free entry field for notes from the manual QC review"
+    )
 
     def __str__(self):
         return str(self.pk)

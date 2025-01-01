@@ -11,17 +11,17 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.serializers import ValidationError
 
-from yeastregulatorydb.regulatory_data.tasks import dto_task
+from yeastregulatorydb.regulatory_data.tasks import univariatemodels_task
 
-from ...models import DTO, PromoterSetSig
-from ..filters.DTOFilter import DTOFilter
-from ..serializers.DTOSerializer import DTOSerializer
+from ...models import UnivariateModels
+from ..filters import UnivariateModelsFilter
+from ..serializers import UnivariateModelsSerializer
 from .mixins import ExportTableAsGzipFileMixin, RetrieveRecordsAndFilesMixin, UpdateModifiedMixin
 
 
-def generate_dto_tasks(user_id: int, request_data: list, **kwargs) -> list:
+def generate_univariatemodels_tasks(user_id: int, request_data: list, **kwargs) -> list:
     """
-    Submit DTO tasks for each item in the request data
+    Submit univariatemodels tasks for each item in the request data
     """
     # Iterate over each dictionary in the request.data
     tasks = []
@@ -35,19 +35,21 @@ def generate_dto_tasks(user_id: int, request_data: list, **kwargs) -> list:
             raise ValidationError("Each dictionary must contain an 'expression_id' key")
 
         # Create Celery tasks for each promoterset_id and expression_id pair. Pass
-        # any remaining arguments from `item` through to dto_task. See dto_task()
+        # any remaining arguments from `item` through to univariatemodels_task. See univariatemodels_task()
         # docstring for more information about the expected arguments.
-        tasks.append(dto_task.s(user_id, promoterset_id, expression_id, **item))
+        tasks.append(univariatemodels_task.s(user_id, promoterset_id, expression_id, **item))
     return tasks
 
 
-class DTOViewSet(UpdateModifiedMixin, ExportTableAsGzipFileMixin, RetrieveRecordsAndFilesMixin, viewsets.ModelViewSet):
+class UnivariateModelsViewSet(
+    UpdateModifiedMixin, ExportTableAsGzipFileMixin, RetrieveRecordsAndFilesMixin, viewsets.ModelViewSet
+):
     """
     A viewset for viewing and editing Regulator instances.
     """
 
     queryset = (
-        DTO.objects.order_by("id")
+        UnivariateModels.objects.order_by("id")
         .select_related(
             "uploader",
             "promotersetsig",
@@ -74,9 +76,9 @@ class DTOViewSet(UpdateModifiedMixin, ExportTableAsGzipFileMixin, RetrieveRecord
     )
     authentication_classes = [SessionAuthentication, TokenAuthentication]
     permission_classes = [IsAuthenticated]
-    serializer_class = DTOSerializer
+    serializer_class = UnivariateModelsSerializer
     filter_backends = [DjangoFilterBackend]
-    filterset_class = DTOFilter
+    filterset_class = UnivariateModelsFilter
 
     @action(detail=False, methods=["get"])
     def record_table_and_files(self, request, *args, **kwargs):
@@ -97,7 +99,7 @@ class DTOViewSet(UpdateModifiedMixin, ExportTableAsGzipFileMixin, RetrieveRecord
     @transaction.atomic
     def bulk_update(self, request, *args, **kwargs):
         """
-        Bulk update the records in the DTO table.
+        Bulk update the records in the Univariate Models table.
         """
         data = request.data.get("data", [])
 
@@ -107,20 +109,20 @@ class DTOViewSet(UpdateModifiedMixin, ExportTableAsGzipFileMixin, RetrieveRecord
         # Perform the bulk update
         for item in data:
             try:
-                instance = DTO.objects.get(id=item["id"])
+                instance = UnivariateModels.objects.get(id=item["id"])
                 for attr, value in item.items():
                     if attr != "id":  # Avoid attempting to update the primary key
                         setattr(instance, attr, value)
                 instance.full_clean()  # Validate the model instance
                 instance.save()
-            except DTO.DoesNotExist:
+            except UnivariateModels.DoesNotExist:
                 return Response(
-                    {"error": f"DTO with id {item['id']} does not exist."},
+                    {"error": f"UnivariateModels with id {item['id']} does not exist."},
                     status=status.HTTP_400_BAD_REQUEST,
                 )
             except DjangoValidationError as exc:
                 return Response(
-                    {"error": f"Validation error for DTO with id {item['id']}: {str(exc)}"},
+                    {"error": f"Validation error for UnivariateModels with id {item['id']}: {str(exc)}"},
                     status=status.HTTP_400_BAD_REQUEST,
                 )
 
@@ -133,7 +135,7 @@ class DTOViewSet(UpdateModifiedMixin, ExportTableAsGzipFileMixin, RetrieveRecord
         if not isinstance(request.data, list):
             raise ValidationError("Expected a list of dictionaries in the request body.")
 
-        tasks = generate_dto_tasks(self.request.user.id, request.data, **kwargs)
+        tasks = generate_univariatemodels_tasks(self.request.user.id, request.data, **kwargs)
 
         # Create a group of tasks and trigger them
         celery_group_result = group(tasks).apply_async()

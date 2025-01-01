@@ -1,5 +1,6 @@
 from django.core.files.storage import default_storage
 from django.db import IntegrityError, transaction
+from django.db.models import F
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import viewsets
 from rest_framework.authentication import SessionAuthentication, TokenAuthentication
@@ -33,7 +34,18 @@ class ExpressionViewSet(
 
     queryset = (
         Expression.objects.select_related(
-            "uploader", "regulator", "regulator__genomicfeature", "source", "source__fileformat"
+            "uploader",
+            "modifier",
+            "regulator",
+            "regulator__genomicfeature",
+            "source",
+            "source__fileformat",
+            "expressionmanualqc",
+        )
+        .annotate(
+            strain_verified=F("expressionmanualqc__strain_verified"),
+            preferred_replicate=F("expressionmanualqc__preferred_replicate"),
+            qc_notes=F("expressionmanualqc__notes"),
         )
         .all()
         .order_by("-id")

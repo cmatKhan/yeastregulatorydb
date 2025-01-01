@@ -1,10 +1,10 @@
 from rest_framework import serializers
 
-from ...models import DTO
+from ...models import UnivariateModels
 from .mixins.CustomValidateMixin import CustomValidateMixin
 
 
-class DTOSerializer(CustomValidateMixin, serializers.ModelSerializer):
+class UnivariateModelsSerializer(CustomValidateMixin, serializers.ModelSerializer):
     uploader = serializers.ReadOnlyField(source="uploader.username")
     modifier = serializers.CharField(source="uploader.username", required=False)
     regulator_symbol = serializers.CharField(read_only=True)
@@ -13,5 +13,5 @@ class DTOSerializer(CustomValidateMixin, serializers.ModelSerializer):
     expression_source = serializers.CharField(read_only=True)
 
     class Meta:
-        model = DTO
+        model = UnivariateModels
         fields = "__all__"

@@ -8,6 +8,7 @@ import pandas as pd
 from celery import group
 from celery.result import GroupResult
 from django.db import IntegrityError
+from django.db.models import Case, CharField, F, Value, When
 from django.http import HttpResponse
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import status, viewsets
@@ -41,6 +42,10 @@ class PromoterSetSigViewSet(
     A viewset for viewing and editing PromoterSetSig instances.
     """
 
+    # NOTE: THERE IS A USAGE OF .DISTINCT() BELOW THAT IS ERROR PRONE
+    # Because composite_binding links to mulltiple binding sources, but we only use
+    # fields that are the same among those binding sources, distinct() eliminates the
+    # duplicates. But this is obviously not a good way. be very careful
     queryset = (
         PromoterSetSig.objects.order_by("id")
         .select_related(
@@ -58,14 +63,87 @@ class PromoterSetSigViewSet(
             "fileformat",
         )
         .prefetch_related(
-            "single_binding__bindingmanualqc_set",
-            "composite_binding__bindingmanualqc_set",
             "composite_binding__bindings",
             "composite_binding__bindings__source",
             "composite_binding__bindings__regulator",
             "composite_binding__bindings__regulator__genomicfeature",
         )
-    )
+        .annotate(
+            source_name=Case(
+                When(single_binding__isnull=False, then=F("single_binding__source__name")),
+                When(composite_binding__isnull=False, then=F("composite_binding__bindings__source__name")),
+                default=Value(None),
+                output_field=CharField(),
+            ),
+            assay=Case(
+                When(single_binding__isnull=False, then=F("single_binding__source__assay")),
+                When(composite_binding__isnull=False, then=F("composite_binding__bindings__source__assay")),
+                default=Value(None),
+                output_field=CharField(),
+            ),
+            lab=Case(
+                When(single_binding__isnull=False, then=F("single_binding__source__lab")),
+                When(composite_binding__isnull=False, then=F("composite_binding__bindings__source__lab")),
+                default=Value(None),
+                output_field=CharField(),
+            ),
+            batch=Case(
+                When(single_binding__isnull=False, then=F("single_binding__batch")),
+                default=Value(None),
+                output_field=CharField(),
+            ),
+            regulator_symbol=Case(
+                When(single_binding__isnull=False, then=F("single_binding__regulator__genomicfeature__symbol")),
+                When(
+                    composite_binding__isnull=False,
+                    then=F("composite_binding__bindings__regulator__genomicfeature__symbol"),
+                ),
+                default=Value(None),
+                output_field=CharField(),
+            ),
+            regulator_locus_tag=Case(
+                When(single_binding__isnull=False, then=F("single_binding__regulator__genomicfeature__locus_tag")),
+                When(
+                    composite_binding__isnull=False,
+                    then=F("composite_binding__bindings__regulator__genomicfeature__locus_tag"),
+                ),
+                default=Value(None),
+                output_field=CharField(),
+            ),
+            # note: since the composite_binding is only used for calling cards, which dosen't havea  condition
+            # there is no need to use the composite binding When
+            condition=Case(
+                When(single_binding__isnull=False, then=F("single_binding__condition")),
+                default=Value(None),
+                output_field=CharField(),
+            ),
+            data_usable=Case(
+                When(single_binding__isnull=False, then=F("single_binding__bindingmanualqc__data_usable")),
+                When(composite_binding__isnull=False, then=F("composite_binding__bindingmanualqc__data_usable")),
+                default=Value(None),
+                output_field=CharField(),
+            ),
+            manual_fail=Case(
+                When(single_binding__isnull=False, then=F("single_binding__bindingmanualqc__manual_fail")),
+                When(composite_binding__isnull=False, then=F("composite_binding__bindingmanualqc__manual_fail")),
+                default=Value(None),
+                output_field=CharField(),
+            ),
+            preferred_replicate=Case(
+                When(single_binding__isnull=False, then=F("single_binding__bindingmanualqc__preferred_replicate")),
+                When(
+                    composite_binding__isnull=False, then=F("composite_binding__bindingmanualqc__preferred_replicate")
+                ),
+                default=Value(None),
+                output_field=CharField(),
+            ),
+            source_orig_id=Case(
+                When(single_binding__isnull=False, then=F("single_binding__source_orig_id")),
+                default=Value(None),
+                output_field=CharField(),
+            ),
+        )
+    ).distinct()
 
     authentication_classes = [SessionAuthentication, TokenAuthentication]
     permission_classes = [IsAuthenticated]

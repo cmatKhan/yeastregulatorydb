@@ -8,7 +8,7 @@ import pytest
 from celery.result import EagerResult
 from django.conf import settings
 from django.core.files.uploadedfile import SimpleUploadedFile
-from django.db.models import Subquery
+from django.db.models import Case, CharField, F, Subquery, Value, When
 from django.db.models.query import QuerySet
 from django.http import QueryDict
 from django.urls import reverse
@@ -27,7 +27,6 @@ from yeastregulatorydb.regulatory_data.models import (
     BindingManualQC,
     CallingCardsBackground,
     DataSource,
-    Expression,
     PromoterSet,
     PromoterSetSig,
     Regulator,
@@ -39,6 +38,7 @@ from yeastregulatorydb.regulatory_data.tasks.cc_replicate_agreement import (
     cc_replicate_agreement,
 )
 from yeastregulatorydb.regulatory_data.tasks.dto_task import dto_task, get_ranks
+from yeastregulatorydb.regulatory_data.tasks.univariatemodels_task import univariatemodels_task
 from yeastregulatorydb.regulatory_data.tests.utils.model_to_dict_select import model_to_dict_select
 from yeastregulatorydb.regulatory_data.utils import extract_file_from_storage
 from yeastregulatorydb.users.models import User
@@ -417,10 +417,31 @@ def test_cc_replicate_agreement(
 
             assert response.status_code == 201, response.data
 
+    queryset = PromoterSetSig.objects.annotate(
+        regulator_locus_tag=Case(
+            When(single_binding__isnull=False, then=F("single_binding__regulator__genomicfeature__locus_tag")),
+            When(composite_binding__isnull=False, then=F("composite_binding__regulator__genomicfeature__locus_tag")),
+            default=Value(None),
+            output_field=CharField(),
+        ),
+        source=Case(
+            When(single_binding__isnull=False, then=F("single_binding__source__name")),
+            When(composite_binding__isnull=False, then=F("composite_binding__source__name")),
+            default=Value(None),
+            output_field=CharField(),
+        ),
+        assay=Case(
+            When(single_binding__isnull=False, then=F("single_binding__source__assay")),
+            When(composite_binding__isnull=False, then=F("composite_binding__bindings__source__assay")),
+            default=Value(None),
+            output_field=CharField(),
+        ),
+    )
+
     promotersetsig_ids = list(
         PromoterSetSigFilter(
             data={"regulator_locus_tag": hap5_regulator.genomicfeature.locus_tag, "assay": cc_datasource.assay},
-            queryset=PromoterSetSig.objects.all(),
+            queryset=queryset,
         ).qs.values_list("id", flat=True)
     )
 
@@ -547,3 +568,60 @@ def test_dto_task(
     assert isinstance(result["success"], dict)
 
     assert isinstance(result["success"]["empirical_pvalue"], float)
+
+
+@pytest.mark.django_db()
+def test_univariatemodels_task(
+    auth_token: Token,
+    test_data_dict: dict,
+):
+    factory = APIRequestFactory()
+    request = factory.get("/")
+    request.user = auth_token.user
+
+    client = APIClient()
+    client.credentials(HTTP_AUTHORIZATION="Token " + auth_token.key)
+
+    for pss_file in ["RTG3_6546_cc.csv.gz"]:
+        pss_path = next(
+            file for file in test_data_dict["promotersetsig"]["files"] if os.path.basename(file) == pss_file
+        )
+        assert os.path.exists(pss_path), f"path: {pss_path}"
+
+    for expr_file in ["rtg3_1764_15_log2ratio.csv.gz"]:
+        expr_path = next(
+            file for file in test_data_dict["expression"]["mcisaac"]["files"] if os.path.basename(file) == expr_file
+        )
+        assert os.path.exists(expr_path), f"path: {expr_path}"
+
+    pss_df = pd.read_csv(pss_path, compression="gzip")
+    expr_df = pd.read_csv(expr_path, compression="gzip")
+
+    # find the intersect of the target_symbol columns
+    target_symbols = set(pss_df["target_symbol"]).intersection(set(expr_df["target_symbol"]))
+    # filter the DataFrames to only include the intersecting target_symbols
+    pss_df = pss_df[pss_df["target_symbol"].isin(target_symbols)]
+    expr_df = expr_df[expr_df["target_symbol"].isin(target_symbols)]
+
+    assert pss_df is not None
+    assert expr_df is not None
+
+    rank_args = {
+        "pss_col1_ascending": True,
+        "pss_col2_ascending": False,
+        "pss_ranker_col1": "poisson_pval",
+        "pss_ranker_col2": "callingcards_enrichment",
+        "expression_col1_ascending": False,
+        "expression_ranker_col1": "effect",
+        "expression_ranker_col2": None,
+        "expression_ranker_col1_abs": True,
+    }
+
+    settings.CELERY_TASK_ALWAYS_EAGER = True
+    result = univariatemodels_task(auth_token.user.id, 1, 1, pss_df, expr_df, save_record=False, **rank_args)
+
+    assert isinstance(result, dict)
+
+    assert isinstance(result["success"], dict)
+
+    assert isinstance(result["success"]["rsquared"], float)

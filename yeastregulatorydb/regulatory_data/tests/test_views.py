@@ -926,7 +926,6 @@ def test_expression_task_upload(
     clean_test_database,
     auth_token: Token,
     hu_datasource: DataSource,
-    chrmap: QuerySet,
     fileformat: QueryDict,
     test_data_dict: dict,
 ):

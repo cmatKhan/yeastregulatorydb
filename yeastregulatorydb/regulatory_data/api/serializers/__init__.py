@@ -15,6 +15,7 @@ from .PromoterSetSerializer import PromoterSetSerializer
 from .PromoterSetSigSerializer import PromoterSetSigSerializer
 from .RankResponseSerializer import RankResponseSerializer
 from .RegulatorSerializer import RegulatorSerializer
+from .UnivariateModelsSerializer import UnivariateModelsSerializer
 
 __all__ = [
     "BindingConcatenatedSerializer",
@@ -34,4 +35,5 @@ __all__ = [
     "PromoterSetSigSerializer",
     "RankResponseSerializer",
     "RegulatorSerializer",
+    "UnivariateModelsSerializer",
 ]

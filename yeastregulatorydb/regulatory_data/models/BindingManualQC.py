@@ -28,33 +28,29 @@ class BindingManualQC(BaseModel):
         blank=True,
         help_text="Foreign key to the 'BindingConcatenated' table",
     )
-    best_datatype = models.CharField(
-        default="unreviewed",
-        choices=MANUAL_QC_CHOICES,
-        help_text="`pass` if the only binding data that performs better is from "
-        "the same binding source. Otherwise, `unreviewed` or `fail`",
-    )
     data_usable = models.CharField(
         default="unreviewed",
         choices=MANUAL_QC_CHOICES,
         help_text="`pass` if there is no reason to believe the data has "
         "technical faults. Otherwise, `unreviewed` or `false`",
     )
-    passing_replicate = models.CharField(
-        default="unreviewed",
-        choices=MANUAL_QC_CHOICES,
-        help_text="Primarily, and probably only, relevant to Calling Cards data. "
-        "`pass` if the replicate's hops should be counted towards the "
-        "target hop count. `unreviewed` or `false` otherwise",
+    manual_fail = models.BooleanField(
+        default=False,
+        help_text=(
+            "This provides a way of overriding the automated QC "
+            "If it is set to `True`, a reason should be provided in the `notes` field"
+        ),
     )
-    rank_recall = models.CharField(
-        default="unreviewed",
-        choices=MANUAL_QC_CHOICES,
-        help_text="`pass` if at least 1 rank response bin in the first 100 "
-        "genes ranked by pvalue is significant. Else `unreviewed` or `fail`",
+    preferred_replicate = models.BooleanField(
+        default=False,
+        help_text=(
+            "If `True`, this is the preferred replicate for a "
+            "replicate binding set. This is intended to be used for "
+            "data sources without aggregated replicates"
+        ),
     )
     notes = models.CharField(
-        max_length=100, default="none", help_text="Free entry field for notes from the manual QC review"
+        max_length=300, default="none", help_text="Free entry field for notes from the manual QC review"
     )
 
     def __str__(self):

@@ -5,11 +5,13 @@ from .promoter_significance_combined_task import (
 )
 from .promoter_significance_task import promoter_significance_task
 from .rank_response_task import rank_response_task
+from .univariatemodels_task import univariatemodels_task
 
 __all__ = [
     "_admin_promoter_significance_combined_task",
+    "dto_task",
     "promoter_significance_task",
     "promoter_significance_combined_task",
     "rank_response_task",
-    "dto_task",
+    "univariatemodels_task",
 ]

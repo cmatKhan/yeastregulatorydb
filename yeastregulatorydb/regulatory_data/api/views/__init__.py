@@ -13,6 +13,7 @@ from .PromoterSetSigViewSet import PromoterSetSigViewSet
 from .PromoterSetViewSet import PromoterSetViewSet
 from .RankResponseViewSet import RankResponseViewSet
 from .RegulatorViewSet import RegulatorViewSet
+from .UnivariateModelsViewSet import UnivariateModelsViewSet
 
 __all__ = [
     "BindingManualQCViewSet",
@@ -30,4 +31,5 @@ __all__ = [
     "PromoterSetViewSet",
     "RankResponseViewSet",
     "RegulatorViewSet",
+    "UnivariateModelsViewSet",
 ]

@@ -224,3 +224,9 @@ def my_tast(self, arg1, arg2):
   https://github.com/carltongibson/django-filter/issues/845#issuecomment-351998546
   eg class BindingFilter(django_filters.rest_framework.FilterSet) not 
   class BindingFilter(django_filters.FilterSet):
+
+
+## BindingManualQC
+
+there should be some thought put into what is 'generalizable' and what is specific
+to the yeastdatabase. Eg, the BindingManualQC is specific to the yeast database

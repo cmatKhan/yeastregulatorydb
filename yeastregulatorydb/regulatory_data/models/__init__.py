@@ -13,6 +13,7 @@ from .PromoterSet import PromoterSet
 from .PromoterSetSig import PromoterSetSig
 from .RankResponse import RankResponse
 from .Regulator import Regulator
+from .UnivariateModels import UnivariateModels
 
 __all__ = [
     "Binding",
@@ -30,4 +31,5 @@ __all__ = [
     "PromoterSetSig",
     "RankResponse",
     "Regulator",
+    "UnivariateModels",
 ]

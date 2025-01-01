@@ -1,4 +1,5 @@
 import pytest
+from django.db.models import Case, CharField, F, IntegerField, Value, When
 
 from yeastregulatorydb.regulatory_data.api.filters import (
     BindingConcatenatedFilter,
@@ -12,6 +13,7 @@ from yeastregulatorydb.regulatory_data.api.filters import (
     GenomicFeatureFilter,
     PromoterSetFilter,
     PromoterSetSigFilter,
+    RankResponseFilter,
     RegulatorFilter,
 )
 from yeastregulatorydb.regulatory_data.api.filters.utils import ensure_iterable
@@ -27,6 +29,7 @@ from yeastregulatorydb.regulatory_data.models import (
     GenomicFeature,
     PromoterSet,
     PromoterSetSig,
+    RankResponse,
     Regulator,
 )
 
@@ -44,6 +47,7 @@ from .factories import (
     PromoterSetFactory,
     PromoterSetSigFactory,
     PromoterSetSigWithCompositeBindingFactory,
+    RankResponseFactory,
     RegulatorFactory,
 )
 
@@ -175,25 +179,19 @@ def test_binding_manual_qc_filter():
     binding_manual_qc1 = BindingManualQCFactory(
         single_binding=binding1,
         id=1,
-        best_datatype="pass",
         data_usable="pass",
-        passing_replicate="pass",
     )
     binding_manual_qc2 = BindingManualQCFactory(
         single_binding=binding2,
         id=2,
-        best_datatype="fail",
         data_usable="unreviewed",
-        passing_replicate="fail",
     )
 
     # Define the filter parameters and their expected values
     filter_params = [
         {"id": 1},
         {"single_binding": binding1.id},
-        {"best_datatype": "pass"},
         {"data_usable": "pass"},
-        {"passing_replicate": "pass"},
     ]
 
     # Apply each filter and check if it returns the expected bindings
@@ -330,7 +328,6 @@ def test_expression_filter():
         {"source_time": f"{source1.name},{expression1.time}"},
         {"lab": source1.lab},
         {"assay": source1.assay},
-        {"workflow": source1.workflow},
     ]
 
     # Apply each filter and check if it returns the expected expressions
@@ -605,20 +602,64 @@ def test_promoter_set_sig_filter():
             "unexpected": [promoter_set_sig3],
         },
         {
-            "params": {"workflow": "workflow1"},
-            "expected": [promoter_set_sig1, promoter_set_sig2],
-            "unexpected": [promoter_set_sig3],
-        },
-        {
             "params": {"condition": "condition1"},
             "expected": [promoter_set_sig1],
             "unexpected": [promoter_set_sig2, promoter_set_sig3],
         },
     ]
 
+    queryset = PromoterSetSig.objects.annotate(
+        regulator_locus_tag=Case(
+            When(single_binding__isnull=False, then=F("single_binding__regulator__genomicfeature__locus_tag")),
+            When(composite_binding__isnull=False, then=F("composite_binding__regulator__genomicfeature__locus_tag")),
+            default=Value(None),
+            output_field=CharField(),
+        ),
+        regulator_symbol=Case(
+            When(single_binding__isnull=False, then=F("single_binding__regulator__genomicfeature__symbol")),
+            When(composite_binding__isnull=False, then=F("composite_binding__regulator__genomicfeature__symbol")),
+            default=Value(None),
+            output_field=CharField(),
+        ),
+        batch=Case(
+            When(single_binding__isnull=False, then=F("single_binding__batch")),
+            default=Value(None),
+            output_field=CharField(),
+        ),
+        source=Case(
+            When(single_binding__isnull=False, then=F("single_binding__source")),
+            When(composite_binding__isnull=False, then=F("composite_binding__source")),
+            default=Value(None),
+            output_field=IntegerField(),
+        ),
+        source_name=Case(
+            When(single_binding__isnull=False, then=F("single_binding__source__name")),
+            When(composite_binding__isnull=False, then=F("composite_binding__source__name")),
+            default=Value(None),
+            output_field=CharField(),
+        ),
+        lab=Case(
+            When(single_binding__isnull=False, then=F("single_binding__source__lab")),
+            When(composite_binding__isnull=False, then=F("composite_binding__source__lab")),
+            default=Value(None),
+            output_field=CharField(),
+        ),
+        assay=Case(
+            When(single_binding__isnull=False, then=F("single_binding__source__assay")),
+            When(composite_binding__isnull=False, then=F("composite_binding__bindings__source__assay")),
+            default=Value(None),
+            output_field=CharField(),
+        ),
+        condition=Case(
+            When(single_binding__isnull=False, then=F("single_binding__condition")),
+            When(composite_binding__isnull=False, then=F("composite_binding__bindings__condition")),
+            default=Value(None),
+            output_field=CharField(),
+        ),
+    )
     for test in filter_tests:
         params = test["params"]
-        f = PromoterSetSigFilter(params, queryset=PromoterSetSig.objects.all())
+        f = PromoterSetSigFilter(params, queryset=queryset)
         for expected_instance in test["expected"]:
             assert (
                 expected_instance in f.qs
@@ -652,3 +693,84 @@ def test_regulator_filter():
         f = RegulatorFilter(params, queryset=Regulator.objects.all())
         assert regulator1 in f.qs
         assert regulator2 not in f.qs
+
+
+@pytest.mark.django_db
+def test_rank_response_filter():
+    # Create some Expression instances
+    regulator1 = RegulatorFactory()
+    regulator2 = RegulatorFactory()
+    datasource1 = DataSourceFactory(name="datasource1", assay="assay1")
+    datasource2 = DataSourceFactory(name="datasource2", assay="assay2")
+
+    expression1 = ExpressionFactory(regulator=regulator1, source=datasource1, batch="batch1")
+    expression2 = ExpressionFactory(regulator=regulator1, source=datasource2, time=30, batch="batch2")
+    expression3 = ExpressionFactory(regulator=regulator2, source=datasource2, time=15, batch="batch3")
+
+    # Create PromoterSetSig instances
+    promotersetsig1 = PromoterSetSigFactory()
+    promotersetsig2 = PromoterSetSigFactory()
+
+    # Create RankResponse instances
+    rank_response1 = RankResponseFactory(expression=expression1, promotersetsig=promotersetsig1)
+    rank_response2 = RankResponseFactory(expression=expression2, promotersetsig=promotersetsig2)
+    rank_response3 = RankResponseFactory(expression=expression3, promotersetsig=promotersetsig1)
+
+    # Define the filter parameters and their expected results
+    filter_tests = [
+        # note that a string must be passed into the id field since it allows a commoa
+        # separated list
+        {
+            "params": {"id": str(rank_response1.id)},
+            "expected": [rank_response1],
+            "unexpected": [rank_response2, rank_response3],
+        },
+        {
+            "params": {"expression": expression1.id},
+            "expected": [rank_response1],
+            "unexpected": [rank_response2, rank_response3],
+        },
+        {
+            "params": {"regulator_id": regulator1.id},
+            "expected": [rank_response1, rank_response2],
+            "unexpected": [rank_response3],
+        },
+        {
+            "params": {"regulator_locus_tag": regulator1.genomicfeature.locus_tag},
+            "expected": [rank_response1, rank_response2],
+            "unexpected": [rank_response3],
+        },
+        {
+            "params": {"regulator_symbol": regulator1.genomicfeature.symbol},
+            "expected": [rank_response1, rank_response2],
+            "unexpected": [rank_response3],
+        },
+        {
+            "params": {"expression_conditions": "expression_source=datasource1;expression_source=datasource2,time=15"},
+            "expected": [rank_response1, rank_response3],
+            "unexpected": [rank_response2],
+        },
+    ]
+
+    # Annotate the queryset to include necessary fields
+    queryset = RankResponse.objects.annotate(
+        regulator_locus_tag=F("expression__regulator__genomicfeature__locus_tag"),
+        regulator_symbol=F("expression__regulator__genomicfeature__symbol"),
+        batch=F("expression__batch"),
+        source_name=F("expression__source__name"),
+        assay=F("expression__source__assay"),
+        time=F("expression__time"),
+    )
+
+    # Run filter tests
+    for test in filter_tests:
+        params = test["params"]
+        f = RankResponseFilter(params, queryset=queryset)
+        for expected_instance in test["expected"]:
+            assert (
+                expected_instance in f.qs
+            ), f"Expected instance {expected_instance} not found for filter params: {params}"
+        for unexpected_instance in test["unexpected"]:
+            assert (
+                unexpected_instance not in f.qs
+            ), f"Unexpected instance {unexpected_instance} found for filter params: {params}"

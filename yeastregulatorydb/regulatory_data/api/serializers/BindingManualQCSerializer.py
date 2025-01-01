@@ -1,14 +1,21 @@
+import logging
 from typing import Any, Dict
 
+from django.db.models import Q
 from rest_framework import serializers
 
-from ...models import Binding, BindingManualQC
+from ...models import BindingManualQC, PromoterSetSig, RankResponse
 from .mixins.CustomValidateMixin import CustomValidateMixin
+
+logger = logging.getLogger(__name__)
 
 
 class BindingManualQCSerializer(CustomValidateMixin, serializers.ModelSerializer):
     uploader = serializers.ReadOnlyField(source="uploader.username")
     modifier = serializers.CharField(source="uploader.username", required=False)
+    rank_response_status = serializers.CharField(read_only=True)
+    dto_status = serializers.CharField(read_only=True)
+    manual_fail = serializers.BooleanField(required=False)
 
     class Meta:
         model = BindingManualQC
