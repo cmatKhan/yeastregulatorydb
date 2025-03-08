@@ -16,7 +16,14 @@ from django.core.files import File
 
 from config import celery_app
 from yeastregulatorydb.regulatory_data.api.serializers import PromoterSetSigSerializer
-from yeastregulatorydb.regulatory_data.models import Binding, CallingCardsBackground, ChrMap, FileFormat, PromoterSet
+from yeastregulatorydb.regulatory_data.models import (
+    Binding,
+    CallingCardsBackground,
+    ChrMap,
+    FileFormat,
+    PromoterSet,
+    PromoterSetSig,
+)
 from yeastregulatorydb.regulatory_data.utils.extract_file_from_storage import extract_file_from_storage
 
 logger = logging.getLogger(__name__)
@@ -25,36 +32,6 @@ logger = logging.getLogger(__name__)
 # TODO implement retry logic
 @celery_app.task(bind=True, max_retries=3, default_retry_delay=5)
 def promoter_significance_task(self, binding_id: int, user_id: int, output_fileformat: str, **kwargs) -> list:
-    """For each promoter set in PromoterSet, create the chipexo promoter significance file.
-    Return a list of PromoterSetSig objects that may be passed on to the rank response
-    endpoint. NOTE that this task expects the following global variables to
-    be set in the django settings:
-    - CHR_FORMAT: The chromosome format to use for the input and output files
-    - CHIPEXO_PROMOTER_SIG_FORMAT: The name of the chipexo promoter
-      significance (this is expected to be for the yeastepigenome.org data currently)
-    - CALLINGCARDS_PROMOTER_SIG_FORMAT: The name of the callingcards promoter significance
-
-    :param binding_id: The Binding record for the chipexo_pugh_allevents data
-    :type binding_id: Binding
-    :param user_id: The id of the user who initiated the task
-    :type user_id: int
-    :param output_fileformat: The name of the output FileFormat
-    :type output_fileformat: str
-    :param kwargs: Additional keyword arguments. If `promoterset_id` is passed,
-    then the significance will be calculated only that specific promoterset.
-    Else, it is calculated over all promoter sets in the PromoterSet table.
-    If the output_fileformat is callingcards_promoter_sig and `background_id`
-    is passed in kwargs, then the promoter significance will be calculated
-    that specific background set only. Else, significance will be calculated
-    for all background sets
-
-    :return: A list of PromoterSetSig object ids
-    :rtype: list
-
-    :raises ValueError: If the Binding record with id `binding_id` does not
-        exist or if the chipexo_promoter_sig FileFormat does not exist
-    :raises ValidationError: If the serializer is invalid
-    """
     try:
         User = get_user_model()
         user = User.objects.get(id=user_id)
@@ -74,24 +51,20 @@ def promoter_significance_task(self, binding_id: int, user_id: int, output_filef
     with tempfile.TemporaryDirectory() as tmpdir:
         chrmap_filepath = os.path.join(tmpdir, "chrmap.csv")
 
-        # write chrmap to local tmpfile
+        # Write chrmap to temporary file
         pd.DataFrame(list(ChrMap.objects.all().values())).to_csv(chrmap_filepath, index=False)
 
         binding_filepath = extract_file_from_storage(binding_record.file, tmpdir)
 
-        # result_list stores ResultObject tuples where `df` is the dataframe
-        # output by the promoter_significance function and `background_id` is
-        # if promoterset_id is passed, then extract only that record. Else,
-        # generate an iterator that will return all records in the PromoterSet
-        # table
         promoterset_objects_iterator = (
             PromoterSet.objects.filter(id=kwargs.get("promoterset_id")).iterator()
             if "promoterset_id" in kwargs
             else PromoterSet.objects.iterator()
         )
-        # None if there is no background, or the record `id` if there is
+
         ResultObject = namedtuple("ResultObject", ["df", "background_id"])
         result_list = []
+
         for promoter_record in promoterset_objects_iterator:
             promoter_filepath = extract_file_from_storage(promoter_record.file, tmpdir)
 
@@ -105,28 +78,17 @@ def promoter_significance_task(self, binding_id: int, user_id: int, output_filef
                     settings.CHR_FORMAT,
                 )
                 result_list.append(ResultObject(result, None))
+
             elif output_fileformat == settings.CALLINGCARDS_PROMOTER_SIG_FORMAT:
-                # Ensure that the expected background records exist
-                if "background_id" in kwargs:
-                    background_records_exist = CallingCardsBackground.objects.filter(
-                        id=kwargs.get("background_id")
-                    ).exists()
-                else:
-                    background_records_exist = CallingCardsBackground.objects.exists()
-
-                if not background_records_exist:
-                    raise ValueError("No background records found")
-
-                # if background_id is passed, then extract only that record.
-                # else, generate an iterator that will return all records in
-                # the CallingCardsBackground table
                 background_objects_iterator = (
                     CallingCardsBackground.objects.filter(id=kwargs.get("background_id")).iterator()
                     if "background_id" in kwargs
                     else CallingCardsBackground.objects.iterator()
                 )
+
                 if background_objects_iterator is None:
                     raise ValueError("No background records found")
+
                 for background_record in background_objects_iterator:
                     background_filepath = extract_file_from_storage(background_record.file, tmpdir)
 
@@ -145,42 +107,67 @@ def promoter_significance_task(self, binding_id: int, user_id: int, output_filef
             else:
                 raise ValueError(f"FileFormat '{output_fileformat}' not supported")
 
-        # output_list stores promoter_set_sig `id`s for successfully uploaded
-        # records
         output_list = []
         for res_obj in result_list:
             buffer = io.BytesIO()
             with gzip.GzipFile(fileobj=buffer, mode="wb") as gzipped_file:
                 res_obj.df.to_csv(gzipped_file, index=False)
 
-            # Reset buffer position
             buffer.seek(0)
-
-            # Create a Django File object with a uuid filename
             django_file = File(buffer, name=f"{uuid.uuid4()}.csv.gz")
 
-            # Create a mock request with only a user attribute
-            # Assuming you have the user_id available
             mock_request = SimpleNamespace(user=user)
 
-            upload_data = {
-                "single_binding": binding_record.id,
-                "promoter": promoter_record.id,
-                "fileformat": fileformat_record.id,
-                "file": django_file,
-            }
-            if res_obj.background_id:
-                upload_data["background"] = res_obj.background_id
+            # Check if an existing record exists
+            existing_record = PromoterSetSig.objects.filter(
+                single_binding=binding_record,
+                promoter=promoter_record,
+                background_id=res_obj.background_id,
+                fileformat=fileformat_record,
+            ).first()
 
-            serializer = PromoterSetSigSerializer(
-                data=upload_data,
-                context={"request": mock_request},
-            )
+            if existing_record:
+                # Use serializer for updates to ensure full validation and file handling
+                serializer = PromoterSetSigSerializer(
+                    existing_record,
+                    data={"file": django_file},
+                    partial=True,
+                    context={"request": mock_request},
+                )
 
-            if serializer.is_valid():
-                promoter_set_sig = serializer.save()
-                output_list.append(promoter_set_sig.id)
+                if serializer.is_valid():
+                    old_file = existing_record.file
+                    try:
+                        # Delete old file safely
+                        old_file.delete(save=False)
+
+                        # Save updated record
+                        promoter_set_sig = serializer.save()
+                        output_list.append(promoter_set_sig.id)
+                        logger.info(f"Updated PromoterSetSig ID {promoter_set_sig.id}.")
+
+                    except Exception as e:
+                        # Delete the record if the file could not be deleted
+                        existing_record.delete()
+                        logger.error(f"Failed to save updated PromoterSetSig. Deleting the record. Error: {e}")
             else:
-                logger.error(f"promoterSetSig Serializer is invalid: {serializer.errors}")
+                # Create new record
+                upload_data = {
+                    "single_binding": binding_record.id,
+                    "promoter": promoter_record.id,
+                    "fileformat": fileformat_record.id,
+                    "file": django_file,
+                }
+                if res_obj.background_id:
+                    upload_data["background"] = res_obj.background_id
+
+                serializer = PromoterSetSigSerializer(data=upload_data, context={"request": mock_request})
+
+                if serializer.is_valid():
+                    promoter_set_sig = serializer.save()
+                    output_list.append(promoter_set_sig.id)
+                    logger.info(f"Created PromoterSetSig ID {promoter_set_sig.id}.")
+                else:
+                    logger.error(f"Cannot create new PromoterSetSig record: {serializer.errors}")
 
     return output_list

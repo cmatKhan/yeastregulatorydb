@@ -61,12 +61,13 @@ class PromoterSetSig(BaseModel, GzipFileUploadWithIdMixin):
 
     # pylint:disable=R0801
     def save(self, *args, **kwargs):
-        # Store the old file path
-        is_create = self.pk is None
-        super().save(*args, **kwargs)
-        if is_create:
+        is_create = self.pk is None  # Check if it's a new record
+        super().save(*args, **kwargs)  # Save first to get a valid PK
+
+        # Ensure file renaming occurs on both creation and updates
+        if is_create or "file" in kwargs.get("update_fields", []):
             self.update_file_name("file", "promotersetsig", "csv.gz")
-            super().save(update_fields=["file"])
+            super().save(update_fields=["file"])  # Save again with the new filename
 
     # pylint:enable=R0801
 

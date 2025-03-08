@@ -13,7 +13,7 @@ SECRET_KEY = env(
     default="sBsqO0cQhZduBCWaviIhckojqOUqIZyKlziW9h9O0PhUjXWmr9bqcO3Xx5yeITM5",
 )
 # https://docs.djangoproject.com/en/dev/ref/settings/#allowed-hosts
-ALLOWED_HOSTS = ["localhost", "0.0.0.0", "127.0.0.1"]
+ALLOWED_HOSTS = ["localhost", "0.0.0.0", "127.0.0.1", "n240"]
 REDIS_URL = "redis://" + env.str("REDIS_HOST", "redis") + ":" + env.str("REDIS_PORT", "6379") + "/0"
 
 # CACHES

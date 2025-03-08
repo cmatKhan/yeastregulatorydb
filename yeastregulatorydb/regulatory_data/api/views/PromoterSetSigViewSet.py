@@ -164,6 +164,22 @@ class PromoterSetSigViewSet(
                 }
             )
 
+    @action(detail=True, methods=["patch"], permission_classes=[IsAuthenticated])
+    def update_file(self, request, pk=None):
+        """Update the file of an existing PromoterSetSig record"""
+        try:
+            promotersetsig = self.get_object()
+            file = request.FILES.get("file")
+            if not file:
+                return Response({"error": "No file provided"}, status=status.HTTP_400_BAD_REQUEST)
+
+            promotersetsig.file = file
+            promotersetsig.save(update_fields=["file"])
+            return Response({"success": "File updated successfully"}, status=status.HTTP_200_OK)
+
+        except PromoterSetSig.DoesNotExist:
+            return Response({"error": "PromoterSetSig not found"}, status=status.HTTP_404_NOT_FOUND)
+
     @action(detail=False, methods=["get"])
     def record_table_and_files(self, request, *args, **kwargs):
         queryset = self.get_queryset()

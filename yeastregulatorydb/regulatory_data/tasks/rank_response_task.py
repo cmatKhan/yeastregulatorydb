@@ -10,6 +10,7 @@ from typing import List
 from callingcardstools.Analysis.yeast import rank_response
 from django.contrib.auth import get_user_model
 from django.core.files import File
+from pandas import DataFrame
 
 from config import celery_app
 from yeastregulatorydb.regulatory_data.api.serializers import RankResponseSerializer
@@ -17,6 +18,21 @@ from yeastregulatorydb.regulatory_data.models import Expression, PromoterSetSig
 from yeastregulatorydb.regulatory_data.utils.extract_file_from_storage import extract_file_from_storage
 
 logger = logging.getLogger(__name__)
+
+
+def get_rank_response_at_bin(rank_response_df: DataFrame, rank_bin: int):
+    """
+    Get the response ratio at a specific rank bin
+
+    :param rank_response_df: The rank response dataframe
+    :param rank_bin: The rank bin to get the response ratio for
+    :return: The response ratio at the rank bin, or None if the rank bin is missing
+    """
+    try:
+        return rank_response_df.loc[rank_response_df["rank_bin"] == rank_bin, "response_ratio"].values[0]
+    except (KeyError, IndexError):  # Remove ZeroDivisionError, as it doesn’t apply here
+        logger.warning(f"Rank bin {rank_bin} is missing. Setting to NA.")
+        return None  # Use None instead of 0.0
 
 
 @celery_app.task(serializer="json")
@@ -172,18 +188,6 @@ def rank_response_task(
         except KeyError:
             passing = False
 
-        try:
-            rank_25_rr = rank_response_df.loc[rank_response_df["rank_bin"] == 25, "response_ratio"].values[0]
-        except (ZeroDivisionError, KeyError, IndexError) as exc:
-            logger.error(f"Error calculating rank_25: {exc}")
-            rank_25_rr = 0.0
-
-        try:
-            rank_50_rr = rank_response_df.loc[rank_response_df["rank_bin"] == 50, "response_ratio"].values[0]
-        except (ZeroDivisionError, KeyError, IndexError) as exc:
-            logger.error(f"Error calculating rank_50: {exc}")
-            rank_50_rr = 0.0
-
         # note that the `id` needs to be like this in order for the return to be
         # consistent with the RetrieveRecordsAndFilesMixin
         # if kwargs.get("summary", True) is True, return the rank_response_df
@@ -198,8 +202,8 @@ def rank_response_task(
                 random_expectation_df.unresponsive[0] + random_expectation_df.responsive[0]
             ),
             "passing": int(passing),
-            "rank_25": rank_25_rr,
-            "rank_50": rank_50_rr,
+            "rank_25": get_rank_response_at_bin(rank_response_df, 25),
+            "rank_50": get_rank_response_at_bin(rank_response_df, 50),
         }
 
         if kwargs.get("save_record", False):
@@ -245,8 +249,8 @@ def rank_response_task(
                 "passing": passing,
                 "random_expectation": random_expectation_df.random[0],
                 "total_expression_genes": random_expectation_df.unresponsive[0] + random_expectation_df.responsive[0],
-                "rank_25": rank_25_rr,
-                "rank_50": rank_50_rr,
+                "rank_25": results_dict["rank_25"],
+                "rank_50": results_dict["rank_50"],
                 "file": upload_file,
             }
 

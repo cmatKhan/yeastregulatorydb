@@ -48,9 +48,9 @@ class RankResponse(BaseModel, GzipFileUploadWithIdMixin):
 
     random_expectation = models.FloatField(help_text="The random expectation", default=0.0)
 
-    rank_25 = models.FloatField(help_text="The rank response at bin 25", default=0.0)
+    rank_25 = models.FloatField(help_text="The rank response at bin 25", null=True, blank=True)
 
-    rank_50 = models.FloatField(help_text="The rank response at bin 50", default=0.0)
+    rank_50 = models.FloatField(help_text="The rank response at bin 50", null=True, blank=True)
 
     file = models.FileField(
         upload_to="temp",
