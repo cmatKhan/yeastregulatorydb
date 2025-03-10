@@ -47,7 +47,7 @@ def promoter_significance_task_all_single_callingcards(self, user_id: int, outpu
 
     # get all binding records with data source 'brent_nf_cc' that do not have NA/null
     # single_binding
-    binding_records = Binding.objects.filter(data_source="brent_nf_cc", single_binding__isnull=False)
+    binding_records = Binding.objects.filter(source__name="brent_nf_cc")
     output_list = []
     for binding_record in binding_records:
         binding_id = binding_record.id

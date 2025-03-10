@@ -458,13 +458,13 @@ def promoter_significance_combined_task(
 def _admin_promoter_significance_combined_task(self, user_id: int, **kwargs) -> None:
     """
     Iterate over a list of PromoterSetSig object ids and call the
-    rank_response_task. The kwargs are passed to the rank_response_task
+    promoter_significance_task. The kwargs are passed to the promoter_significance_task
 
     :param promotersetsig_ids: A list of promotersetsig object ids
     :type promotersetsig_ids: list
     :param user_id: the id of the user that initiated the task
     :type user_id: int
-    :param kwargs: keyword arguments to be passed to the rank_response_task
+    :param kwargs: keyword arguments to be passed to the promoter_significance_task
     """
 
     # from the Binding table, get a list of the regulator_ids that are associated
