@@ -13,6 +13,7 @@ from callingcardstools.PeakCalling.yeast.call_peaks import call_peaks as calling
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.core.files import File
+from django.core.files.storage import default_storage
 
 from config import celery_app
 from yeastregulatorydb.regulatory_data.api.serializers import PromoterSetSigSerializer
@@ -27,6 +28,37 @@ from yeastregulatorydb.regulatory_data.models import (
 from yeastregulatorydb.regulatory_data.utils.extract_file_from_storage import extract_file_from_storage
 
 logger = logging.getLogger(__name__)
+
+
+# implement a task that will run the promoter significance task on all binding records
+# with data source 'brent_nf_cc'
+@celery_app.task(bind=True, max_retries=3, default_retry_delay=5)
+def promoter_significance_task_all_single_callingcards(self, user_id: int, output_fileformat: str, **kwargs) -> list:
+    try:
+        User = get_user_model()
+        user = User.objects.get(id=user_id)
+    except User.DoesNotExist:
+        raise ValueError(f"User with id {user_id} does not exist")
+
+    try:
+        fileformat_record = FileFormat.objects.get(fileformat=output_fileformat)
+    except FileFormat.DoesNotExist:
+        raise ValueError(f"FileFormat '{output_fileformat}' does not exist")
+
+    # get all binding records with data source 'brent_nf_cc' that do not have NA/null
+    # single_binding
+    binding_records = Binding.objects.filter(data_source="brent_nf_cc", single_binding__isnull=False)
+    output_list = []
+    for binding_record in binding_records:
+        binding_id = binding_record.id
+        result = promoter_significance_task(
+            binding_id=binding_id,
+            user_id=user_id,
+            output_fileformat=output_fileformat,
+            **kwargs,
+        )
+        output_list.extend(result)
+    return output_list
 
 
 # TODO implement retry logic
@@ -127,10 +159,11 @@ def promoter_significance_task(self, binding_id: int, user_id: int, output_filef
             ).first()
 
             if existing_record:
+                logger.info(f"Existing record found. Attempting to update PromoterSetSig ID {existing_record.id}.")
                 # Use serializer for updates to ensure full validation and file handling
                 serializer = PromoterSetSigSerializer(
                     existing_record,
-                    data={"file": django_file},
+                    data={"file": django_file, "fileformat": fileformat_record.id},
                     partial=True,
                     context={"request": mock_request},
                 )
@@ -138,10 +171,14 @@ def promoter_significance_task(self, binding_id: int, user_id: int, output_filef
                 if serializer.is_valid():
                     old_file = existing_record.file
                     try:
-                        # Delete old file safely
-                        old_file.delete(save=False)
+                        if old_file and old_file.name:  # Ensure file exists
+                            if default_storage.exists(old_file.name):  # Check if file physically exists
+                                logger.info(f"Deleting old file: {old_file.name}")
+                                default_storage.delete(old_file.name)  # Manually remove from storage
 
                         # Save updated record
+                        # note that the serializer .update() method will be called
+                        # since the existing_record already has a `pk`
                         promoter_set_sig = serializer.save()
                         output_list.append(promoter_set_sig.id)
                         logger.info(f"Updated PromoterSetSig ID {promoter_set_sig.id}.")

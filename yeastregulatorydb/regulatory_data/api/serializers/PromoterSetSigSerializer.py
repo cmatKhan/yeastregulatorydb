@@ -1,8 +1,12 @@
+import logging
+
 from rest_framework import serializers
 
-from ...models import Binding, BindingConcatenated, CallingCardsBackground, FileFormat, PromoterSetSig
+from ...models import PromoterSetSig
 from .mixins.CustomValidateMixin import CustomValidateMixin
 from .mixins.FileValidationMixin import FileValidationMixin
+
+logger = logging.getLogger(__name__)
 
 
 class PromoterSetSigSerializer(CustomValidateMixin, FileValidationMixin, serializers.ModelSerializer):
@@ -21,6 +25,20 @@ class PromoterSetSigSerializer(CustomValidateMixin, FileValidationMixin, seriali
     lab = serializers.CharField(read_only=True)
     assay = serializers.CharField(read_only=True)
     source_orig_id = serializers.CharField(read_only=True)
+
+    def update(self, instance, validated_data):
+        # Track if the file field is actually being updated
+        file_updated = "file" in validated_data
+
+        # Call original update method
+        instance = super().update(instance, validated_data)
+
+        # Only save again if the file field was updated
+        if file_updated:
+            logger.warning("File field was updated. Saving instance again to ensure file changes are persisted.")
+            instance.save(update_fields=["file"])
+
+        return instance
 
     class Meta:
         model = PromoterSetSig
