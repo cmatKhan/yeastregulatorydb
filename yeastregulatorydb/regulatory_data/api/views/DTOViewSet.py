@@ -71,7 +71,7 @@ class DTOViewSet(UpdateModifiedMixin, ExportTableAsGzipFileMixin, RetrieveRecord
             regulator_symbol=F("expression__regulator__genomicfeature__symbol"),
             regulator_locus_tag=F("expression__regulator__genomicfeature__locus_tag"),
         )
-    )
+    ).distinct()
     authentication_classes = [SessionAuthentication, TokenAuthentication]
     permission_classes = [IsAuthenticated]
     serializer_class = DTOSerializer

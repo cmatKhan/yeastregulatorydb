@@ -1,11 +1,12 @@
 import django_filters
 
 from ...models import Binding, BindingManualQC
+from .utils.NumbersInFilter import NumbersInFilter
 
 
 class BindingFilter(django_filters.rest_framework.FilterSet):
     # pylint: disable=R0801
-    id = django_filters.NumberFilter()
+    id = NumbersInFilter(field_name="id", lookup_expr="in")
     regulator = django_filters.NumberFilter(label="Regulator ID", help_text="Regulator ID")
     regulator_locus_tag = django_filters.CharFilter(
         field_name="regulator__genomicfeature__locus_tag",

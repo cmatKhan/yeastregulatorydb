@@ -10,6 +10,7 @@ from types import SimpleNamespace
 import pandas as pd
 from callingcardstools.Analysis.yeast.chipexo_promoter_sig import chipexo_promoter_sig
 from callingcardstools.PeakCalling.yeast.call_peaks import call_peaks as callingcards_promoter_sig
+from celery import group
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.core.files import File
@@ -18,12 +19,15 @@ from django.core.files.storage import default_storage
 from config import celery_app
 from yeastregulatorydb.regulatory_data.api.serializers import PromoterSetSigSerializer
 from yeastregulatorydb.regulatory_data.models import (
+    DTO,
     Binding,
     CallingCardsBackground,
     ChrMap,
     FileFormat,
     PromoterSet,
     PromoterSetSig,
+    RankResponse,
+    UnivariateModels,
 )
 from yeastregulatorydb.regulatory_data.utils.extract_file_from_storage import extract_file_from_storage
 
@@ -32,7 +36,8 @@ logger = logging.getLogger(__name__)
 
 # implement a task that will run the promoter significance task on all binding records
 # with data source 'brent_nf_cc'
-@celery_app.task(bind=True, max_retries=3, default_retry_delay=5)
+# Time limit is 2 hours (7200 seconds)
+@celery_app.task(bind=True, max_retries=3, default_retry_delay=5, time_limit=7200, soft_time_limit=7200)
 def promoter_significance_task_all_single_callingcards(self, user_id: int, output_fileformat: str, **kwargs) -> list:
     try:
         User = get_user_model()
@@ -45,20 +50,21 @@ def promoter_significance_task_all_single_callingcards(self, user_id: int, outpu
     except FileFormat.DoesNotExist:
         raise ValueError(f"FileFormat '{output_fileformat}' does not exist")
 
-    # get all binding records with data source 'brent_nf_cc' that do not have NA/null
-    # single_binding
+    # Get all binding records with data source 'brent_nf_cc'
     binding_records = Binding.objects.filter(source__name="brent_nf_cc")
-    output_list = []
-    for binding_record in binding_records:
-        binding_id = binding_record.id
-        result = promoter_significance_task(
-            binding_id=binding_id,
-            user_id=user_id,
-            output_fileformat=output_fileformat,
-            **kwargs,
+
+    # Submit a separate task for each binding_id
+    tasks = [
+        promoter_significance_task.s(
+            binding_id=binding_record.id, user_id=user_id, output_fileformat=output_fileformat, **kwargs
         )
-        output_list.extend(result)
-    return output_list
+        for binding_record in binding_records
+    ]
+
+    # Execute all tasks in parallel using a Celery group
+    result = group(tasks).apply_async()
+
+    return result.id  # Returns the group task ID, allowing you to track the job progress
 
 
 # TODO implement retry logic
@@ -180,9 +186,29 @@ def promoter_significance_task(self, binding_id: int, user_id: int, output_filef
                         # note that the serializer .update() method will be called
                         # since the existing_record already has a `pk`
                         promoter_set_sig = serializer.save()
-                        output_list.append(promoter_set_sig.id)
-                        logger.info(f"Updated PromoterSetSig ID {promoter_set_sig.id}.")
 
+                        # if the save was successful, then we need to delete records
+                        # related to this promotersetsig record
+                        dto_records = DTO.objects.filter(promotersetsig=promoter_set_sig)
+                        if dto_records.exists():
+                            logger.info(
+                                f"Deleting {dto_records.count()} DTO records for PromoterSetSig ID {promoter_set_sig.id}."
+                            )
+                            dto_records.delete()
+
+                        rr_records = RankResponse.objects.filter(promotersetsig=promoter_set_sig)
+                        if rr_records.exists():
+                            logger.info(
+                                f"Deleting {rr_records.count()} RankResponse records for PromoterSetSig ID {promoter_set_sig.id}."
+                            )
+                            rr_records.delete()
+
+                        univariate_model_records = UnivariateModels.objects.filter(promotersetsig=promoter_set_sig)
+                        if univariate_model_records.exists():
+                            logger.info(
+                                f"Deleting {univariate_model_records.count()} UnivariateModels records for PromoterSetSig ID {promoter_set_sig.id}."
+                            )
+                            univariate_model_records.delete()
                     except Exception as e:
                         # Delete the record if the file could not be deleted
                         existing_record.delete()
