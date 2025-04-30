@@ -7,6 +7,7 @@ from .mixins.CustomValidateMixin import CustomValidateMixin
 class RankResponseSerializer(CustomValidateMixin, serializers.ModelSerializer):
     uploader = serializers.ReadOnlyField(source="uploader.username")
     modifier = serializers.CharField(source="uploader.username", required=False)
+    regulator_id = serializers.IntegerField(read_only=True)
     regulator_symbol = serializers.CharField(read_only=True)
     regulator_locus_tag = serializers.CharField(read_only=True)
     binding_source = serializers.SerializerMethodField()

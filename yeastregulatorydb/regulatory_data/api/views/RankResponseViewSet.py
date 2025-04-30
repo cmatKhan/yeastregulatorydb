@@ -20,12 +20,18 @@ from rest_framework.response import Response
 from rest_framework.serializers import ValidationError
 
 from yeastregulatorydb.regulatory_data.tasks import rank_response_task
-from yeastregulatorydb.regulatory_data.utils.extract_file_from_storage import extract_file_from_storage
+from yeastregulatorydb.regulatory_data.utils.extract_file_from_storage import (
+    extract_file_from_storage,
+)
 
 from ...models import Expression, PromoterSetSig, RankResponse
 from ..filters.RankResponseFilter import RankResponseFilter
 from ..serializers.RankResponseSerializer import RankResponseSerializer
-from .mixins import ExportTableAsGzipFileMixin, RetrieveRecordsAndFilesMixin, UpdateModifiedMixin
+from .mixins import (
+    ExportTableAsGzipFileMixin,
+    RetrieveRecordsAndFilesMixin,
+    UpdateModifiedMixin,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -146,8 +152,9 @@ class RankResponseViewSet(
                 default=Value(None),
                 output_field=CharField(),
             ),
+            regulator_id=F("expression__regulator"),
             regulator_symbol=F("expression__regulator__genomicfeature__symbol"),
-            regulator_locus_tag=F("expression__regulator__genomicfeature__symbol"),
+            regulator_locus_tag=F("expression__regulator__genomicfeature__locus_tag"),
             expression_time=F("expression__time"),
             expression_mechanism=F("expression__mechanism"),
             experession_restriction=F("expression__restriction"),

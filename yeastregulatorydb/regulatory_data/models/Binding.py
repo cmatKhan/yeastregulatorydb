@@ -23,7 +23,7 @@ class Binding(BaseModel, GzipFileUploadWithIdMixin):
     # RAFF = Raffinose
     # H202Hi = highly hyperoxic
     # H202Lo = mildly hyperoxic
-    # SM = Amino acid starved (Synthetic media)
+    # SM = Amino acid starved (glucose carbon source)
     # BUT14 = Filamentation (Butano 14%)
     # BUT90 = Filamentation (Butano 90% -- don't know why a subset had higher concentration)
     # Alpha = mating type alpha

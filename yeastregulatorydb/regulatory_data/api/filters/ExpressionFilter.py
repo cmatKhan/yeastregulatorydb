@@ -39,10 +39,8 @@ class ExpressionFilter(django_filters.rest_framework.FilterSet):
         lookup_expr="iexact", label="Restriction enzyme", help_text="Regulatory enzyme (McIsaac only)"
     )
     time = django_filters.NumberFilter(field_name="time", label="Time Point", help_text="Time point (McIsaac only)")
-    strain = (
-        ListCharFilter(
-            field_name="strain", lookup_expr="iexact", label="Strain", help_text="Comma separated list of strains"
-        ),
+    strain = ListCharFilter(
+        field_name="strain", lookup_expr="iexact", label="Strain", help_text="Comma separated list of strains"
     )
     source = django_filters.NumberFilter(label="Source Record ID", help_text="Source Record ID")
     source_name = django_filters.CharFilter(
