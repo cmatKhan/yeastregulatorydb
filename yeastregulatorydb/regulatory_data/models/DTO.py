@@ -49,6 +49,7 @@ class DTO(BaseModel):
         constraints = [
             UniqueConstraint(fields=["promotersetsig", "expression"], name="unique_promotersetsig_expression")
         ]
+        indexes = [models.Index(fields=["expression", "promotersetsig"], name="idx_expression_pss")]
 
     def get_regulator(self):
         """return the regulator associated with this promotersetsig instance"""

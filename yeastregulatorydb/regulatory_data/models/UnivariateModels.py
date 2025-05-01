@@ -43,6 +43,7 @@ class UnivariateModels(BaseModel):
                 fields=["promotersetsig", "expression"], name="unique_promotersetsig_expression_univariatemodels"
             )
         ]
+        indexes = [models.Index(fields=["expression", "promotersetsig"], name="idx_expr_pss_univariatemodels")]
 
     # pylint:enable=R0801
 

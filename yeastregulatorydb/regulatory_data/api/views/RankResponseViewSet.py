@@ -9,7 +9,7 @@ import tempfile
 import pandas as pd
 from celery import group
 from celery.result import GroupResult
-from django.db.models import Case, CharField, F, Value, When
+from django.db.models import Case, CharField, F, FloatField, JSONField, OuterRef, Subquery, Value, When
 from django.http import HttpResponse
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import status, viewsets
@@ -20,18 +20,12 @@ from rest_framework.response import Response
 from rest_framework.serializers import ValidationError
 
 from yeastregulatorydb.regulatory_data.tasks import rank_response_task
-from yeastregulatorydb.regulatory_data.utils.extract_file_from_storage import (
-    extract_file_from_storage,
-)
+from yeastregulatorydb.regulatory_data.utils.extract_file_from_storage import extract_file_from_storage
 
-from ...models import Expression, PromoterSetSig, RankResponse
+from ...models import DTO, Expression, PromoterSetSig, RankResponse, UnivariateModels
 from ..filters.RankResponseFilter import RankResponseFilter
 from ..serializers.RankResponseSerializer import RankResponseSerializer
-from .mixins import (
-    ExportTableAsGzipFileMixin,
-    RetrieveRecordsAndFilesMixin,
-    UpdateModifiedMixin,
-)
+from .mixins import ExportTableAsGzipFileMixin, RetrieveRecordsAndFilesMixin, UpdateModifiedMixin
 
 logger = logging.getLogger(__name__)
 
@@ -133,6 +127,27 @@ class RankResponseViewSet(
     A viewset for viewing and editing Regulator instances.
     """
 
+    dto_result_subquery = Subquery(
+        DTO.objects.filter(
+            promotersetsig_id=OuterRef("promotersetsig_id"), expression_id=OuterRef("expression_id")
+        ).values("result")[:1],
+        output_field=JSONField(),
+    )
+
+    rsquared_subquery = Subquery(
+        UnivariateModels.objects.filter(
+            promotersetsig_id=OuterRef("promotersetsig_id"), expression_id=OuterRef("expression_id")
+        ).values("rsquared")[:1],
+        output_field=FloatField(),
+    )
+
+    pvalue_subquery = Subquery(
+        UnivariateModels.objects.filter(
+            promotersetsig_id=OuterRef("promotersetsig_id"), expression_id=OuterRef("expression_id")
+        ).values("pvalue")[:1],
+        output_field=FloatField(),
+    )
+
     queryset = (
         RankResponse.objects.order_by("id")
         .select_related(
@@ -160,6 +175,9 @@ class RankResponseViewSet(
             experession_restriction=F("expression__restriction"),
             expression_control=F("expression__control"),
             expression_replicate=F("expression__replicate"),
+            univariate_rsquared=rsquared_subquery,
+            univariate_pvalue=pvalue_subquery,
+            dto_result=dto_result_subquery,
         )
     )
     authentication_classes = [SessionAuthentication, TokenAuthentication]

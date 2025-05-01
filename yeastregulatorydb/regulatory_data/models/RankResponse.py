@@ -71,6 +71,9 @@ class RankResponse(BaseModel, GzipFileUploadWithIdMixin):
                 fields=["promotersetsig", "expression"], name="unique_promotersetsig_expression_rankresponse"
             )
         ]
+        indexes = [
+            models.Index(fields=["expression", "promotersetsig"], name="idx_expr_pss_rr"),
+        ]
 
     # pylint:disable=R0801
     def save(self, *args, **kwargs):
