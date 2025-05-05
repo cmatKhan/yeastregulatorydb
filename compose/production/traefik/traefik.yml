@@ -53,7 +53,7 @@ http:
         certResolver: letsencrypt
 
     flower-secure-router:
-      rule: 'Host(`django.django.tfbindingandperturbation.com`)'
+      rule: 'Host(`flower.django.tfbindingandperturbation.com`)'
       entryPoints:
         - flower
       service: flower
