@@ -114,7 +114,7 @@ class BindingManualQCViewSet(UpdateModifiedMixin, ExportTableAsGzipFileMixin, vi
             ),
         )
         .order_by("-id")
-    )
+    ).distinct()
 
     authentication_classes = [SessionAuthentication, TokenAuthentication]
     permission_classes = [IsAuthenticated]

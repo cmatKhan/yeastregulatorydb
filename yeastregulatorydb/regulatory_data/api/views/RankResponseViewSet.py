@@ -9,7 +9,18 @@ import tempfile
 import pandas as pd
 from celery import group
 from celery.result import GroupResult
-from django.db.models import Case, CharField, F, FloatField, JSONField, OuterRef, Subquery, Value, When
+from django.db.models import (
+    Case,
+    CharField,
+    F,
+    FloatField,
+    JSONField,
+    OuterRef,
+    PositiveIntegerField,
+    Subquery,
+    Value,
+    When,
+)
 from django.http import HttpResponse
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import status, viewsets
@@ -167,6 +178,46 @@ class RankResponseViewSet(
                 default=Value(None),
                 output_field=CharField(),
             ),
+            # These are the new fields you're adding
+            genomic_inserts=Case(
+                When(
+                    promotersetsig__single_binding__isnull=False,
+                    then=F("promotersetsig__single_binding__genomic_inserts"),
+                ),
+                When(
+                    promotersetsig__composite_binding__isnull=False,
+                    then=F("promotersetsig__composite_binding__genomic_inserts"),
+                ),
+                default=Value(None),
+                output_field=PositiveIntegerField(),
+            ),
+            plasmid_inserts=Case(
+                When(
+                    promotersetsig__single_binding__isnull=False,
+                    then=F("promotersetsig__single_binding__plasmid_inserts"),
+                ),
+                When(
+                    promotersetsig__composite_binding__isnull=False,
+                    then=F("promotersetsig__composite_binding__plasmid_inserts"),
+                ),
+                default=Value(None),
+                output_field=PositiveIntegerField(),
+            ),
+            mito_inserts=Case(
+                When(
+                    promotersetsig__single_binding__isnull=False,
+                    then=F("promotersetsig__single_binding__mito_inserts"),
+                ),
+                When(
+                    promotersetsig__composite_binding__isnull=False,
+                    then=F("promotersetsig__composite_binding__mito_inserts"),
+                ),
+                default=Value(None),
+                output_field=PositiveIntegerField(),
+            ),
+            single_binding=F("promotersetsig__single_binding"),
+            composite_binding=F("promotersetsig__composite_binding"),
+            # Existing annotations
             regulator_id=F("expression__regulator"),
             regulator_symbol=F("expression__regulator__genomicfeature__symbol"),
             regulator_locus_tag=F("expression__regulator__genomicfeature__locus_tag"),

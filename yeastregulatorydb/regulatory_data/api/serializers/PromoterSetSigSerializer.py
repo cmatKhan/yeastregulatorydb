@@ -46,23 +46,3 @@ class PromoterSetSigSerializer(CustomValidateMixin, FileValidationMixin, seriali
         # passed through to the attrs needed to extract the fileformat in the
         # validate_df() fucnction
         fields = "__all__"
-        # fields = [
-        #     "id",
-        #     "uploader",
-        #     "modifier",
-        #     "upload_date",
-        #     "modified_date",
-        #     "single_binding",
-        #     "composite_binding",
-        #     "fileformat",
-        #     "background",
-        #     "source",
-        #     "regulator_symbol",
-        #     "regulator_locus_tag",
-        #     "condition",
-        #     "background_name",
-        #     "promoterset",
-        #     "data_usable",
-        #     "preferred_replicate",
-        #     "file",
-        # ]

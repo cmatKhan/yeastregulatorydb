@@ -33,7 +33,7 @@ certificatesResolvers:
 http:
   routers:
     web-secure-router:
-      rule: 'Host(`yeastregulatorydb.com`) || Host(`www.yeastregulatorydb.com`)'
+      rule: 'Host(`tfbindingandperturbation.com`) || Host(`www.tfbindingandperturbation.com`)'
       entryPoints:
         - web-secure
       middlewares:
@@ -43,7 +43,7 @@ http:
         certResolver: letsencrypt
 
     dashboard:
-      rule: "Host(`traefik.yeastregulatorydb.com`)"
+      rule: "Host(`traefik.tfbindingandperturbation.com`)"
       entryPoints:
         - web-secure
       service: api@internal
@@ -53,7 +53,7 @@ http:
         certResolver: letsencrypt
 
     flower-secure-router:
-      rule: 'Host(`yeastregulatorydb.com`)'
+      rule: 'Host(`tfbindingandperturbation.com`)'
       entryPoints:
         - flower
       service: flower
