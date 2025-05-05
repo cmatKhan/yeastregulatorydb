@@ -33,7 +33,7 @@ certificatesResolvers:
 http:
   routers:
     web-secure-router:
-      rule: 'Host(`tfbindingandperturbation.com`) || Host(`www.tfbindingandperturbation.com`)'
+      rule: 'Host(`django.tfbindingandperturbation.com`) || Host(`www.django.tfbindingandperturbation.com`)'
       entryPoints:
         - web-secure
       middlewares:
@@ -43,7 +43,7 @@ http:
         certResolver: letsencrypt
 
     dashboard:
-      rule: "Host(`traefik.tfbindingandperturbation.com`)"
+      rule: "Host(`traefik.django.tfbindingandperturbation.com`)"
       entryPoints:
         - web-secure
       service: api@internal
@@ -53,7 +53,7 @@ http:
         certResolver: letsencrypt
 
     flower-secure-router:
-      rule: 'Host(`tfbindingandperturbation.com`)'
+      rule: 'Host(`django.django.tfbindingandperturbation.com`)'
       entryPoints:
         - flower
       service: flower

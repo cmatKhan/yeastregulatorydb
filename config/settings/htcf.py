@@ -81,10 +81,10 @@ EMAIL_BACKEND = env("DJANGO_EMAIL_BACKEND", default="django.core.mail.backends.c
 # EMAIL
 # ------------------------------------------------------------------------------
 # https://docs.djangoproject.com/en/dev/ref/settings/#default-from-email
-# the AWS SES server is set up with domain tfbindingandperturbation.com
+# the AWS SES server is set up with domain django.tfbindingandperturbation.com
 DEFAULT_FROM_EMAIL = env(
     "DJANGO_DEFAULT_FROM_EMAIL",
-    default="YeastRegulatoryDB <htcf@tfbindingandperturbation.com>",
+    default="YeastRegulatoryDB <htcf@django.tfbindingandperturbation.com>",
 )
 # https://docs.djangoproject.com/en/dev/ref/settings/#server-email
 SERVER_EMAIL = env("DJANGO_SERVER_EMAIL", default=DEFAULT_FROM_EMAIL)
