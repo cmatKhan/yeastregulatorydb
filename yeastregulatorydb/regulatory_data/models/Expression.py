@@ -53,7 +53,7 @@ class Expression(BaseModel, GzipFileUploadWithIdMixin):
     source = models.ForeignKey("DataSource", on_delete=models.CASCADE)
     file = models.FileField(
         upload_to="temp",
-        help_text="A file which stores gene expression " "data that results from a given regulator " "perturbation",
+        help_text="A file which stores gene expression data that results from a given regulator perturbation",
     )
     notes = models.CharField(max_length=100, default="none", help_text="Free entry notes about the data")
 
@@ -75,11 +75,17 @@ class Expression(BaseModel, GzipFileUploadWithIdMixin):
         )
 
     def save(self, *args, **kwargs):
-        # Store the old file path
         is_create = self.pk is None
+        update_fields = kwargs.get("update_fields", None)
+
+        # Save first — ensure file contents are flushed and persisted
         super().save(*args, **kwargs)
-        if is_create:
+
+        # Only move/rename after actual file exists
+        if is_create or (update_fields and "file" in update_fields):
+            logger.info("Renaming file for Expression record %s", self.pk)
             self.update_file_name("file", f"expression/{self.source.name}", "csv.gz")
+            # Re-save with the updated path
             super().save(update_fields=["file"])
 
     def get_regulator(self):

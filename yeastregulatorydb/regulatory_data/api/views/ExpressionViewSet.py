@@ -2,10 +2,11 @@ from django.core.files.storage import default_storage
 from django.db import IntegrityError, transaction
 from django.db.models import F
 from django_filters.rest_framework import DjangoFilterBackend
-from rest_framework import viewsets
+from rest_framework import status, viewsets
 from rest_framework.authentication import SessionAuthentication, TokenAuthentication
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
 from rest_framework.serializers import ValidationError
 
 from ...models import Expression
@@ -95,3 +96,26 @@ class ExpressionViewSet(
                 default_storage.delete(instance.file.name)
 
             raise
+
+    @action(detail=True, methods=["patch"], permission_classes=[IsAuthenticated])
+    def update_file(self, request, pk=None):
+        """
+        Update the file of an existing Expression record.
+        The model's custom save logic (including renaming and moving the file)
+        will be automatically triggered.
+        """
+        expression = self.get_object()
+
+        file = request.FILES.get("file")
+        if not file:
+            return Response({"error": "No file provided"}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Optionally delete the old file
+        if expression.file and default_storage.exists(expression.file.name):
+            default_storage.delete(expression.file.name)
+
+        expression.file = file
+        # Triggers your custom save() logic including update_file_name()
+        expression.save(update_fields=["file"])
+
+        return Response({"success": "File updated successfully"}, status=status.HTTP_200_OK)

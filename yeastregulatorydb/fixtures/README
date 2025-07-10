@@ -23,11 +23,22 @@ for discussion.
 To load the data in this database, first load the tables that do not have one-to-many
 dependencies (bindingconcatenated and anything that is related to it)
 
+## Loading fixtures
+
+```bash
+docker compose -f production.yml run --rm django \
+    python manage.py loaddata \
+    /app/yeastregulatorydb/fixtures/users_20250505.json
+```
+
 ```bash
 /entrypoint python manage.py loaddata -v \
   -e regulatory_data.bindingconcatenated \
   -e regulatory_data.bindingmanualqc \
   -e regulatory_data.promotersetsig \
+  -e regulatory_data.dto \
+  -e regulatory_data.univariatemodels \
+  -e regulatory_data.rankresponse \
   yeastregulatorydb/fixtures/regulatory_data_20240730.json
 ```
 
@@ -46,6 +57,44 @@ Then, exclude the other tables and load bindingconcatenated and its relations
   -e regulatory_data.promoterset \
   -e regulatory_data.regulator \
   yeastregulatorydb/fixtures/regulatory_data_20240730.json
+```
+
+or if through the image as a `run` command
+
+```bash
+docker compose -f production.yml run \
+    -v $(pwd)/yeastregulatorydb/fixtures:/fixtures \
+    --rm django  \
+    python manage.py loaddata  /fixtures/users_20250520.json
+
+
+docker compose -f production.yml run \
+    -v $(pwd)/yeastregulatorydb/fixtures:/fixtures \
+    --rm django \
+    python manage.py loaddata \
+    -e regulatory_data.bindingconcatenated \
+    -e regulatory_data.bindingmanualqc \
+    -e regulatory_data.promotersetsig \
+    -e regulatory_data.dto \
+    -e regulatory_data.univariatemodels \
+    -e regulatory_data.rankresponse \
+    /fixtures/regulatory_data_20250520.json
+
+docker compose -f production.yml run \
+    -v $(pwd)/yeastregulatorydb/fixtures:/fixtures \
+    --rm django \
+    python manage.py loaddata \
+    -e regulatory_data.binding \
+    -e regulatory_data.callingcardsbackground \
+    -e regulatory_data.chrmap \
+    -e regulatory_data.datasource \
+    -e regulatory_data.expression \
+    -e regulatory_data.expressionmanualqc \
+    -e regulatory_data.fileformat \
+    -e regulatory_data.genomicfeature \
+    -e regulatory_data.promoterset \
+    -e regulatory_data.regulator \
+    /fixtures/regulatory_data_20250520.json
 ```
 
 # 2024040702

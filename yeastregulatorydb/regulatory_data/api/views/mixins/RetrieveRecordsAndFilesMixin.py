@@ -48,15 +48,20 @@ class RetrieveRecordsAndFilesMixin:
                     try:
                         dest_file_path = os.path.join(tmpdir, f"{record.id}.csv.gz")
                         if add_genomicfeature_to_file_flag:
-                            df = add_genomicfeature_to_file(
-                                record,
-                                tmpdir,
-                                kwargs.get("rename_metric_cols", True),
-                                kwargs.get("return_cols", None),
-                                effect_colname=request.query_params.get("effect_colname", None),
-                                pvalue_colname=request.query_params.get("pvalue_colname", None),
-                            )
-                            df.to_csv(dest_file_path, compression="gzip", index=False)
+                            # create another temporary directory for genomic feature
+                            # files -- the file will be pulled into this, but returned
+                            # in memory to `df`. it will be saved in the outer
+                            # tmpdir as a gzipped CSV
+                            with tempfile.TemporaryDirectory() as gf_tmpdir:
+                                df = add_genomicfeature_to_file(
+                                    record,
+                                    gf_tmpdir,
+                                    kwargs.get("rename_metric_cols", True),
+                                    kwargs.get("return_cols", None),
+                                    effect_colname=request.query_params.get("effect_colname", None),
+                                    pvalue_colname=request.query_params.get("pvalue_colname", None),
+                                )
+                                df.to_csv(dest_file_path, compression="gzip", index=False)
                         else:
                             file_path = extract_file_from_storage(record.file, tmpdir)
                             with open(file_path, "rb") as src_file:
