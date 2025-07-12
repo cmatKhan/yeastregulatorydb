@@ -7,6 +7,14 @@
 
 # Importing the data
 
+If you want to clear hte current database and load the new data from the fixtures,
+start with a flush
+
+```bash
+docker compose -f production.yml run --rm django \
+    python manage.py flush
+```
+
 first load the users
 
 ```bash
